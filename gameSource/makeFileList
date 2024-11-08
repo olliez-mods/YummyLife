@@ -19,6 +19,7 @@ hetuwmod.cpp \
 hetuwFont.cpp \
 hetuwTCPConnection.cpp \
 phex.cpp \
+yummyLife.cpp \
 yumBlob.cpp \
 yumConfig.cpp \
 game.cpp \
