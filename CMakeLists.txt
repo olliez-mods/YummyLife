@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 
-project(YumLife)
+project(YummyLife)
 
 set(CMAKE_CXX_STANDARD 14)
 
@@ -177,22 +177,22 @@ if(WIN32)
         message(FATAL_ERROR "SDL directory not found: ${SDL_DIR}")
     endif()
 
-    add_executable(YumLife_windows ${CLIENT_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES} icon.rc)
-    target_compile_options(YumLife_windows PRIVATE ${CLIENT_COMPILE_OPTIONS})
-    target_link_libraries(YumLife_windows opengl32 glu32 mingw32 SDLmain SDL wsock32 winmm)
-    target_link_options(YumLife_windows PRIVATE -mwindows -static-libstdc++ -static-libgcc)
+    add_executable(YummyLife_windows ${CLIENT_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES} icon.rc)
+    target_compile_options(YummyLife_windows PRIVATE ${CLIENT_COMPILE_OPTIONS})
+    target_link_libraries(YummyLife_windows opengl32 glu32 mingw32 SDLmain SDL wsock32 winmm)
+    target_link_options(YummyLife_windows PRIVATE -mwindows -static-libstdc++ -static-libgcc)
 else()
     add_definitions(-DLINUX)
 
-    add_executable(YumLife_linux ${CLIENT_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES})
-    target_compile_options(YumLife_linux PRIVATE ${CLIENT_COMPILE_OPTIONS})
+    add_executable(YummyLife_linux ${CLIENT_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES})
+    target_compile_options(YummyLife_linux PRIVATE ${CLIENT_COMPILE_OPTIONS})
 
     find_package(SDL REQUIRED)
     include_directories(${SDL_INCLUDE_DIR})
-    target_link_libraries(YumLife_linux ${SDL_LIBRARY})
+    target_link_libraries(YummyLife_linux ${SDL_LIBRARY})
 
     find_package(OpenGL REQUIRED)
     include_directories(${OPENGL_INCLUDE_DIR})
 
-    target_link_libraries(YumLife_linux ${OPENGL_LIBRARIES})
+    target_link_libraries(YummyLife_linux ${OPENGL_LIBRARIES})
 endif()
