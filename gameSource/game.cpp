@@ -14,7 +14,7 @@ int yumExpectedDataVersionNumber = 426;
 // Please use this tag to describe your client honestly and uniquely
 // client_official is reserved for the unmodded client
 // do not include whitespace in your tag
-const char *clientTag = "client_yumlife";
+const char *clientTag = "client_yummylife";
 
 
 
@@ -297,7 +297,7 @@ static char *windowTitle = NULL;
 const char *getWindowTitle() {
 	if (windowTitle == NULL) {
 		char title[256] = "";
-		snprintf(title, sizeof(title), "YumLife v%d%s", binVersionNumber, yumSubVersion);
+		snprintf(title, sizeof(title), "YummyLife v%d%s - Oliver", binVersionNumber, yumSubVersion);
 		windowTitle = strdup(title);
 	}
     return windowTitle;
@@ -2537,7 +2537,7 @@ void drawFrame( char inUpdate ) {
                     delete [] userTwinCode;
                     userTwinCode = NULL;
                     }
-                userTwinCode = stringDuplicate( "yumlife_reborn" );
+                userTwinCode = stringDuplicate( "yummylife_reborn" );
                 userTwinCount = 1;
                 startConnecting();
                 notLiving = true;
@@ -2548,7 +2548,7 @@ void drawFrame( char inUpdate ) {
                     delete [] userTwinCode;
                     userTwinCode = NULL;
                     }
-                userTwinCode = stringDuplicate( "yumlife_tutorial" );
+                userTwinCode = stringDuplicate( "yummylife_tutorial" );
                 userTwinCount = 1;
                 livingLifePage->runTutorial( 1 );
                 startConnecting();

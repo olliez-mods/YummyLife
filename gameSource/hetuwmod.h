@@ -6,7 +6,7 @@
 #define hetuwLogFileName "yumlog.txt"
 #define hetuwLogSeperator " | " // needs to be 3 char long
 #define hetuwFakeCoord 1977
-#define hetuwGetNewestVersionFromGithub "get newest version from github https://github.com/selb/YumLife/releases"
+#define hetuwGetNewestVersionFromGithub "get newest version from github https://github.com/olliez-mods/YummyLife/releases"
 #define hetuwPhotoSize 400
 
 #define hetuwLinkMainServer "bigserver2.onehouronelife.com"

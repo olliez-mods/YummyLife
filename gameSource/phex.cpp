@@ -1088,7 +1088,7 @@ bool Phex::addToInputStr(unsigned char c) {
 }
 
 void Phex::sendFirstMessage() {
-	string clientName = "yumlife";
+	string clientName = "yummylife";
 	string phexVersionNumber = to_string(PHEX_VERSION);
 	string secretHash = getSecretHash();
 	string jasonsOneLifeVersion = to_string(versionNumber);
