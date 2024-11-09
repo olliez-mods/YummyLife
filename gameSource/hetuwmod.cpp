@@ -143,6 +143,8 @@ bool HetuwMod::stopAutoRoadRun;
 time_t HetuwMod::stopAutoRoadRunTime;
 bool HetuwMod::activateAutoRoadRun;
 
+int HetuwMod::iDrawPhexNames;
+
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
 float HetuwMod::playerNameColor[3];
@@ -382,6 +384,9 @@ void HetuwMod::init() {
 	iDrawPlayersInRangePanel = 0;
 	bDrawDeathMessages = true;
 	bDrawHomeCords = false;
+
+	iDrawPhexNames = 1;
+
 	iDrawNames = 1;
 	bDrawCords = true;
 
@@ -869,6 +874,13 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("key_takephoto", charKey_MakePhoto, {preComment: photoInstructions});
 
 	yumConfig::registerSetting("font_filename", fontFilename, {preComment: "\n// filename of the main font (in the graphics directory)\n"});
+
+	static std::map<std::string, int> drawPhexNameMap = {
+		{"none", 0},
+		{"flash", 1},
+		{"always", 2}
+	};
+	yumConfig::registerMappedSetting("init_show_phex_names", iDrawPhexNames, drawPhexNameMap, {preComment: "\n", postComment: " // none, flash, always"});
 
 	static std::map<std::string, int> drawNamesMap = {
 		{"none", 0},
@@ -2831,18 +2843,22 @@ void HetuwMod::drawPlayerNames( LiveObject* player ) {
 	getRelationNameColor( player->relationName, playerNameColor );
 
 	setDrawColor( 0.0, 0.0, 0.0, 0.8 );
-	if (itsTimeToDrawPhexName() &&
+	// Draw Phex name
+	// draw if we want to always draw it, or it's time to draw it and we want it to flash (always skip if no phex name is avaliable)
+	if (( iDrawPhexNames == 2 || (iDrawPhexNames == 1 && itsTimeToDrawPhexName())) &&
 		Phex::playerIdToHash.find(player->id) != Phex::playerIdToHash.end()) {
 		std::string* name = Phex::getUserDisplayName(Phex::playerIdToHash[player->id]);
 		float textWidth = customFont->measureString( name->c_str() );
 		drawRect( playerNamePos, textWidth/2 + 6, 16 );
 		setDrawColor( playerNameColor[0], playerNameColor[1], playerNameColor[2], 1 );
 		customFont->drawString( name->c_str(), playerNamePos, alignCenter );
+	// Draw full name
 	} else if ( iDrawNames == 2 ) {
 		float textWidth = livingLifePage->hetuwMeasureStringHandwritingFont( player->name );
 		drawRect( playerNamePos, textWidth/2 + 6, 16 );
 		setDrawColor( playerNameColor[0], playerNameColor[1], playerNameColor[2], 1 );
 		livingLifePage->hetuwDrawWithHandwritingFont( player->name, playerNamePos, alignCenter );
+	// Draw first name only
 	} else if ( iDrawNames == 1 ) {
 		char playerName[48];
 		removeLastName( playerName, player->name );

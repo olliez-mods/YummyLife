@@ -318,6 +318,8 @@ public:
 	static time_t stopAutoRoadRunTime;
 	static bool activateAutoRoadRun;
 
+	static int iDrawPhexNames;
+
 	static int iDrawNames;
 	static bool bDrawSelectedPlayerInfo;
 
