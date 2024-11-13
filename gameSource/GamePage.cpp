@@ -47,6 +47,7 @@ GamePage::GamePage()
           mLastTipFade( 1 ),
           mTipAtTopOfScreen( false ),
           mStatusAtTopOfScreen( false ),
+          mUsingCustomTipHeight( false ),
           mSignal( NULL ),
           mResponseWarningTipShowing( false ) {
 
@@ -187,6 +188,11 @@ void GamePage::setStatusPosition( char inTop ) {
     mStatusAtTopOfScreen = inTop;
     }
 
+// YummyLife
+void GamePage::setCustomTipHeight( int inHeight) {
+    mCustomTipHeight = inHeight;
+    mUsingCustomTipHeight = true;
+}
 
 
 void GamePage::base_draw( doublePair inViewCenter, 
@@ -242,6 +248,10 @@ void GamePage::base_draw( doublePair inViewCenter,
             tipPosition.y *= -1;
             }
         
+        // YummyLife: Override other Y values if we are using a custom height
+        if (mUsingCustomTipHeight ) {
+            tipPosition.y = mCustomTipHeight;
+        }
         
         if( mTip != NULL ) {
             drawMessage( mTip, tipPosition );

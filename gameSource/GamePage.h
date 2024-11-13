@@ -31,6 +31,9 @@ class GamePage : public PageComponent {
         // overrides default status position
         // status messages default to bottom of screen
         void setStatusPosition( char inTop );
+
+        // YummyLife: Set a custom tip y position
+        void setCustomTipHeight( int inHeight );
         
         
         // override these from PageComponent to actually SHOW
@@ -203,6 +206,10 @@ class GamePage : public PageComponent {
         
         char mTipAtTopOfScreen;
         char mStatusAtTopOfScreen;
+
+        // YummyLife: vals for custom tip position
+        char mUsingCustomTipHeight;
+        int mCustomTipHeight;
 
         char *mSignal;
         
