@@ -65,8 +65,6 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         TextButton mFriendsButton;
         TextButton mGenesButton;
         TextButton mFamilyTreesButton;
-        TextButton mTechTreeButton;
-        TextButton mOholCurseButton;
         TextButton mClearAccountButton;
         TextButton mCancelButton;
 

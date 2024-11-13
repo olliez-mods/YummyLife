@@ -15,7 +15,10 @@
 
 #include "minorGems/util/stringUtils.h"
 #include "minorGems/util/SettingsManager.h"
+#include "minorGems/formats/encodingUtils.h"
 
+#include "hetuwmod.h"
+#include "yummyLife.h"
 
 
 extern Font *mainFont;
@@ -28,23 +31,35 @@ GeneticHistoryPage::GeneticHistoryPage()
         : mBackButton( mainFont, -522, 300, translate( "backButton" ) ),
           mRefreshButton( mainFont, 542, 300, translate( "refreshButton" ) ),
           mLeaderboardButton( mainFont, 322, 300, translate( "leaderboard" ) ),
+          // YummyLife: Moved form main menu
+          mOneTechButton( mainFont, -240, 300, translateWithDefault("yummyLifeTechButton", "TECH TREE")),
+          mOholCurseButton( mainFont, -10, 300, translateWithDefault("yummyLifeOholCurseButton", "OHOL CURSE")),
+
           mRefreshTime( 0 ),
           mSkip( 0 ) {
 
     setButtonStyle( &mBackButton );
     setButtonStyle( &mRefreshButton );
     setButtonStyle( &mLeaderboardButton );
-    
+    setButtonStyle(&mOneTechButton);
+    setButtonStyle(&mOholCurseButton);
+
     mBackButton.setVisible( true );
     mRefreshButton.setVisible( false );
     mLeaderboardButton.setVisible( false );
+    mOneTechButton.setVisible(true);
+    mOholCurseButton.setVisible(true);
     
     mBackButton.addActionListener( this );
     mRefreshButton.addActionListener( this );
     mLeaderboardButton.addActionListener( this );
+    mOneTechButton.addActionListener( this );
+    mOholCurseButton.addActionListener( this );
     
     addComponent( &mBackButton );
     addComponent( &mRefreshButton );
+    addComponent(&mOneTechButton);
+    addComponent(&mOholCurseButton);
     
     if( !isHardToQuitMode() ) {
         addComponent( &mLeaderboardButton );
@@ -88,6 +103,32 @@ void GeneticHistoryPage::actionPerformed( GUIComponent *inTarget ) {
         
         delete [] url;
         }
+    // YummyLife: Functionality for web buttons
+    else if(inTarget == &mOneTechButton) {
+        char *url;
+        
+        if( isAHAP ) {
+            url = SettingsManager::getStringSetting( "ahapTechTreeURL", "" );
+        } else {
+            url = SettingsManager::getStringSetting( "techTreeURL", "" );
+        }
+        
+        if( strcmp( url, "" ) != 0 ) {
+            launchURL( url );
+        }
+        delete [] url;
+    } else if (inTarget == &mOholCurseButton) {
+        const char *url = "https://oholcurse.com/redirect/profile";
+
+        const char *leaderboardName = getLeaderboardName();
+        char *encodedLeaderboardName = hexEncode((unsigned char *)leaderboardName, strlen(leaderboardName));
+
+        char *fullURL = autoSprintf( "%s/%s", url, encodedLeaderboardName);
+                                    
+        launchURL( fullURL );
+        delete [] encodedLeaderboardName;
+        delete [] fullURL;
+    }
     }
 
 
@@ -114,12 +155,22 @@ void GeneticHistoryPage::draw( doublePair inViewCenter,
 
     doublePair pos = { 0, 300 };
     drawFitnessScoreDetails( pos, mSkip );
+
+    // YummyLife: Copied from ExistingAccountPage.cpp
+    const char *leaderboardName = getLeaderboardName();
+    if (leaderboardName != NULL && !HetuwMod::privateModeEnabled) {
+        mOholCurseButton.setVisible( true );
+    }
     }
 
 
 
 
 void GeneticHistoryPage::makeActive( char inFresh ) {
+
+    // YummyLife: Shouldn't be avaliable into leaderboardname is known
+    mOholCurseButton.setVisible( false );
+
     if( ! inFresh ) {
         return;
         }

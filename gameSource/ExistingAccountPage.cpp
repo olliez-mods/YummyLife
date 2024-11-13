@@ -83,8 +83,6 @@ ExistingAccountPage::ExistingAccountPage()
           mFriendsButton( mainFont, 400, -80, translate( "friendsButton" ) ),
           mGenesButton( mainFont, 550, 0, translate( "genesButton" ) ),
           mFamilyTreesButton( mainFont, 320, -160, translate( "familyTrees" ) ),
-          mTechTreeButton( mainFont, 550, -160, translate( "techTree" ) ),
-          mOholCurseButton( mainFont, 450, -240, "OHOLCURSE" ),
           mClearAccountButton( mainFont, 400, -280, 
                                translate( "clearAccount" ) ),
           mCancelButton( mainFont, -400, -280, 
@@ -118,8 +116,6 @@ ExistingAccountPage::ExistingAccountPage()
     setButtonStyle( &mFriendsButton );
     setButtonStyle( &mGenesButton );
     setButtonStyle( &mFamilyTreesButton );
-    setButtonStyle( &mTechTreeButton );
-    setButtonStyle( &mOholCurseButton );
     setButtonStyle( &mClearAccountButton );
     setButtonStyle( &mCancelButton );
     setButtonStyle( &mSettingsButton );
@@ -144,8 +140,6 @@ ExistingAccountPage::ExistingAccountPage()
     addComponent( &mFriendsButton );
     addComponent( &mGenesButton );
     addComponent( &mFamilyTreesButton );
-    addComponent( &mTechTreeButton );
-    addComponent( &mOholCurseButton );
     addComponent( &mClearAccountButton );
     addComponent( &mCancelButton );
     addComponent( &mSettingsButton );
@@ -170,8 +164,6 @@ ExistingAccountPage::ExistingAccountPage()
     mFriendsButton.addActionListener( this );
     mGenesButton.addActionListener( this );
     mFamilyTreesButton.addActionListener( this );
-    mTechTreeButton.addActionListener( this );
-    mOholCurseButton.addActionListener( this );
     mClearAccountButton.addActionListener( this );
     
     mCancelButton.addActionListener( this );
@@ -204,7 +196,6 @@ ExistingAccountPage::ExistingAccountPage()
     mFriendsButton.setMouseOverTip( translate( "friendsTip" ) );
     mGenesButton.setMouseOverTip( translate( "genesTip" ) );
     mFamilyTreesButton.setMouseOverTip( translate( "familyTreesTip" ) );
-    mTechTreeButton.setMouseOverTip( translate( "techTreeTip" ) );
     
     
 
@@ -286,7 +277,6 @@ void ExistingAccountPage::makeActive( char inFresh ) {
     mLoginButton.setVisible( false );
     mFriendsButton.setVisible( false );
     mGenesButton.setVisible( false );
-    mOholCurseButton.setVisible( false );    
     
     int skipFPSMeasure = SettingsManager::getIntSetting( "skipFPSMeasure", 0 );
     
@@ -495,35 +485,6 @@ void ExistingAccountPage::actionPerformed( GUIComponent *inTarget ) {
             }
         delete [] url;
         }
-    else if( inTarget == &mTechTreeButton ) {
-        char *url;
-        
-        if( isAHAP ) {
-            url = SettingsManager::getStringSetting( "ahapTechTreeURL", "" );
-            }
-        else {
-            url = SettingsManager::getStringSetting( "techTreeURL", "" );
-            }
-        
-
-        if( strcmp( url, "" ) != 0 ) {
-            launchURL( url );
-            }
-        delete [] url;
-        }
-    else if( inTarget == &mOholCurseButton ) {     
-        const char *url = "https://oholcurse.com/redirect/profile";
-
-        const char *leaderboardName = getLeaderboardName();
-        char *encodedLeaderboardName = hexEncode((unsigned char *)leaderboardName, strlen(leaderboardName));
-
-        char *fullURL = autoSprintf( "%s/%s",
-                                        url, encodedLeaderboardName);
-                                    
-        launchURL( fullURL );
-        delete [] encodedLeaderboardName;
-        delete [] fullURL;
-    }
     else if( inTarget == &mViewAccountButton ) {
         if( mHideAccount ) {
             mViewAccountButton.setLabelText( translate( "hide" ) );
@@ -844,11 +805,6 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
         if( isFitnessScoreReady() ) {
             mGenesButton.setVisible( true );
             }
-
-        const char *leaderboardName = getLeaderboardName();
-        if (leaderboardName != NULL && !HetuwMod::privateModeEnabled) {
-            mOholCurseButton.setVisible( true );
-        }
 
         // YumLife: show window title with version info
         pos = mServicesButton.getPosition();

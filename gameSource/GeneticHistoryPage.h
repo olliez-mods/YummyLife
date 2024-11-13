@@ -31,6 +31,10 @@ class GeneticHistoryPage : public GamePage, public ActionListener {
 
         TextButton mLeaderboardButton;
 
+        // YummyLife: Add WebLinkButtons to gene page
+        TextButton mOneTechButton;
+        TextButton mOholCurseButton;
+
         double mRefreshTime;
         
 
