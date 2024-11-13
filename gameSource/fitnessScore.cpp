@@ -442,7 +442,7 @@ void drawFitnessScore( doublePair inPos, char inMoreDigits ) {
         else {
             // no rank
             message = 
-                autoSprintf( translateWithDefault( "yummyLifeScoreMessageNoRank", "MEME SCORE: %s"), // YummyLife: New message
+                autoSprintf( translateWithDefault( "yummyLifeScoreMessageNoRank", "MEME SCORE:##%s"), // YummyLife: New message
                              scoreString );
             }
         

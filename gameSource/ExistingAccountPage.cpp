@@ -82,7 +82,7 @@ ExistingAccountPage::ExistingAccountPage()
                                       translate( "disableCustomServer" ) ),
           mLoginButton( mainFont, 535, -280, translate( "loginButton") ),
           mFriendsButton( mainFont, 385, -280, translateWithDefault( "yummyLifeTwinsButton", "TWINS") ),
-          mGenesButton( mainFont, 0, -60, translateWithDefault( "yummyGenesButton", "LIFE DATA" ) ),
+          mGenesButton( mainFont, 0, -65, translateWithDefault( "yummyGenesButton", "LIFE DATA" ) ),
           mFamilyTreesButton( mainFont, 0, -140, translate( "familyTrees" ) ),
           mClearAccountButton( mainFont, 380, 135, translate( "clearAccount" ) ),
           mCancelButton( mainFont, -530, -280, translate( "quit" ) ),
@@ -788,7 +788,7 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
     //pos = mEmailField.getPosition();
     //pos.y += 100;
     pos.x = 0;
-    pos.y = 50;
+    pos.y = 60;
 
     if( mFPSMeasureDone && 
         ! mRedetectButton.isVisible() &&
@@ -812,7 +812,7 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
         YummyLife::drawLeaderboardName(pos);
 
         pos.x = 0;
-        pos.y = 0;
+        pos.y = 20;
         
         drawFitnessScore( pos );
 
