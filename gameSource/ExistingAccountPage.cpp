@@ -75,13 +75,13 @@ ExistingAccountPage::ExistingAccountPage()
                      translate( "accountKey" ),
                      // allow only ticket code characters
                      "23456789ABCDEFGHJKLMNPQRSTUVWXYZ-" ),
-          mAtSignButton( mainFont, 100, 68, "@" ),
-          mPasteButton( mainFont, 0, -60, translate( "paste" ), 'v', 'V' ),
-          mPasteEmailButton( mainFont, 0, 68, translate( "paste" ), 'v', 'V' ),
+          mAtSignButton( mainFont, 480, 73, "@" ),
+          mPasteButton( mainFont, 380, 73, translate( "paste" ), 'v', 'V' ),
+          mPasteEmailButton( mainFont, 380, 73, translate( "paste" ), 'v', 'V' ),
           mDisableCustomServerButton( mainFont, 0, 220, 
                                       translate( "disableCustomServer" ) ),
-          mLoginButton( mainFont, 550, -280, translate( "loginButton") ),
-          mFriendsButton( mainFont, 400, -280, translateWithDefault( "yummyLifeTwinsButton", "TWINS") ),
+          mLoginButton( mainFont, 535, -280, translate( "loginButton") ),
+          mFriendsButton( mainFont, 385, -280, translateWithDefault( "yummyLifeTwinsButton", "TWINS") ),
           mGenesButton( mainFont, 0, -60, translateWithDefault( "yummyGenesButton", "LIFE DATA" ) ),
           mFamilyTreesButton( mainFont, 0, -140, translate( "familyTrees" ) ),
           mClearAccountButton( mainFont, 380, 135, translate( "clearAccount" ) ),
@@ -92,7 +92,7 @@ ExistingAccountPage::ExistingAccountPage()
           mRetryButton( mainFont, -100, 198, translate( "retryButton" ) ),
           mRedetectButton( mainFont, 100, 198, translate( "redetectButton" ) ),
           mViewAccountButton( mainFont, 0, 64, translate( "view" ) ),
-          mTutorialButton( mainFont, 200, -280, translate( "tutorial" ) ),
+          mTutorialButton( mainFont, 205, -280, translate( "tutorial" ) ),
           mServicesButton( mainFont, -330, 275, translate( "services" ) ),
           mAHAPSettingsButton( mainFont, -522, 0, 
                                translate( "ahapSettings" ) ),
@@ -186,12 +186,14 @@ ExistingAccountPage::ExistingAccountPage()
     
     mAtSignButton.setMouseOverTip( translate( "atSignTip" ) );
 
-    mLoginButton.setMouseOverTip( translate( "saveTip" ) );
+    mLoginButton.setMouseOverTip( translateWithDefault( "yummyLoginButton", "PLAY ONLINE - GOOD LUCK <3") );
     mClearAccountButton.setMouseOverTip( translate( "clearAccountTip" ) );
     
     mFriendsButton.setMouseOverTip( translate( "friendsTip" ) );
     mGenesButton.setMouseOverTip( translate( "genesTip" ) );
     mFamilyTreesButton.setMouseOverTip( translate( "familyTreesTip" ) );
+
+    mTutorialButton.setMouseOverTip( translateWithDefault("yummyTutorialButton", "PLAY THE TUTORIAL"));
     
     
 
