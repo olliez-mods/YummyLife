@@ -80,7 +80,7 @@ ExistingAccountPage::ExistingAccountPage()
           mPasteEmailButton( mainFont, 0, 68, translate( "paste" ), 'v', 'V' ),
           mDisableCustomServerButton( mainFont, 0, 220, 
                                       translate( "disableCustomServer" ) ),
-          mLoginButton( mainFont, 550, -280, translateWithDefault( "yummyLifeSoloButton", "SOLO" ) ),
+          mLoginButton( mainFont, 550, -280, translate( "loginButton") ),
           mFriendsButton( mainFont, 400, -280, translateWithDefault( "yummyLifeTwinsButton", "TWINS") ),
           mGenesButton( mainFont, 0, -60, translateWithDefault( "yummyGenesButton", "LIFE DATA" ) ),
           mFamilyTreesButton( mainFont, 0, -140, translate( "familyTrees" ) ),
