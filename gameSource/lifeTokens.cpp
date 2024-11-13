@@ -6,6 +6,8 @@
 #include "minorGems/game/Font.h"
 #include "message.h"
 
+#include "yummyLife.h"
+
 extern Font *mainFont;
 extern Font *numbersFontFixed;
 extern char *userEmail;
@@ -133,7 +135,7 @@ int getNumLifeTokens() {
     }
 
 
-
+/* YummyLife: Don't use long string for life tokens, we just want 'LIVES: d/d'
 char *getLifeTokenString() {
     processUpdate();
     
@@ -165,6 +167,13 @@ char *getLifeTokenString() {
                         translate( minuteKey ),
                         cap, translate( secondLifeKey ) );
     }
+*/
+
+// YummyLife: Updated LifeToken str
+char* getLifeTokenString() {
+    processUpdate();
+    return autoSprintf("%s: %d/%d", translateWithDefault("yummyNumLifeString", "LIVES"), numTokens, cap);
+}
 
 
 void getLifeTokenTime( int *outHours, int *outMinutes, int *outSeconds ) {

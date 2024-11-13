@@ -16,6 +16,7 @@
 #include "minorGems/crypto/hashes/sha1.h"
 #include "minorGems/network/web/URLUtils.h"
 
+#include "yummyLife.h"
 
 static int webRequest = -1;
 
@@ -435,13 +436,13 @@ void drawFitnessScore( doublePair inPos, char inMoreDigits ) {
 
         if( rank != 0 ) {
             message = 
-                autoSprintf( translate( "scoreMessage" ), 
+                autoSprintf( translateWithDefault("yummyLifeScoreMessage", "MEME SCORE:##%s (%d%s PLACE)"), // YummyLife: New message
                              scoreString, rank, rankSuffix );
             }
         else {
             // no rank
             message = 
-                autoSprintf( translate( "scoreMessageNoRank" ), 
+                autoSprintf( translateWithDefault( "yummyLifeScoreMessageNoRank", "MEME SCORE: %s"), // YummyLife: New message
                              scoreString );
             }
         
