@@ -7,6 +7,8 @@
 const char* translateWithDefault(const char* inTranslationKey, const char* inDefault = nullptr);
 
 class YummyLife {
+    public:
+        static void drawLeaderboardName(doublePair pos);
 };
 
 #endif

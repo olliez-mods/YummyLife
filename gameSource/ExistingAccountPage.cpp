@@ -801,6 +801,10 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
 
         pos.x -= 32;
         */
+        pos.x = 0;
+        pos.y = 100;
+
+        YummyLife::drawLeaderboardName(pos);
 
         pos.x = 0;
         pos.y = 0;
