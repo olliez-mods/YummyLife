@@ -27,6 +27,7 @@
 
 #include "hetuwmod.h"
 #include "yumRebirthComponent.h"
+#include "yummyLife.h"
 
 static JenkinsRandomSource randSource;
 
@@ -64,13 +65,13 @@ static char *getLineageServerURL() {
 
 
 ExistingAccountPage::ExistingAccountPage()
-        : mEmailField( mainFont, 0, 128, 10, false, 
+        : mEmailField( mainFont, 380, 275, 10, false,
                        translate( "email" ),
                        NULL,
                        // forbid only spaces and backslash and 
                        // single/double quotes 
                        "\"' \\" ),
-          mKeyField( mainFont, 0, 0, 15, true,
+          mKeyField( mainFont, 380, 205, 15, true,
                      translate( "accountKey" ),
                      // allow only ticket code characters
                      "23456789ABCDEFGHJKLMNPQRSTUVWXYZ-" ),
@@ -79,25 +80,20 @@ ExistingAccountPage::ExistingAccountPage()
           mPasteEmailButton( mainFont, 0, 68, translate( "paste" ), 'v', 'V' ),
           mDisableCustomServerButton( mainFont, 0, 220, 
                                       translate( "disableCustomServer" ) ),
-          mLoginButton( mainFont, 400, 0, translate( "loginButton" ) ),
-          mFriendsButton( mainFont, 400, -80, translate( "friendsButton" ) ),
-          mGenesButton( mainFont, 550, 0, translate( "genesButton" ) ),
-          mFamilyTreesButton( mainFont, 320, -160, translate( "familyTrees" ) ),
-          mClearAccountButton( mainFont, 400, -280, 
-                               translate( "clearAccount" ) ),
-          mCancelButton( mainFont, -400, -280, 
-                         translate( "quit" ) ),
-          mSettingsButton( mainFont, -400, -120, 
-                           translate( "settingsButton" ) ),
+          mLoginButton( mainFont, 550, -280, translateWithDefault( "yummyLifeSoloButton", "SOLO" ) ),
+          mFriendsButton( mainFont, 400, -280, translateWithDefault( "yummyLifeTwinsButton", "TWINS") ),
+          mGenesButton( mainFont, 0, -60, translateWithDefault( "yummyGenesButton", "LIFE DATA" ) ),
+          mFamilyTreesButton( mainFont, 0, -140, translate( "familyTrees" ) ),
+          mClearAccountButton( mainFont, 380, 135, translate( "clearAccount" ) ),
+          mCancelButton( mainFont, -530, -280, translate( "quit" ) ),
+          mSettingsButton( mainFont, -522, 275, translate( "settingsButton" ) ),
           mReviewButton( mainFont, -400, -200, 
                          translate( "postReviewButton" ) ),
           mRetryButton( mainFont, -100, 198, translate( "retryButton" ) ),
           mRedetectButton( mainFont, 100, 198, translate( "redetectButton" ) ),
           mViewAccountButton( mainFont, 0, 64, translate( "view" ) ),
-          mTutorialButton( mainFont, 522, 300, 
-                           translate( "tutorial" ) ),
-          mServicesButton( mainFont, -522, 300, 
-                           translate( "services" ) ),
+          mTutorialButton( mainFont, 200, -280, translate( "tutorial" ) ),
+          mServicesButton( mainFont, -330, 275, translate( "services" ) ),
           mAHAPSettingsButton( mainFont, -522, 0, 
                                translate( "ahapSettings" ) ),
           mYumRebirth( mainFont, -200, -100, -10.0, -50.0 ),
@@ -143,7 +139,7 @@ ExistingAccountPage::ExistingAccountPage()
     addComponent( &mClearAccountButton );
     addComponent( &mCancelButton );
     addComponent( &mSettingsButton );
-    addComponent( &mReviewButton );
+    // addComponent( &mReviewButton ); YummyLife: Disabled for now
     addComponent( &mAtSignButton );
     addComponent( &mPasteButton );
     addComponent( &mPasteEmailButton );
@@ -158,7 +154,7 @@ ExistingAccountPage::ExistingAccountPage()
     addComponent( &mServicesButton );
     addComponent( &mAHAPSettingsButton );
 
-    addComponent( &mYumRebirth );
+    //addComponent( &mYumRebirth ); Yummylife: Disabled for now
     
     mLoginButton.addActionListener( this );
     mFriendsButton.addActionListener( this );
@@ -265,6 +261,8 @@ void ExistingAccountPage::makeActive( char inFresh ) {
         mTutorialButton.setVisible( false );
         }
     
+    // YummyLife: Make tut always active
+    mTutorialButton.setVisible( true );
 
     mFramesCounted = 0;
     mPageActiveStartTime = game_getCurrentTime();    
@@ -709,7 +707,7 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
     doublePair pos = { -9, -225 };
     
     if (!mYumRebirth.isEnabled()) {
-        drawSprite( instructionsSprite, pos );
+        //drawSprite( instructionsSprite, pos ); // YummyLife: Disable for testing
     }
 
     if (HetuwMod::privateModeEnabled) {
@@ -781,9 +779,11 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
         }
     
 
-
-    pos = mEmailField.getPosition();
-    pos.y += 100;
+    // YummyLife: Adjust position of lifeTokensString to be in top right
+    //pos = mEmailField.getPosition();
+    //pos.y += 100;
+    pos.x = 0;
+    pos.y = 50;
 
     if( mFPSMeasureDone && 
         ! mRedetectButton.isVisible() &&
@@ -791,6 +791,7 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
         
         drawTokenMessage( pos );
         
+        /* YummyLife: We want it to not be aligned with the email field
         pos = mEmailField.getPosition();
         
         pos.x = 
@@ -799,6 +800,10 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
             / 2;
 
         pos.x -= 32;
+        */
+
+        pos.x = 0;
+        pos.y = 0;
         
         drawFitnessScore( pos );
 
@@ -808,9 +813,9 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
 
         // YumLife: show window title with version info
         pos = mServicesButton.getPosition();
-        pos.y += 35;
+        pos.y += 50;
         pos.x = 0;
-        setDrawColor( 1, 1, 1, 1.0 );
+        setDrawColor( 0.5, 1, 0.5, 1.0 );
         mainFont->drawString( getWindowTitle(), pos, alignCenter );
         }
     }
