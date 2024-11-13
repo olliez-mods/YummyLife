@@ -204,6 +204,9 @@ ExistingAccountPage::ExistingAccountPage()
 
     // to dodge quit message
     setTipPosition( true );
+
+    // Overrides above code, places on same height of "YummyLife Vx - Oliver"
+    setCustomTipHeight(mServicesButton.getPosition().y + 50);
     }
 
           
@@ -815,12 +818,16 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
             mGenesButton.setVisible( true );
             }
 
-        // YumLife: show window title with version info
-        pos = mServicesButton.getPosition();
-        pos.y += 50;
-        pos.x = 0;
-        setDrawColor( 0.5, 1, 0.5, 1.0 );
-        mainFont->drawString( getWindowTitle(), pos, alignCenter );
+        // YummyLife: Add fade affect, since the tip now covers this text
+        if(mTip == NULL && mLastTipFade < 0.5){
+            // YumLife: show window title with version info
+            pos = mServicesButton.getPosition();
+            pos.y += 50;
+            pos.x = 0;
+            float fade = 1.0 - (mLastTipFade * 2);
+            setDrawColor( 0.5, 1, 0.5, fade );
+            mainFont->drawString( getWindowTitle(), pos, alignCenter );
+            }
         }
     }
 
