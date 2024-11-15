@@ -91,7 +91,7 @@ ExistingAccountPage::ExistingAccountPage()
                          translate( "postReviewButton" ) ),
           mRetryButton( mainFont, -100, 198, translate( "retryButton" ) ),
           mRedetectButton( mainFont, 100, 198, translate( "redetectButton" ) ),
-          mViewAccountButton( mainFont, 0, 64, translate( "view" ) ),
+          mViewAccountButton( mainFont, 300, 150, translate( "view" ) ),
           mTutorialButton( mainFont, 205, -280, translate( "tutorial" ) ),
           mServicesButton( mainFont, -330, 275, translate( "services" ) ),
           mAHAPSettingsButton( mainFont, -522, 0, 
@@ -747,13 +747,13 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
             }
         
 
-        char *s = autoSprintf( "%s  %s", translate( transString ), email );
+        char *s = autoSprintf( "%s %s", translate( transString ), email );
         
         pos = mEmailField.getPosition();
 
-        pos.x = -350;        
+        pos.x -= 80;
         setDrawColor( 1, 1, 1, 1.0 );
-        mainFont->drawString( s, pos, alignLeft );
+        mainFont->drawString( s, pos, alignCenter );
         
         delete [] email;
         delete [] s;
@@ -771,13 +771,14 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
                 }   
             }
 
-        char *s = autoSprintf( "%s  %s", translate( "accountKey" ), key );
+        char *s = autoSprintf( "%s %s", translate( "accountKey" ), key );
         
         pos = mKeyField.getPosition();
         
-        pos.x = -350;        
+        pos.x -= 80;
+        pos.y += 10;
         setDrawColor( 1, 1, 1, 1.0 );
-        mainFont->drawString( s, pos, alignLeft );
+        mainFont->drawString( s, pos, alignCenter );
         
         delete [] key;
         delete [] s;

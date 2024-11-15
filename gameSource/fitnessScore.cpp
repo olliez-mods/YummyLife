@@ -563,8 +563,8 @@ void drawFitnessScoreDetails( doublePair inPos, int inSkip ) {
         namePos.x -= 140;
         namePos.y += 8;
         
-
-        if( rank > 0 ) {
+        // YummyLife: Disable to make room for link buttons
+        if( false && rank > 0 ) {
             // hide leaderboard message if unranked
 
             const char *rankSuffix = getRankSuffix();
