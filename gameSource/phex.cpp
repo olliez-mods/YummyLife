@@ -342,6 +342,8 @@ void Phex::initServerCommands() {
 	serverCommands["HASH_SERVER_LIFE"].minWords = 4;
 	serverCommands["GET_ALL_PLAYERS"].func = serverCmdGET_ALL_PLAYERS;
 	serverCommands["GET_ALL_PLAYERS"].minWords = 1;
+	serverCommands["GET_ALL_CURSENAMES"].func = serverCmdGET_ALL_CURSENAMES;
+	serverCommands["GET_ALL_CURSENAMES"].minWords = 1;
 	serverCommands["JASON_AUTH"].func = serverCmdJASON_AUTH;
 	serverCommands["JASON_AUTH"].minWords = 2;
 	serverCommands["IDK"].func = serverCmdIDK;
@@ -522,6 +524,29 @@ void Phex::serverCmdGET_ALL_PLAYERS(std::vector<std::string> input) {
 
 		str += ",";
 	}
+	//printf("Phex %s\n", str.c_str());
+	tcp.send(str);
+}
+
+// YummyLife: Implementing this before officially part of the Phex protocol
+void Phex::serverCmdGET_ALL_CURSENAMES(std::vector<std::string> input) {
+	if (!HetuwMod::gameObjects) return;
+
+	string str = "ALL_CURSENAMES ";
+	str += string(HetuwMod::serverIP) + " ";
+
+	for(int i = 0; i < HetuwMod::gameObjects->size(); i++) {
+		LiveObject *o = HetuwMod::gameObjects->getElement( i );
+		if (!o) continue;
+		ObjectRecord* obj = getObject(o->displayID);
+		if (!obj) continue;
+
+		const char* cursename = o->curseName;
+		if (not cursename || strlen(cursename) <= 1) continue;
+
+		str += to_string(o->id) + " " + cursename + ",";
+	}
+
 	//printf("Phex %s\n", str.c_str());
 	tcp.send(str);
 }
