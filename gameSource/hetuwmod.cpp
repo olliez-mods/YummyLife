@@ -373,7 +373,8 @@ void HetuwMod::init() {
 	viewWidthToHeightFactor = defaultViewWidth/(double)defaultViewHeight;
 	viewHeightToWidthFactor = defaultViewHeight/(double)defaultViewWidth;
 
-	zoomLevel = 2;
+	// YummyLife: set initial zoom to fully zoomed in
+	zoomLevel = 0;
 	guiScaleRaw = 0.8f;
 	guiScale = guiScaleRaw * zoomScale;
 	zoomCalc();
