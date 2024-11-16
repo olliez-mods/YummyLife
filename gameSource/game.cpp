@@ -126,6 +126,7 @@ CustomRandomSource randSource( 34957197 );
 #include "hetuwmod.h"
 #include "message.h"
 
+#include "yummyLife.h"
 
 // should we pull the map
 static char mapPullMode = 0;
@@ -937,6 +938,9 @@ void freeFrameDrawer() {
     if( ahapSteamKey != NULL ) {
         delete [] ahapSteamKey;
         }
+
+    // YummyLife: Piggy back off of this function to do cleanup on exit
+    YummyLife::cleanUp();
     }
 
 
@@ -2783,6 +2787,7 @@ void keyDown( unsigned char inASCII ) {
     // taking screen shot is ALWAYS possible
     if( inASCII == '=' ) {    
         saveScreenShot( "screen" );
+        YummyLife::takingScreenshot();
         }
     /*
     if( inASCII == 'N' ) {

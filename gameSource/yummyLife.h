@@ -9,6 +9,11 @@ const char* translateWithDefault(const char* inTranslationKey, const char* inDef
 class YummyLife {
     public:
         static void drawLeaderboardName(doublePair pos);
+        static void cleanUp();
+        static void takingScreenshot();
+
+    protected:
+        static SoundSpriteHandle screenshotSound;
 };
 
 #endif

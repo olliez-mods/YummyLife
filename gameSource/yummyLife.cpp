@@ -1,8 +1,10 @@
 #include "yummyLife.h"
 
 #include "fitnessScore.h"
-
+#include "soundBank.h"
 #include "message.h"
+
+SoundSpriteHandle YummyLife::screenshotSound;
 
 const char* translateWithDefault(const char* inTranslationKey, const char* inDefault){
     const char* tResult = translate(inTranslationKey);
@@ -21,4 +23,17 @@ void YummyLife::drawLeaderboardName(doublePair pos){
     //sprintf(message, "LB Name: %s", leaderboardName);
     drawMessage(leaderboardName, pos);
     //delete[] message;
+}
+
+// Final cleanup, make sure everything is freed, etc.
+void YummyLife::cleanUp() {
+    if(screenshotSound != NULL)
+        freeSoundSprite(screenshotSound);
+}
+
+void YummyLife::takingScreenshot() {
+    if(screenshotSound == NULL)
+        screenshotSound = loadSoundSprite( "otherSounds", "tutorialChime.aiff" );
+
+    playSoundSprite(screenshotSound, 0.1 * getSoundEffectsLoudness());
 }
