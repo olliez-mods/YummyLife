@@ -1427,7 +1427,20 @@ void showReconnectPage() {
     currentGamePage->base_makeActive( true );
     }
 
-    
+
+// YummyLife: Let us choose which tut number to play
+void startTutorial(int tutNumber) {
+    livingLifePage->runTutorial( tutNumber );
+    SettingsManager::setSetting( "tutorialDone", 0 ); // Maybe this should relate to the tutorial we are playing?
+
+    // tutorial button clears twin status
+    // they have to login from twin page to play as twin
+    if( userTwinCode != NULL ) {
+        delete [] userTwinCode;
+        userTwinCode = NULL;
+    }
+    startConnecting();
+}
 
 void drawFrame( char inUpdate ) {    
 
@@ -2180,17 +2193,13 @@ void drawFrame( char inUpdate ) {
                 startConnecting();
                 }
             else if( existingAccountPage->checkSignal( "tutorial" ) ) {
-                livingLifePage->runTutorial( 1 );
-                SettingsManager::setSetting( "tutorialDone", 0 );
-                
-                // tutorial button clears twin status
-                // they have to login from twin page to play as twin
-                if( userTwinCode != NULL ) {
-                    delete [] userTwinCode;
-                    userTwinCode = NULL;
-                    }
-
-                startConnecting();
+                startTutorial( 1 );
+                }
+            else if (existingAccountPage->checkSignal( "tutorial1" ) ) {
+                startTutorial( 1 );
+                }
+            else if (existingAccountPage->checkSignal( "tutorial2" ) ) {
+                startTutorial( 2 );
                 }
             else if( existingAccountPage->checkSignal( "relaunchFailed" ) ) {
                 currentGamePage = finalMessagePage;

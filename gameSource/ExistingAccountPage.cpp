@@ -46,7 +46,9 @@ extern SpriteHandle instructionsSprite;
 
 extern char loginEditOverride;
 
-
+void forceCompleteTutorial() {
+    SettingsManager::setSetting( "tutorialDone", 2 );
+}
 
 // result destroyed by caller
 static char *getLineageServerURL() {
@@ -93,6 +95,8 @@ ExistingAccountPage::ExistingAccountPage()
           mRedetectButton( mainFont, 100, 198, translate( "redetectButton" ) ),
           mViewAccountButton( mainFont, 300, 150, translate( "view" ) ),
           mTutorialButton( mainFont, 205, -280, translate( "tutorial" ) ),
+          mTutOneButton( mainFont, 165, -220, translateWithDefault( "yummyLifeTutOneButton", "T#1" ) ),
+          mTutTwoButton( mainFont, 245, -220, translateWithDefault( "yummyLifeTutTwoButton", "T#2" ) ),
           mServicesButton( mainFont, -330, 275, translate( "services" ) ),
           mAHAPSettingsButton( mainFont, -522, 0, 
                                translate( "ahapSettings" ) ),
@@ -123,6 +127,8 @@ ExistingAccountPage::ExistingAccountPage()
     setButtonStyle( &mRedetectButton );
     setButtonStyle( &mViewAccountButton );
     setButtonStyle( &mTutorialButton );
+    setButtonStyle( &mTutOneButton );
+    setButtonStyle( &mTutTwoButton );
     setButtonStyle( &mServicesButton );
     setButtonStyle( &mAHAPSettingsButton );
 
@@ -151,6 +157,8 @@ ExistingAccountPage::ExistingAccountPage()
 
     addComponent( &mViewAccountButton );
     addComponent( &mTutorialButton );
+    addComponent( &mTutOneButton );
+    addComponent( &mTutTwoButton );
     addComponent( &mServicesButton );
     addComponent( &mAHAPSettingsButton );
 
@@ -175,6 +183,8 @@ ExistingAccountPage::ExistingAccountPage()
 
     mViewAccountButton.addActionListener( this );
     mTutorialButton.addActionListener( this );
+    mTutOneButton.addActionListener( this );
+    mTutTwoButton.addActionListener( this );
     mServicesButton.addActionListener( this );
     mAHAPSettingsButton.addActionListener( this );
     
@@ -183,6 +193,8 @@ ExistingAccountPage::ExistingAccountPage()
     mRetryButton.setVisible( false );
     mRedetectButton.setVisible( false );
     mDisableCustomServerButton.setVisible( false );
+    mTutOneButton.setVisible( false );
+    mTutTwoButton.setVisible( false );
     
     mAtSignButton.setMouseOverTip( translate( "atSignTip" ) );
 
@@ -193,7 +205,9 @@ ExistingAccountPage::ExistingAccountPage()
     mGenesButton.setMouseOverTip( translate( "genesTip" ) );
     mFamilyTreesButton.setMouseOverTip( translate( "familyTreesTip" ) );
 
-    mTutorialButton.setMouseOverTip( translateWithDefault("yummyLifeTutorialButtonTip", "PLAY THE TUTORIAL"));
+    mTutorialButton.setMouseOverTip( translateWithDefault("yummyLifeTutorialButtonTip", "CHOOSE A TUTORIAL"));
+    mTutOneButton.setMouseOverTip( translateWithDefault("yummyLifeTutOneButtonTip", "PLAY TUTORIAL #1"));
+    mTutTwoButton.setMouseOverTip( translateWithDefault("yummyLifeTutTwoButtonTip", "PLAY TUTORIAL #2"));
     
     
 
@@ -343,6 +357,8 @@ void ExistingAccountPage::makeActive( char inFresh ) {
     mPasteEmailButton.setVisible( false );
     mAtSignButton.setVisible( false );
 
+    mTutOneButton.setVisible( false );
+    mTutTwoButton.setVisible( false );
 
     int reviewPosted = SettingsManager::getIntSetting( "reviewPosted", 0 );
     
@@ -412,10 +428,21 @@ void ExistingAccountPage::step() {
 
 void ExistingAccountPage::actionPerformed( GUIComponent *inTarget ) {
     if( inTarget == &mLoginButton ) {
+        forceCompleteTutorial();
         processLogin( true, "done" );
         }
     else if( inTarget == &mTutorialButton ) {
-        processLogin( true, "tutorial" );
+        bool v = mTutOneButton.isVisible();
+        mTutOneButton.setVisible(!v);
+        mTutTwoButton.setVisible(!v);
+        }
+    else if( inTarget == &mTutOneButton ) {
+        forceCompleteTutorial();
+        processLogin( true, "tutorial1" );
+        }
+    else if( inTarget == &mTutTwoButton ) {
+        forceCompleteTutorial();
+        processLogin( true, "tutorial2" );
         }
     else if( inTarget == &mServicesButton ) {
         setSignal( "services" );

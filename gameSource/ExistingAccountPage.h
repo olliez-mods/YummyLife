@@ -77,6 +77,9 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         TextButton mViewAccountButton;
         
         TextButton mTutorialButton;
+        TextButton mTutOneButton;
+        TextButton mTutTwoButton;
+
         TextButton mServicesButton;
         
         TextButton mAHAPSettingsButton;
