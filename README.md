@@ -1,8 +1,9 @@
-# What's this?
+# What is YummyLife?
 
-YumLife is a mod for OHOL and AHAP based on [hetuw](https://github.com/hetuw/OneLife).
+YummyLife is a mod for OHOL and AHAP based on [hetuw](https://github.com/hetuw/OneLife).
 The goals of this mod are to stay up to date with the latest changes to the vanilla
 OHOL and AHAP client, fix bugs, and occasionally add useful features.
+YummyLife (by OliverZ) was originally forked from YumLife (By Selb) to reintroduce Phex support and more.
 
 # Installing (and updating)
 
@@ -10,13 +11,13 @@ OHOL and AHAP client, fix bugs, and occasionally add useful features.
 
 1. Make sure the game is fully updated in Steam.
 2. Run the game from Steam once to ensure the Steam login details are properly set up.
-3. Download the latest version of the mod from [the Releases page](https://github.com/selb/YumLife/releases). For Windows, this is YumLife_windows.exe.
+3. Download the latest version of the mod from [the Releases page](https://github.com/olliez-mods/YummyLife/releases). For Windows, this is YummyLife_windows.exe.
 4. Install the mod into the OHOL/AHAP installation folder (Steam users: right click game > Manage > Browse local files)
 5. Run the mod from the OHOL/AHAP installation folder.
 
 ## Direct download users:
 
-1. Download the latest version of the mod from [the Releases page](https://github.com/selb/YumLife/releases). For Windows, this is YumLife_windows.exe.
+1. Download the latest version of the mod from [the Releases page](https://github.com/olliez-mods/YummyLife/releases). For Windows, this is YummyLife_windows.exe.
 2. Install the mod into the OHOL/AHAP installation folder (same folder as the vanilla `OneLife.exe`).
 3. Run the mod from the OHOL/AHAP installation folder.
 
@@ -51,6 +52,7 @@ salvageable. Uninstalling, reinstalling, and then following the
 certain fix.
 
 The non-Steam version can be re-downloaded from: `http://onehouronelife.com/ticketServer/server.php?action=show_downloads&ticket_id=YOURKEYHERE`
+(Note the 'YOURKEYHERE' in the url)
 
 ## Still not working?
 
@@ -135,7 +137,7 @@ pacman -S mingw-w64-i686-{gcc,cmake,make}
 
 Install the CMake plugin and tell it to configure the project, scan for toolkits, then select the `GCC ... i686-w64-mingw32` option.
 
-Pressing F7 or using the "CMake: Build" action will build YumLife_windows.exe in the `build/` directory.
+Pressing F7 or using the "CMake: Build" action will build YummyLife_windows.exe in the `build/` directory.
 
 ### MSYS2
 
@@ -151,7 +153,7 @@ $ cmake ..
 $ cmake --build . -j
 ```
 
-YumLife_windows.exe will be in that `build/` directory.
+YummyLife_windows.exe will be in that `build/` directory.
 
 ### Caveats
 
@@ -162,7 +164,7 @@ MSYS, distributing this .exe is not recommended.
 # Merging upstream changes
 
 First, set up remotes for Jason's OneLife and minorGems repos. This only needs to be
-done once. Note that upstream OHOL is two repos, which YumLife condenses into one for
+done once. Note that upstream OHOL is two repos, which YummyLife condenses into one for
 easier forking.
 
 ```
@@ -177,5 +179,5 @@ Similarly, the minorGems repo can be merged with `git pull minorGems master`. No
 will need to move (as in `git mv`) any _new_ files added to that repo into the `minorGems`
 directory.
 
-Since YumLife uses CMake instead of Jason's build scripts, manual updates to `CMakeLists.txt`
+Since YummyLife uses CMake instead of Jason's build scripts, manual updates to `CMakeLists.txt`
 are needed when upstream source files are added, removed, or moved.
