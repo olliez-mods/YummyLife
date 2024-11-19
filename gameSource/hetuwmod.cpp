@@ -146,6 +146,7 @@ time_t HetuwMod::stopAutoRoadRunTime;
 bool HetuwMod::activateAutoRoadRun;
 
 int HetuwMod::iDrawPhexNames;
+bool HetuwMod::bStoreEatenYums;
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -389,6 +390,7 @@ void HetuwMod::init() {
 	bDrawHomeCords = false;
 
 	iDrawPhexNames = 1;
+	bStoreEatenYums = true;
 
 	iDrawNames = 1;
 	bDrawCords = true;
@@ -878,12 +880,15 @@ void HetuwMod::initSettings() {
 
 	yumConfig::registerSetting("font_filename", fontFilename, {preComment: "\n// filename of the main font (in the graphics directory)\n"});
 
+	// YummyLife: from here...
 	static std::map<std::string, int> drawPhexNameMap = {
 		{"none", 0},
 		{"flash", 1},
 		{"always", 2}
 	};
-	yumConfig::registerMappedSetting("init_show_phex_names", iDrawPhexNames, drawPhexNameMap, {preComment: "\n", postComment: " // none, flash, always"});
+	yumConfig::registerMappedSetting("init_show_phex_names", iDrawPhexNames, drawPhexNameMap, {preComment: "\n// YummyLife:\n", postComment: " // none, flash, always"});
+	yumConfig::registerSetting("init_store_eaten_yums", bStoreEatenYums, {postComment: " // Store the eaten foods in 'lastYums.txt' so findYum works accross restarts"});
+	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {
 		{"none", 0},

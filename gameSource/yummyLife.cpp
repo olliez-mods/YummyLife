@@ -6,6 +6,8 @@
 
 #include "minorGems/io/file/File.h"
 
+#include "hetuwmod.h"
+
 #include "fitnessScore.h"
 #include "soundBank.h"
 #include "message.h"
@@ -52,6 +54,8 @@ void YummyLife::takingScreenshot() {
 
 
 void YummyLife::yumEaten(int objectID, int lifeID){
+    if(!HetuwMod::bStoreEatenYums) return;
+
     // Cleanup, then start a new file if we need to
     if(lastYumsLifeID == -1 || lastYumsLifeID != lifeID) {
         clearLastYums();
@@ -74,6 +78,8 @@ void YummyLife::yumEaten(int objectID, int lifeID){
 }
 
 std::vector<int> YummyLife::getLastYums(int lifeID){
+    if(!HetuwMod::bStoreEatenYums) return {};
+
     // lastYums.txt hasn't been read yet
     if(lastYumsLifeID == -1) {
         readLastYumsFile();
@@ -92,6 +98,8 @@ std::vector<int> YummyLife::getLastYums(int lifeID){
 }
 
 void YummyLife::clearLastYums(){
+    if(!HetuwMod::bStoreEatenYums) return;
+
     lastYumsLifeID = -1;
     lastYums.clear();
     deleteLastYumsFile();

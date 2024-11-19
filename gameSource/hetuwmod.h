@@ -318,7 +318,10 @@ public:
 	static time_t stopAutoRoadRunTime;
 	static bool activateAutoRoadRun;
 
+	// YummyLife ->
 	static int iDrawPhexNames;
+	static bool bStoreEatenYums;
+	// <-
 
 	static int iDrawNames;
 	static bool bDrawSelectedPlayerInfo;
