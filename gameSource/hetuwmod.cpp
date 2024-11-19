@@ -25,6 +25,8 @@
 #include "fitnessScore.h"
 #include "yumRebirthComponent.h"
 
+#include "yummyLife.h"
+
 using namespace std;
 
 constexpr int HetuwMod::OBJID_SharpStone;
@@ -1087,6 +1089,12 @@ void HetuwMod::initOnBirth() { // will be called from LivingLifePage.cpp
 
     yummyFoodChain.deleteAll();
 
+	// YummyLife: Read in lastYums.txt data
+	std::vector<int> lastYums = YummyLife::getLastYums(ourLiveObject->id);
+	for (unsigned int i = 0; i < lastYums.size(); i++) {
+		yummyFoodChain.push_back(lastYums[i]);
+	}
+
 	createNewLogFile();
 	writeLineToLogs("my_birth", getTimeStamp());
 	writeLineToLogs("my_id", to_string(ourLiveObject->id));
@@ -2092,15 +2100,20 @@ void HetuwMod::foodIsMeh(ObjectRecord *obj) {
 	int objID = getObjYumID(obj);
 	if (!isYummy(objID)) return;
 	yummyFoodChain.push_back(objID);
+	YummyLife::yumEaten( objID, ourLiveObject->id );
 }
 
+// YummyLife: Edited to fit in YummyLife::yumEaten();
 void HetuwMod::onJustAteFood(ObjectRecord *food) {
 	if (!food) return;
+	int id;
 	if(food->isUseDummy) {
-		yummyFoodChain.push_back( getObjYumID(getObject(food->useDummyParent)) );
+		id = getObjYumID(getObject(food->useDummyParent));
 	} else {
-		yummyFoodChain.push_back( HetuwMod::getObjYumID(food) );
+		id = HetuwMod::getObjYumID(food);
 	}
+	yummyFoodChain.push_back( id );
+	YummyLife::yumEaten( id, ourLiveObject->id );
 }
 
 void HetuwMod::livingLifeDraw() {
