@@ -172,7 +172,7 @@ char *getLifeTokenString() {
 // YummyLife: Updated LifeToken str
 char* getLifeTokenString() {
     processUpdate();
-    return autoSprintf("%s: %d/%d", translateWithDefault("yummyNumLifeString", "LIVES"), numTokens, cap);
+    return autoSprintf("%s: %d/%d", translateWithDefault("yummyLifeNumLifeString", "LIVES"), numTokens, cap);
 }
 
 

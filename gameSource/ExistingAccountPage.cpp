@@ -82,7 +82,7 @@ ExistingAccountPage::ExistingAccountPage()
                                       translate( "disableCustomServer" ) ),
           mLoginButton( mainFont, 535, -280, translate( "loginButton") ),
           mFriendsButton( mainFont, 385, -280, translateWithDefault( "yummyLifeTwinsButton", "TWINS") ),
-          mGenesButton( mainFont, 0, -65, translateWithDefault( "yummyGenesButton", "LIFE DATA" ) ),
+          mGenesButton( mainFont, 0, -65, translateWithDefault( "yummyLifeGenesButton", "LIFE DATA" ) ),
           mFamilyTreesButton( mainFont, 0, -140, translate( "familyTrees" ) ),
           mClearAccountButton( mainFont, 380, 135, translate( "clearAccount" ) ),
           mCancelButton( mainFont, -530, -280, translate( "quit" ) ),
@@ -186,14 +186,14 @@ ExistingAccountPage::ExistingAccountPage()
     
     mAtSignButton.setMouseOverTip( translate( "atSignTip" ) );
 
-    mLoginButton.setMouseOverTip( translateWithDefault( "yummyLoginButton", "PLAY ONLINE - GOOD LUCK <3") );
+    mLoginButton.setMouseOverTip( translateWithDefault( "yummyLifeLoginButtonTip", "PLAY ONLINE - GOOD LUCK <3") );
     mClearAccountButton.setMouseOverTip( translate( "clearAccountTip" ) );
     
     mFriendsButton.setMouseOverTip( translate( "friendsTip" ) );
     mGenesButton.setMouseOverTip( translate( "genesTip" ) );
     mFamilyTreesButton.setMouseOverTip( translate( "familyTreesTip" ) );
 
-    mTutorialButton.setMouseOverTip( translateWithDefault("yummyTutorialButton", "PLAY THE TUTORIAL"));
+    mTutorialButton.setMouseOverTip( translateWithDefault("yummyLifeTutorialButtonTip", "PLAY THE TUTORIAL"));
     
     
 
