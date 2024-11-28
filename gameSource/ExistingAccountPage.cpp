@@ -100,6 +100,9 @@ ExistingAccountPage::ExistingAccountPage()
           mServicesButton( mainFont, -330, 275, translate( "services" ) ),
           mAHAPSettingsButton( mainFont, -522, 0, 
                                translate( "ahapSettings" ) ),
+          mNextImageButton( mainFont, -340, -160, translateWithDefault("yummyNextImageButton", "NEXT")),
+          mPrevImageButton( mainFont, -460, -160, translateWithDefault("yummyPrevImageButton", "PREV")),
+
           mYumRebirth( mainFont, -200, -100, -10.0, -50.0 ),
           mPageActiveStartTime( 0 ),
           mFramesCounted( 0 ),
@@ -132,6 +135,9 @@ ExistingAccountPage::ExistingAccountPage()
     setButtonStyle( &mServicesButton );
     setButtonStyle( &mAHAPSettingsButton );
 
+    setButtonStyle( &mNextImageButton );
+    setButtonStyle( &mPrevImageButton );
+
     setButtonStyle( &mDisableCustomServerButton );
     
     mFields[0] = &mEmailField;
@@ -162,6 +168,9 @@ ExistingAccountPage::ExistingAccountPage()
     addComponent( &mServicesButton );
     addComponent( &mAHAPSettingsButton );
 
+    addComponent( &mNextImageButton );
+    addComponent( &mPrevImageButton );
+
     //addComponent( &mYumRebirth ); Yummylife: Disabled for now
     
     mLoginButton.addActionListener( this );
@@ -188,7 +197,14 @@ ExistingAccountPage::ExistingAccountPage()
     mServicesButton.addActionListener( this );
     mAHAPSettingsButton.addActionListener( this );
     
+    // YummyLife: Setup the Gallery control buttons
+    mNextImageButton.addActionListener( this );
+    mPrevImageButton.addActionListener( this );
+    mNextImageButton.setDrawBackground(false);
+    mPrevImageButton.setDrawBackground(false);
+
     mDisableCustomServerButton.addActionListener( this );
+
 
     mRetryButton.setVisible( false );
     mRedetectButton.setVisible( false );
@@ -223,6 +239,11 @@ ExistingAccountPage::ExistingAccountPage()
 
     // Overrides above code, places on same height of "YummyLife Vx - Oliver"
     setCustomTipHeight(mServicesButton.getPosition().y + 50);
+    
+    // YummyLife: Initilize the gallery, and load a random image
+    YummyLife::Gallery::initGallery("screenShots");
+    YummyLife::Gallery::setGalleryMaxDimensions(400, 300);
+    YummyLife::Gallery::loadRandomGalleryImage();
     }
 
           
@@ -590,6 +611,12 @@ void ExistingAccountPage::actionPerformed( GUIComponent *inTarget ) {
         mDisableCustomServerButton.setVisible( false );
         processLogin( true, "done" );
         }
+    else if( inTarget == &mNextImageButton) {
+        YummyLife::Gallery::loadNextGalleryImage();
+        } 
+    else if( inTarget == &mPrevImageButton) {
+        YummyLife::Gallery::loadPreviousGalleryImage();
+        }
     }
 
 
@@ -735,8 +762,12 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
 
     setDrawColor( 1, 1, 1, 1 );
     
+    doublePair pos = {-400, 0};
 
-    doublePair pos = { -9, -225 };
+    YummyLife::Gallery::drawGallery(pos);
+
+    pos.x = -9;
+    pos.y = -225;
     
     if (!mYumRebirth.isEnabled()) {
         //drawSprite( instructionsSprite, pos ); // YummyLife: Disable for testing

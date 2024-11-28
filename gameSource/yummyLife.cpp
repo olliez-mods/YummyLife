@@ -8,12 +8,29 @@
 
 #include "hetuwmod.h"
 
+#include "minorGems/game/gameGraphics.h"
+
+#include "minorGems/util/random/JenkinsRandomSource.h"
+
 #include "fitnessScore.h"
 #include "soundBank.h"
 #include "message.h"
 
+#include <iostream>
+
 #define LAST_YUMS_FILE "lastYums.txt"
 #define ONLY_ADD_UNIQUE_YUMS true
+
+JenkinsRandomSource jRand;
+
+int galleryImageIndex = -1;
+char** galleryFileNames = nullptr;
+int gallerySize = 0;
+
+doublePair maxGalleryImageDim = {500, 500};
+
+float galleryImageScale;
+SpriteHandle galleryImageSprite;
 
 SoundSpriteHandle YummyLife::screenshotSound;
 
@@ -27,6 +44,23 @@ const char* translateWithDefault(const char* inTranslationKey, const char* inDef
         return inDefault;
     }
     return tResult;
+}
+
+template <typename T>
+void freePointerArray(T** array, int size) {
+    if (array != nullptr) {
+        for (int i = 0; i < size; ++i) {
+            delete[] array[i];  // Free each sub-array (T* element)
+        }
+        delete[] array;  // Free the main array (T**)
+        array = nullptr; // Optional: Set pointer to nullptr to avoid dangling pointer
+    }
+}
+
+// Returns a list of files inside a given directory
+File** getDirectoryFiles(const char* directoryName, int* inNumResults){
+    File dir(NULL, directoryName);
+    return dir.getChildFiles(inNumResults);
 }
 
 // Draws the players leaderboars name (if avaliable) at a given position
@@ -201,4 +235,153 @@ bool YummyLife::setupLastYumsFile(int lifeID){
     lyFile.close();
 
     return true;
+}
+
+
+void YummyLife::Gallery::setGalleryMaxDimensions(doublePair maxDimentions){
+    maxGalleryImageDim = maxDimentions;
+}
+
+void YummyLife::Gallery::setGalleryMaxDimensions(int maxWidth, int maxHeight){
+    doublePair dPair;
+    dPair.x = maxWidth;
+    dPair.y = maxHeight;
+    setGalleryMaxDimensions(dPair);
+}
+
+// Initilize the gallery's files and length, start at index 0
+void YummyLife::Gallery::initGallery(const char* galleryDirPath){
+
+    File** files = getDirectoryFiles(galleryDirPath, &gallerySize);
+
+    freePointerArray(galleryFileNames, gallerySize); // Free if not null_ptr
+
+    if(!files) {
+        printf("Failed to load gallery\n");
+        return;
+    }
+
+    if(gallerySize == 0){
+        printf("Gallery loaded with a size of %d\n", gallerySize);
+        return;
+    }
+
+    galleryFileNames = new char*[gallerySize];
+
+    for (int i = 0; i < gallerySize; i++){
+        const char* fullFileName = files[i]->getFullFileName();
+        galleryFileNames[i] = new char[strlen(fullFileName) + 1];
+        strcpy(galleryFileNames[i], fullFileName);
+    }
+
+    //freePointerArray(files, gallerySize);
+
+    // No index is loaded at the moment
+    galleryImageIndex = -1;
+}
+
+// Returns the current index of the selected image, -1 if none
+int YummyLife::Gallery::getGalleryImageIndex() {
+    return galleryImageIndex;
+}
+
+void YummyLife::Gallery::loadGalleryIndex(int inIndex) {
+    // something happened
+    if(inIndex == -1) {
+        printf("Cannot load an index of -1\n");
+        // Don't want to crash :(
+        return;
+    }
+
+    if(inIndex < 0 || inIndex >= gallerySize) {
+        std::cerr << "Index " << inIndex << " is out of bounds for gallerySize " << gallerySize << "\n";
+        throw std::runtime_error("Passed in index below 0 or above gallerySize");
+    }
+
+    if(galleryImageSprite)
+        freeSprite(galleryImageSprite);
+
+    galleryImageIndex = inIndex;
+
+    const char* fileName = galleryFileNames[galleryImageIndex];
+
+    if (strstr(fileName, ".tga") != nullptr) {
+        galleryImageSprite = loadSpriteBase(fileName); // Try to load .tga file
+    } else {
+        galleryImageSprite = loadSprite("swapButton.tga"); // Non-.tga files default to placeholder
+    }
+
+    // Check if the image failed, try to load swapButton again
+    if (!galleryImageSprite) {
+        std::cerr << "Failed to load image: " << fileName 
+                << ". Loading placeholder image instead.\n";
+        galleryImageSprite = loadSprite("swapButton.tga");
+    }
+
+    // Final fallback in case the placeholder also fails
+    if (!galleryImageSprite) {
+        throw std::runtime_error("Failed to load both primary and placeholder images.");
+    }
+
+    int imageWidth = getSpriteWidth(galleryImageSprite);
+    int imageHeight = getSpriteHeight(galleryImageSprite);
+
+    float widthScale = (float)maxGalleryImageDim.x / imageWidth;
+    float heightScale = (float)maxGalleryImageDim.x / imageHeight;
+
+    galleryImageScale = std::min(widthScale, heightScale);
+
+    std::cout << "Name: " << fileName << ", Scale: " << galleryImageScale << ", imgW: " << imageWidth << ", imgH: " << imageHeight <<  "\n";
+}
+
+void YummyLife::Gallery::drawGallery(doublePair pos){
+    if (!galleryImageSprite) return;
+    drawSprite(galleryImageSprite, pos, galleryImageScale);
+}
+
+int YummyLife::Gallery::loadNextGalleryImage(){
+    if(gallerySize > 0){
+        galleryImageIndex++;
+        if(galleryImageIndex >= gallerySize) galleryImageIndex = 0;
+        loadGalleryIndex(galleryImageIndex);
+        return galleryImageIndex;
+    }
+    return -1;
+}
+
+int YummyLife::Gallery::loadPreviousGalleryImage(){
+    if(gallerySize > 0){
+        galleryImageIndex--;
+        if(galleryImageIndex < 0) galleryImageIndex = gallerySize-1;
+        loadGalleryIndex(galleryImageIndex);
+        return galleryImageIndex;
+    }
+    return -1;
+}
+
+int getRandomGalleryIndex(int gallerySize, int excludeIndex = -1){
+    if(gallerySize <= 0) return -1;
+    if(gallerySize == 1) return 0;
+    int cap = 0;
+    int res;
+    while(cap < 20){
+        res = jRand.getRandomBoundedInt(0, gallerySize - 1);
+        if(res != excludeIndex) return res;
+        cap++;
+    }
+    return 0;
+}
+
+int YummyLife::Gallery::loadRandomGalleryImage(int excludeIndex){
+    int newIndex = getRandomGalleryIndex(gallerySize, excludeIndex);
+    std::cout << "rand: " << newIndex << "\n";
+    loadGalleryIndex(newIndex);
+    return newIndex;
+}
+
+YummyLife::Gallery::~Gallery() {
+    freePointerArray(galleryFileNames, gallerySize);
+    if (galleryImageSprite) {
+        freeSprite(galleryImageSprite);
+    }
 }

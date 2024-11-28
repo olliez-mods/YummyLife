@@ -11,6 +11,21 @@ const char* translateWithDefault(const char* inTranslationKey, const char* inDef
 class YummyLife {
     public:
         static void drawLeaderboardName(doublePair pos);
+
+        class Gallery{
+            public:
+                static void initGallery(const char* galleryDirPath);
+                static void drawGallery(doublePair pos);
+                static void setGalleryMaxDimensions(int maxWidth, int maxHeight);
+                static void setGalleryMaxDimensions(doublePair maxDimentions);
+                static void loadGalleryIndex(int index);
+                static int getGalleryImageIndex();
+                static int loadNextGalleryImage();
+                static int loadPreviousGalleryImage();
+                static int loadRandomGalleryImage(int excludeIndex = -1);
+                ~Gallery();
+        };
+
         static void cleanUp();
         static void takingScreenshot();
 

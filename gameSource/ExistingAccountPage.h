@@ -84,6 +84,9 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         
         TextButton mAHAPSettingsButton;
 
+        TextButton mNextImageButton;
+        TextButton mPrevImageButton;
+
         yumRebirthComponent mYumRebirth;
         
 
