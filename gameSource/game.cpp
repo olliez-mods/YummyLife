@@ -1429,13 +1429,13 @@ void showReconnectPage() {
 
 
 // YummyLife: Let us choose which tut number to play
-void startTutorial(int tutNumber) {
+void startTutorial(int tutNumber, char clearTwinCode = 1) {
     livingLifePage->runTutorial( tutNumber );
     SettingsManager::setSetting( "tutorialDone", 0 ); // Maybe this should relate to the tutorial we are playing?
 
     // tutorial button clears twin status
     // they have to login from twin page to play as twin
-    if( userTwinCode != NULL ) {
+    if( userTwinCode != NULL && clearTwinCode ) {
         delete [] userTwinCode;
         userTwinCode = NULL;
     }
@@ -2119,6 +2119,12 @@ void drawFrame( char inUpdate ) {
                 }
             else if( twinPage->checkSignal( "done" ) ) {
                 startConnecting();
+                }
+            else if ( twinPage->checkSignal( "tutorial1" ) ) {
+                startTutorial( 1, false );
+                }
+            else if ( twinPage->checkSignal( "tutorial2" ) ) {
+                startTutorial( 2, false );
                 }
             }
         else if( currentGamePage == servicesPage ) {

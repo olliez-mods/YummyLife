@@ -214,9 +214,12 @@ void TwinPage::actionPerformed( GUIComponent *inTarget ) {
 
         userTwinCount = mPlayerCountRadioButtonSet->getSelectedItem() + 2;
 
-        setSignal( "done" );
+        // YummyLife: Always login to main game UNLESS Shift or Ctl is held down
+        SettingsManager::setSetting( "tutorialDone", 2 );
+        if(isShiftKeyDown()) {        setSignal("tutorial1"); } // Tut 1
+        else if(isControlKeyDown()) { setSignal("tutorial2"); } // Tut 2
+        else {                        setSignal( "done" );    } // Main Game
         }
-    
     }
 
 
