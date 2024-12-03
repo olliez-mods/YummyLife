@@ -3982,6 +3982,10 @@ void GameSceneHandler::keyPressed(
     // reset to become responsive while paused
     mPausedSleepTime = 0;
     
+    // YummyLife: Allow user to quickly quit by doing Shift+Esc
+    if (isShiftKeyDown() && inKey == 27) {
+        exit(0);
+    }
 
     if( mPaused && inKey == hetuwGetConfirmExitKey() && ! mBlockQuitting ) {
         // % to quit from pause
