@@ -321,6 +321,7 @@ public:
 	// YummyLife ->
 	static int iDrawPhexNames;
 	static bool bStoreEatenYums;
+	static bool bGalleryEnabled;
 	// <-
 
 	static int iDrawNames;

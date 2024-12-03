@@ -251,6 +251,8 @@ void YummyLife::Gallery::setGalleryMaxDimensions(int maxWidth, int maxHeight){
 
 // Initilize the gallery's files and length, start at index 0
 void YummyLife::Gallery::initGallery(const char* galleryDirPath){
+    // If the Gallery is disabled, we will return instantly
+    if(!HetuwMod::bGalleryEnabled) return;
 
     File** files = getDirectoryFiles(galleryDirPath, &gallerySize);
 
