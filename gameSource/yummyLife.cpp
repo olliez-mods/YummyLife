@@ -379,6 +379,10 @@ int YummyLife::Gallery::loadRandomGalleryImage(int excludeIndex){
     return newIndex;
 }
 
+int YummyLife::Gallery::getGallerySize(){
+    return gallerySize;
+}
+
 YummyLife::Gallery::~Gallery() {
     freePointerArray(galleryFileNames, gallerySize);
     if (galleryImageSprite) {

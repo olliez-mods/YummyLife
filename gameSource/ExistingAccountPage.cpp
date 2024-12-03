@@ -240,12 +240,19 @@ ExistingAccountPage::ExistingAccountPage()
     // Overrides above code, places on same height of "YummyLife Vx - Oliver"
     setCustomTipHeight(mServicesButton.getPosition().y + 50);
     
-    // YummyLife: Initilize the gallery, and load a random image
+    // YummyLife: Initilize the gallery
     YummyLife::Gallery::initGallery("screenShots");
-    YummyLife::Gallery::setGalleryMaxDimensions(400, 300);
-    YummyLife::Gallery::loadRandomGalleryImage();
+    
+    // Couldn't load gallery, or no screenshots taken
+    if(YummyLife::Gallery::getGallerySize() <= 0) {
+        mNextImageButton.setVisible(false);
+        mPrevImageButton.setVisible(false);
+    }else{
+        // Set bounds, and load a random image
+        YummyLife::Gallery::setGalleryMaxDimensions(400, 300);
+        YummyLife::Gallery::loadRandomGalleryImage();
     }
-
+}
           
         
 ExistingAccountPage::~ExistingAccountPage() {
@@ -764,7 +771,9 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
     
     doublePair pos = {-400, 0};
 
-    YummyLife::Gallery::drawGallery(pos);
+    if(YummyLife::Gallery::getGallerySize() > 0){
+        YummyLife::Gallery::drawGallery(pos);
+    }
 
     pos.x = -9;
     pos.y = -225;

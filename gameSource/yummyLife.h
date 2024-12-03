@@ -23,6 +23,7 @@ class YummyLife {
                 static int loadNextGalleryImage();
                 static int loadPreviousGalleryImage();
                 static int loadRandomGalleryImage(int excludeIndex = -1);
+                static int getGallerySize();
                 ~Gallery();
         };
 
