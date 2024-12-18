@@ -23,8 +23,8 @@
 
 JenkinsRandomSource jRand;
 
+std::vector<std::string> galleryFileNames;
 int galleryImageIndex = -1;
-char** galleryFileNames = nullptr;
 int gallerySize = 0;
 
 doublePair maxGalleryImageDim = {500, 500};
@@ -61,6 +61,19 @@ void freePointerArray(T** array, int size) {
 File** getDirectoryFiles(const char* directoryName, int* inNumResults){
     File dir(NULL, directoryName);
     return dir.getChildFiles(inNumResults);
+}
+
+// Does a given fileName or path end in '.tga'
+bool isTgaFileName(std::string fileName) {
+    // Check if the filename is at least 4 characters long
+    if (fileName.size() < 4)
+        return false;
+
+    // Get the last 4 characters of the filename
+    std::string extension = fileName.substr(fileName.size() - 4);
+
+    // Compare the extracted part with ".tga"
+    return extension == ".tga";
 }
 
 // Draws the players leaderboars name (if avaliable) at a given position
@@ -254,32 +267,38 @@ void YummyLife::Gallery::initGallery(const char* galleryDirPath){
     // If the Gallery is disabled, we will return instantly
     if(!HetuwMod::bGalleryEnabled) return;
 
-    File** files = getDirectoryFiles(galleryDirPath, &gallerySize);
+    int numDirChildren;
+    gallerySize = 0;
 
-    freePointerArray(galleryFileNames, gallerySize); // Free if not null_ptr
+    // No index will be loaded
+    galleryImageIndex = -1;
+
+    File** files = getDirectoryFiles(galleryDirPath, &numDirChildren);
 
     if(!files) {
         printf("Failed to load gallery\n");
         return;
     }
 
-    if(gallerySize == 0){
-        printf("Gallery loaded with a size of %d\n", gallerySize);
+    if(numDirChildren == 0){
+        printf("No files in the gallery folder\n");
         return;
     }
 
-    galleryFileNames = new char*[gallerySize];
-
-    for (int i = 0; i < gallerySize; i++){
+    for (int i = 0; i < numDirChildren; i++){
         const char* fullFileName = files[i]->getFullFileName();
-        galleryFileNames[i] = new char[strlen(fullFileName) + 1];
-        strcpy(galleryFileNames[i], fullFileName);
+        if(isTgaFileName(fullFileName))
+            galleryFileNames.push_back(fullFileName);
     }
 
-    //freePointerArray(files, gallerySize);
+    gallerySize = galleryFileNames.size();
 
-    // No index is loaded at the moment
-    galleryImageIndex = -1;
+    if(gallerySize == 0){
+        printf("No files ending in '.tga' in gallery");
+        return;
+    }
+
+    printf("found %d screenshots\n", gallerySize);
 }
 
 // Returns the current index of the selected image, -1 if none
@@ -305,13 +324,13 @@ void YummyLife::Gallery::loadGalleryIndex(int inIndex) {
 
     galleryImageIndex = inIndex;
 
-    const char* fileName = galleryFileNames[galleryImageIndex];
+    const std::string fileName = galleryFileNames[galleryImageIndex];
 
-    if (strstr(fileName, ".tga") != nullptr) {
-        galleryImageSprite = loadSpriteBase(fileName); // Try to load .tga file
-    } else {
+    if (isTgaFileName(fileName))
+        galleryImageSprite = loadSpriteBase(fileName.c_str()); // Try to load .tga file
+    else 
+        // this shouldn't happen anymore, since I filter out non-tga files
         galleryImageSprite = loadSprite("swapButton.tga"); // Non-.tga files default to placeholder
-    }
 
     // Check if the image failed, try to load swapButton again
     if (!galleryImageSprite) {
@@ -386,8 +405,6 @@ int YummyLife::Gallery::getGallerySize(){
 }
 
 YummyLife::Gallery::~Gallery() {
-    freePointerArray(galleryFileNames, gallerySize);
-    if (galleryImageSprite) {
+    if (galleryImageSprite)
         freeSprite(galleryImageSprite);
-    }
 }
