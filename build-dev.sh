@@ -15,9 +15,6 @@ build_windows=false
 [ $# -eq 0 ] || [ "$1" = "linux" ] && build_linux=true
 [ $# -eq 0 ] || [ "$1" = "windows" ] && build_windows=true
 
-echo $# $1
-echo $build_windows
-
 # Remove old builds
 rm -rf ./devbuild/YummyLife_*
 
