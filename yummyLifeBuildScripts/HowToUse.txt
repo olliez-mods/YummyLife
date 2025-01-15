@@ -1,0 +1,33 @@
+Docker scripts provided by YummyLife:
+These are not required, but they do make it easy to build in a reliable enviroment.
+WSL, and other methods do still work, docker scripts are an optional tool.
+
+Note: You do need to have docker already installed on your system for this to run.
+Note2: You only need to run the setup script once to download SDL
+
+How to use:
+1. Change directory (assuming we start from 'YummyLife/'): "cd yummyLifeBuildScripts"
+2. Run setup script: "docker-compose run --rm setup"
+2. Run build script: "docker-compose run --rm build"
+3. Done: The built exacuteables for Linux and Windows will be in '../devbuild/'
+
+Building for a specific OS:
+If you only want to build for Windows or Linux you can specify:
+- "docker-compose run --rm build_linux"
+- "docker-compose run --rm build_windows"
+
+What are these commands I'm running?:
+'docker-compose run' Let's us specify a build pattern to use (defined in 'docker-compose.yml').
+adding '--rm' tells docker to remove the container onces it finishes (to reduce clutter and space).
+next comes the pattern to use: 'setup', 'build', 'build_windows', 'build_linux', 'shell'.
+'setup': Downloads and extracts extra libraries (for now just SDL) needed to build
+'build/_linux/_windows': Goes through through the actual build proccess.
+'shell': Puts you in an interactive shell inside the docker container
+
+Failed build? - 4 steps to success!:
+#1 Make sure Docker (or WSL2 Backend) has enough ram, set it to 8-10GB limit if possible
+#2 If you are building for windows, sometimes it will fail the first time, try again
+#2 Google the issue, docker is a widely used tool, someone might have the answer for you
+#3 Make sure you are in the correct folder, you need to be in 'yummyLifeBuildScripts'
+#3 Ping OliverZ in OHOL discord server (he is an idiot) with your problem
+#4 Give up and use old hard methods

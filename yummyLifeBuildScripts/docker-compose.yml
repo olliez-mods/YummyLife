@@ -1,0 +1,26 @@
+version: '3.8'
+
+x-common: &common
+  image: yummylife-buildscripts:latest
+  build: .
+  volumes:
+    - ../:/app
+  working_dir: /app
+  restart: no
+
+services:
+  setup:
+    <<: *common
+    command: ["/bin/bash", "-c", "curl -O https://www.libsdl.org/release/SDL-devel-1.2.15-mingw32.tar.gz && tar zxvf SDL-devel-1.2.15-mingw32.tar.gz && rm SDL-devel-1.2.15-mingw32.tar.gz"]
+  build:
+    <<: *common
+    entrypoint: ["sh", "-c", "sed 's/\r$//' ./build-dev.sh | sh -s --"]
+  build_windows:
+    <<: *common
+    entrypoint: ["sh", "-c", "sed 's/\r$//' ./build-dev.sh | sh -s -- windows"]
+  build_linux:
+    <<: *common
+    entrypoint: ["sh", "-c", "sed 's/\r$//' ./build-dev.sh | sh -s -- linux"]
+  shell:
+    <<: *common
+    command: ["/bin/bash"]
