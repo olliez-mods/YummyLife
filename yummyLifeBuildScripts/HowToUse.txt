@@ -4,11 +4,12 @@ WSL, and other methods do still work, docker scripts are an optional tool.
 
 Note: You do need to have docker already installed on your system for this to run.
 Note2: You only need to run the setup script once to download SDL
+Note3: Scripts in this folder expect to be run from a subdirectory of YummyLife
+       (in this case 'yummyLifeBuildScripts/<you-are-here>')
 
 How to use:
-1. Change directory (assuming we start from 'YummyLife/'): "cd yummyLifeBuildScripts"
-2. Run setup script: "docker-compose run --rm setup"
-2. Run build script: "docker-compose run --rm build"
+1. Run setup script (This may take some minutes): "docker-compose run --rm setup"
+2. Run build script:    -    -    -    -    -     "docker-compose run --rm build"
 3. Done: The built exacuteables for Linux and Windows will be in '../devbuild/'
 
 Building for a specific OS:
@@ -20,7 +21,7 @@ What are these commands I'm running?:
 'docker-compose run' Let's us specify a build pattern to use (defined in 'docker-compose.yml').
 adding '--rm' tells docker to remove the container onces it finishes (to reduce clutter and space).
 next comes the pattern to use: 'setup', 'build', 'build_windows', 'build_linux', 'shell'.
-'setup': Downloads and extracts extra libraries (for now just SDL) needed to build
+'setup': Downloads and extracts extra libraries (SDL and libcurl) needed to build
 'build/_linux/_windows': Goes through through the actual build proccess.
 'shell': Puts you in an interactive shell inside the docker container
 
