@@ -5,11 +5,14 @@ cd ../
 
 # Clean up old files
 echo --- CLEANUP ---
-echo
+echo Removing existing folder/files
+rm -rf ./SDL-devel-1.2.15-mingw32.tar.gz
 rm -rf ./SDL-1.2.15
 rm -rf ./._SDL-1.2.15
+rm -rf ./curl-7.79.1.tar.gz
 rm -rf ./libcurl-source
 rm -rf ./curl-7.79.1
+rm -rf ./libcurl-7.79.1
 echo ---------------
 echo
 
