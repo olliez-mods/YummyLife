@@ -24,6 +24,8 @@ rm SDL-devel-1.2.15-mingw32.tar.gz
 echo ---------------
 echo
 
+# Skip LibCurl for now
+exit 0
 # LibCurl - Needs to be built on the system
 echo --- LIBCURL ---
 curl -O https://curl.se/download/curl-7.79.1.tar.gz
