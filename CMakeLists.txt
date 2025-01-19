@@ -166,7 +166,7 @@ set(CLIENT_COMPILE_OPTIONS -Wall -Wwrite-strings -Wchar-subscripts -Wparentheses
 include_directories(.)
 
 if(WIN32)
-    add_definitions(-DWIN32 -DWIN_32 -DSTATICLIB)
+    add_definitions(-DWIN32 -DWIN_32 -DSTATICLIB -DCPPHTTPLIB_OPENSSL_SUPPORT)
 
     set(SDL_DIR "SDL-1.2.15")
     include_directories("${SDL_DIR}/include")
@@ -177,16 +177,17 @@ if(WIN32)
         message(FATAL_ERROR "SDL directory not found: ${SDL_DIR}")
     endif()
 
-    #set(LIBCURL_DIR "libcurl-7.79.1")
-    #include_directories("${LIBCURL_DIR}/include")
-    #link_directories("${LIBCURL_DIR}/lib")
+    # For 32-bit builds, use the 32-bit OpenSSL libraries.
+    set(OPENSSL_ROOT_DIR "${CMAKE_SOURCE_DIR}/openssl-3.0.15")
+    include_directories("${OPENSSL_ROOT_DIR}/include")
+    link_directories("${OPENSSL_ROOT_DIR}/lib")
 
     add_executable(YummyLife_windows ${CLIENT_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES} icon.rc)
     target_compile_options(YummyLife_windows PRIVATE ${CLIENT_COMPILE_OPTIONS})
-    target_link_libraries(YummyLife_windows opengl32 glu32 mingw32 SDLmain SDL wsock32 winmm )#curl)
+    target_link_libraries(YummyLife_windows opengl32 glu32 mingw32 SDLmain SDL wsock32 winmm ssl crypto ws2_32 crypt32)
     target_link_options(YummyLife_windows PRIVATE -mwindows -static-libstdc++ -static-libgcc)
 else()
-    add_definitions(-DLINUX)
+    add_definitions(-DLINUX -DCPPHTTPLIB_OPENSSL_SUPPORT)
 
     add_executable(YummyLife_linux ${CLIENT_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES})
     target_compile_options(YummyLife_linux PRIVATE ${CLIENT_COMPILE_OPTIONS})
@@ -195,9 +196,9 @@ else()
     include_directories(${SDL_INCLUDE_DIR})
     target_link_libraries(YummyLife_linux ${SDL_LIBRARY})
 
-    #find_package(CURL REQUIRED)
-    #include_directories(${CURL_INCLUDE_DIRS})
-    #target_link_libraries(YummyLife_linux ${CURL_LIBRARIES})
+    find_package(OpenSSL REQUIRED)
+    target_include_directories(YummyLife_linux PUBLIC ${OPENSSL_INCLUDE_DIR})
+    target_link_libraries(YummyLife_linux ${OPENSSL_LIBRARIES})
 
     find_package(OpenGL REQUIRED)
     include_directories(${OPENGL_INCLUDE_DIR})
