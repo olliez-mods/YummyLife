@@ -279,13 +279,15 @@ ExistingAccountPage::ExistingAccountPage()
     
 
     // YummyLife: Check for updates, and display button if needed
-    int updateYummyLifeStatus = getModdedClientUpdateStatus(); // This function call may delay game start, usually less than 0.1 seconds
-    if(updateYummyLifeStatus > 0) { // 1 or 2 means minor or major update available, set button visible and set tip
-        mUpdateYummyLifeButton.setVisible(true);
-        const char *updateType = (updateYummyLifeStatus == 1) ? "MINOR" : "MAJOR";
-        char *tip = autoSprintf(translateWithDefault("updateAvailable", "%s UPDATE (v%d.%d)"), updateType, latestMajorClientVersion, latestMinorClientVersion);
-        mUpdateYummyLifeButton.setMouseOverTip(tip);
-        delete [] tip;
+    if(HetuwMod::bCheckGitHubForUpdates) {
+        int updateYummyLifeStatus = getModdedClientUpdateStatus(); // This function call may delay game start, usually less than 0.1 seconds
+        if(updateYummyLifeStatus > 0) { // 1 or 2 means minor or major update available, set button visible and set tip
+            mUpdateYummyLifeButton.setVisible(true);
+            const char *updateType = (updateYummyLifeStatus == 1) ? "MINOR" : "MAJOR";
+            char *tip = autoSprintf(translateWithDefault("updateAvailable", "%s UPDATE (v%d.%d)"), updateType, latestMajorClientVersion, latestMinorClientVersion);
+            mUpdateYummyLifeButton.setMouseOverTip(tip);
+            delete [] tip;
+        }
     }
 
     // to dodge quit message

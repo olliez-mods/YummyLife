@@ -148,6 +148,7 @@ bool HetuwMod::activateAutoRoadRun;
 int HetuwMod::iDrawPhexNames;
 bool HetuwMod::bStoreEatenYums;
 bool HetuwMod::bGalleryEnabled;
+bool HetuwMod::bCheckGitHubForUpdates;
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -393,6 +394,7 @@ void HetuwMod::init() {
 	iDrawPhexNames = 1;
 	bStoreEatenYums = true;
 	bGalleryEnabled = true;
+	bCheckGitHubForUpdates = true;
 
 	iDrawNames = 1;
 	bDrawCords = true;
@@ -891,6 +893,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerMappedSetting("init_show_phex_names", iDrawPhexNames, drawPhexNameMap, {preComment: "\n// YummyLife:\n", postComment: " // none, flash, always"});
 	yumConfig::registerSetting("init_store_eaten_yums", bStoreEatenYums, {postComment: " // Store the eaten foods in 'lastYums.txt' so findYum works accross restarts"});
 	yumConfig::registerSetting("init_enable_gallery", bGalleryEnabled, {postComment: " // Should the main menu gallery be enabled"});
+	yumConfig::registerSetting("init_check_github", bCheckGitHubForUpdates, {postComment: " // Automatically check for updates on GitHub"});
 	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {

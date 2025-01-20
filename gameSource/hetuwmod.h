@@ -322,6 +322,7 @@ public:
 	static int iDrawPhexNames;
 	static bool bStoreEatenYums;
 	static bool bGalleryEnabled;
+	static bool bCheckGitHubForUpdates;
 	// <-
 
 	static int iDrawNames;
