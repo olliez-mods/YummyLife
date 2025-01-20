@@ -46,6 +46,42 @@ extern SpriteHandle instructionsSprite;
 
 extern char loginEditOverride;
 
+// YummyLife: Used for version checking
+extern int versionNumber;
+extern const char *yumSubVersion;
+
+// These are only set when getModdedClientUpdateStatus() is called, and is successful
+int latestMajorClientVersion = -1;
+int latestMinorClientVersion = -1;
+// Returns -1 for fail, 0 for up-to-date, 1 for minor update, 2 for major update
+int getModdedClientUpdateStatus(){
+    // First get current version
+    int currMajorVersion = versionNumber;
+    int currentMinorVersion = 0;
+    sscanf(yumSubVersion, ".%d", &currentMinorVersion);
+
+    printf("YummyLife: Current version: %d.%d\n", currMajorVersion, currentMinorVersion);
+
+    // Poll GitHub for latest release version
+    const char* latestVersionTag = YummyLife::API::getLatestVersionTag("olliez-mods/yummylife");
+    int latestMajorVersion, latestMinorVersion;
+    YummyLife::API::parseVersionTag(latestVersionTag, &latestMajorVersion, &latestMinorVersion);
+    delete[] latestVersionTag;
+
+    printf("YummyLife: Latest version: %d.%d\n", latestMajorVersion, latestMinorVersion);
+
+    // Something went wrong
+    if(latestMajorVersion < 0) return -1;
+
+    // Update public vars:
+    latestMajorClientVersion = latestMajorVersion;
+    latestMinorClientVersion = latestMinorVersion;
+
+    if(latestMajorVersion > currMajorVersion) return 2;
+    if(latestMinorVersion > currentMinorVersion) return 1;
+    return 0;
+}
+
 void forceCompleteTutorial() {
     SettingsManager::setSetting( "tutorialDone", 2 );
 }
@@ -102,6 +138,7 @@ ExistingAccountPage::ExistingAccountPage()
                                translate( "ahapSettings" ) ),
           mNextImageButton( mainFont, -340, -160, translateWithDefault("yummyNextImageButton", "NEXT")),
           mPrevImageButton( mainFont, -460, -160, translateWithDefault("yummyPrevImageButton", "PREV")),
+          mUpdateYummyLifeButton( mainFont, -280, -280, translateWithDefault("yummyUpdateYummyLifeButton", "UPDATE YUMMYLIFE")),
 
           mYumRebirth( mainFont, -200, -100, -10.0, -50.0 ),
           mPageActiveStartTime( 0 ),
@@ -138,6 +175,8 @@ ExistingAccountPage::ExistingAccountPage()
     setButtonStyle( &mNextImageButton );
     setButtonStyle( &mPrevImageButton );
 
+    setButtonStyle( &mUpdateYummyLifeButton );
+
     setButtonStyle( &mDisableCustomServerButton );
     
     mFields[0] = &mEmailField;
@@ -171,6 +210,8 @@ ExistingAccountPage::ExistingAccountPage()
     addComponent( &mNextImageButton );
     addComponent( &mPrevImageButton );
 
+    addComponent( &mUpdateYummyLifeButton );
+
     //addComponent( &mYumRebirth ); Yummylife: Disabled for now
     
     mLoginButton.addActionListener( this );
@@ -203,6 +244,8 @@ ExistingAccountPage::ExistingAccountPage()
     mNextImageButton.setDrawBackground(false);
     mPrevImageButton.setDrawBackground(false);
 
+    mUpdateYummyLifeButton.addActionListener( this );
+
     mDisableCustomServerButton.addActionListener( this );
 
 
@@ -211,6 +254,7 @@ ExistingAccountPage::ExistingAccountPage()
     mDisableCustomServerButton.setVisible( false );
     mTutOneButton.setVisible( false );
     mTutTwoButton.setVisible( false );
+    mUpdateYummyLifeButton.setVisible( false );
     
     mAtSignButton.setMouseOverTip( translate( "atSignTip" ) );
 
@@ -233,6 +277,16 @@ ExistingAccountPage::ExistingAccountPage()
         mReviewButton.setLabelText( translate( "updateReviewButton" ) );
         }
     
+
+    // YummyLife: Check for updates, and display button if needed
+    int updateYummyLifeStatus = getModdedClientUpdateStatus(); // This function call may delay game start, usually less than 0.1 seconds
+    if(updateYummyLifeStatus > 0) { // 1 or 2 means minor or major update available, set button visible and set tip
+        mUpdateYummyLifeButton.setVisible(true);
+        const char *updateType = (updateYummyLifeStatus == 1) ? "MINOR" : "MAJOR";
+        char *tip = autoSprintf(translateWithDefault("updateAvailable", "%s UPDATE (v%d.%d)"), updateType, latestMajorClientVersion, latestMinorClientVersion);
+        mUpdateYummyLifeButton.setMouseOverTip(tip);
+        delete [] tip;
+    }
 
     // to dodge quit message
     setTipPosition( true );
@@ -623,6 +677,10 @@ void ExistingAccountPage::actionPerformed( GUIComponent *inTarget ) {
         } 
     else if( inTarget == &mPrevImageButton) {
         YummyLife::Gallery::loadPreviousGalleryImage();
+        }
+    else if( inTarget == &mUpdateYummyLifeButton) {
+        char YummyLifeRepoURL[] = "https://github.com/olliez-mods/YummyLife/releases/latest";
+        launchURL(YummyLifeRepoURL);
         }
     }
 

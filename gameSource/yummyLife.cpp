@@ -4,6 +4,8 @@
 #include <fstream>
 #include <string>
 
+#include <CPP-HTTPLib/httplib.h>
+
 #include "minorGems/io/file/File.h"
 
 #include "hetuwmod.h"
@@ -407,4 +409,50 @@ int YummyLife::Gallery::getGallerySize(){
 YummyLife::Gallery::~Gallery() {
     if (galleryImageSprite)
         freeSprite(galleryImageSprite);
+}
+
+const char* YummyLife::API::getValueFromJSON(const char* json, const char* key){
+    std::string jsonStr(json);
+    std::string keyStr(key);
+    std::string keyStrQuoted = "\"" + keyStr + "\"";
+
+    size_t keyPos = jsonStr.find(keyStrQuoted);
+    if(keyPos == std::string::npos) return nullptr;
+
+    size_t valuePos = jsonStr.find(":", keyPos);
+    if(valuePos == std::string::npos) return nullptr;
+
+    size_t valueStartPos = jsonStr.find_first_of("\"", valuePos);
+    if(valueStartPos == std::string::npos) return nullptr;
+
+    size_t valueEndPos = jsonStr.find_first_of("\"", valueStartPos + 1);
+    if(valueEndPos == std::string::npos) return nullptr;
+
+    std::string value = jsonStr.substr(valueStartPos + 1, valueEndPos - valueStartPos - 1);
+    return strdup(value.c_str());
+}
+
+const char* YummyLife::API::getLatestVersionTag(const char* repoTag) {
+    httplib::Client cli("https://api.github.com");
+    cli.set_connection_timeout(3);
+    const std::string url = "/repos/" + std::string(repoTag) + "/releases/latest";
+    auto res = cli.Get(url);
+
+    if (res && res->status == 200)
+        return getValueFromJSON(res->body.c_str(), "tag_name");
+    std::cerr << "Failed to get latest version tag from GitHub\n";
+    return nullptr;
+}
+
+void YummyLife::API::parseVersionTag(const char* versionTag, int* major, int* minor) {
+    *major = -1;
+    *minor = -1;
+    if (versionTag == nullptr) return;
+
+    if (versionTag[0] == 'v')
+        versionTag++;
+
+    int parsedMinor = 0;
+    sscanf(versionTag, "%d.%d", major, &parsedMinor);
+    *minor = parsedMinor;
 }

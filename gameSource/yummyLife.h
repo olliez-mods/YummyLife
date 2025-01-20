@@ -27,6 +27,14 @@ class YummyLife {
                 ~Gallery();
         };
 
+        class API{
+            static const char* getValueFromJSON(const char* json, const char* key);
+            public:
+                static const char* getLatestVersionTag(const char* repoTag); // Calls a web API - Expect delays
+                static void parseVersionTag(const char* versionTag, int* major, int* minor);
+                static const char* getGitHubRepoURL();
+        };
+
         static void cleanUp();
         static void takingScreenshot();
 

@@ -87,6 +87,8 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         TextButton mNextImageButton;
         TextButton mPrevImageButton;
 
+        TextButton mUpdateYummyLifeButton;
+
         yumRebirthComponent mYumRebirth;
         
 
