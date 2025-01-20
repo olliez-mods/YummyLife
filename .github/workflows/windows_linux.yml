@@ -5,6 +5,11 @@ on:
         description: Release Name
         required: true
         type: string
+      prerelease:
+        description: Pre-release
+        required: false
+        default: false
+        type: boolean
 jobs:
   build:
     strategy:
@@ -36,6 +41,7 @@ jobs:
           body: |
             How to install: https://github.com/olliez-mods/YummyLife/#installing-and-updating
             Having issues? https://github.com/olliez-mods/YummyLife/#troubleshooting
+          prerelease: ${{ inputs.prerelease }}
       - name: upload linux #LINUX
         uses: actions/upload-release-asset@v1
         env:
