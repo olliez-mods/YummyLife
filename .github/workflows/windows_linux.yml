@@ -22,11 +22,16 @@ jobs:
       - name: packages
         run: |
           sudo apt-get update
-          sudo apt-get install g++ make cmake libsdl1.2-dev libglu-dev libgl-dev g++-mingw-w64-i686-win32
-      - name: SDL
+          sudo apt-get install g++ make cmake libsdl1.2-dev libglu-dev libgl-dev g++-mingw-w64-i686-win32 curl libssl-dev libcurl4-openssl-dev wget
+      - name: Setup
         run: |
-          curl -O https://www.libsdl.org/release/SDL-devel-1.2.15-mingw32.tar.gz
+          wget https://www.libsdl.org/release/SDL-devel-1.2.15-mingw32.tar.gz
           tar zxvf SDL-devel-1.2.15-mingw32.tar.gz
+          mkdir -p ./CPP-HTTPLib
+          wget -O ./CPP-HTTPLib/httplib.h https://raw.githubusercontent.com/yhirose/cpp-httplib/master/httplib.h
+          wget https://github.com/olliez-mods/OpenSSL-Prebuilt/releases/download/3.0.15-i686/openssl-3.0.15-i686.tar.gz
+          tar zxvf openssl-3.0.15-i686.tar.gz
+          cp -rf openssl-3.0.15-i686 openssl-3.0.15
       - name: scripts
         run: |
           ./build-release.sh
