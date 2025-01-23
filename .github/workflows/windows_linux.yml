@@ -19,23 +19,27 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
-      - name: packages
+      - name: Packages
         run: |
           sudo apt-get update
           sudo apt-get install g++ make cmake libsdl1.2-dev libglu-dev libgl-dev g++-mingw-w64-i686-win32 curl libssl-dev libcurl4-openssl-dev wget
-      - name: Setup
+      - name: Install SDL
         run: |
           wget https://www.libsdl.org/release/SDL-devel-1.2.15-mingw32.tar.gz
           tar zxvf SDL-devel-1.2.15-mingw32.tar.gz
+      - name: Install CPP-HTTPLib
+        run: |
           mkdir -p ./CPP-HTTPLib
           wget -O ./CPP-HTTPLib/httplib.h https://raw.githubusercontent.com/yhirose/cpp-httplib/master/httplib.h
+      - name: Install OpenSSL
+        run: |
           wget https://github.com/olliez-mods/OpenSSL-Prebuilt/releases/download/3.0.15-i686/openssl-3.0.15-i686.tar.gz
           tar zxvf openssl-3.0.15-i686.tar.gz
           cp -rf openssl-3.0.15-i686 openssl-3.0.15
-      - name: scripts
+      - name: Build Scripts
         run: |
           ./build-release.sh
-      - name: create release
+      - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
@@ -47,7 +51,7 @@ jobs:
             How to install: https://github.com/olliez-mods/YummyLife/#installing-and-updating
             Having issues? https://github.com/olliez-mods/YummyLife/#troubleshooting
           prerelease: ${{ inputs.prerelease }}
-      - name: upload linux #LINUX
+      - name: Upload Linux #LINUX
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -56,7 +60,7 @@ jobs:
           asset_path: ./relbuild/YummyLife_linux
           asset_name: YummyLife_linux
           asset_content_type: application/zip
-      - name: upload windows #WINDOWS
+      - name: Upload Windows #WINDOWS
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
