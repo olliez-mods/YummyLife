@@ -69,6 +69,9 @@ class SettingsPage : public GamePage, public ActionListener {
         RadioButtonSet *mCursorModeSet;
         
         ValueSlider mCursorScaleSlider;
+
+        //YummyLife
+        CheckboxButton mFilterSpritesBox;
         
 
         void checkRestartButtonVisibility();

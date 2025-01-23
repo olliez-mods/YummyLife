@@ -3137,10 +3137,13 @@ HoldingPos drawObjectAnim( int inObjectID, int inDrawBehindSlots,
             frontShoePos = cPos;
             }
         
+        int spriteID = obj->sprites[i];
 
+        if(HetuwMod::filterSprites){
+        if (std::find(HetuwMod::filteredSprites.begin(), HetuwMod::filteredSprites.end(), spriteID) != HetuwMod::filteredSprites.end()){
+                skipSprite = true;}}
 
         if( !skipSprite ) {
-            int spriteID = obj->sprites[i];
 
             if( bodyless && invertDrawBodyless ) {
                 // start inversion:

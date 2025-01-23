@@ -149,6 +149,10 @@ int HetuwMod::iDrawPhexNames;
 bool HetuwMod::bStoreEatenYums;
 bool HetuwMod::bGalleryEnabled;
 bool HetuwMod::bCheckGitHubForUpdates;
+bool HetuwMod::filterSprites;
+bool bFilterSprites;
+vector<string> vFilteredSprites;
+vector<int> HetuwMod::filteredSprites;
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -395,6 +399,8 @@ void HetuwMod::init() {
 	bStoreEatenYums = true;
 	bGalleryEnabled = true;
 	bCheckGitHubForUpdates = true;
+	bFilterSprites = false;
+	vFilteredSprites = {"592", "593", "594", "595", "596", "597", "598", "599", "600"};
 
 	iDrawNames = 1;
 	bDrawCords = true;
@@ -816,6 +822,21 @@ static void validateNames(std::vector<std::string>& names) {
 	}
 }
 
+// Removes all non-numeric characters from the given vector of strings, then assigns the result to the  vector
+static void validateFilteredIDs(std::vector<std::string>& ids) {
+    ids.erase(
+        std::remove_if(ids.begin(), ids.end(), [](const std::string& id) {
+            return !std::all_of(id.begin(), id.end(), ::isdigit);
+        }),
+        ids.end()
+    );
+	std::vector<int> filteredIDs;
+	for (const auto& id : ids) {
+		filteredIDs.push_back(std::stoi(id));
+	}
+	HetuwMod::filteredSprites = filteredIDs;
+}
+
 void HetuwMod::initSettings() {
 	const int cfgVersionLatest = 6;
 	static int cfgVersionActive = cfgVersionLatest;
@@ -890,10 +911,12 @@ void HetuwMod::initSettings() {
 		{"flash", 1},
 		{"always", 2}
 	};
-	yumConfig::registerMappedSetting("init_show_phex_names", iDrawPhexNames, drawPhexNameMap, {preComment: "\n// YummyLife:\n", postComment: " // none, flash, always"});
+	yumConfig::registerMappedSetting("init_show_phex_names", iDrawPhexNames, drawPhexNameMap, {preComment: "\n// ======== YummyLife ========\n", postComment: " // none, flash, always"});
 	yumConfig::registerSetting("init_store_eaten_yums", bStoreEatenYums, {postComment: " // Store the eaten foods in 'lastYums.txt' so findYum works accross restarts"});
 	yumConfig::registerSetting("init_enable_gallery", bGalleryEnabled, {postComment: " // Should the main menu gallery be enabled"});
 	yumConfig::registerSetting("init_check_github", bCheckGitHubForUpdates, {postComment: " // Automatically check for updates on GitHub"});
+	yumConfig::registerSetting("sprite_ids_to_filter", vFilteredSprites, {preComment: "\n//Sprite IDs that will be skipped when drawing each frame\n"});
+	yumConfig::registerSetting("enable_sprite_filter", bFilterSprites, {postComment: " // Filtering enabled - can be toggled in settings menu"});
 	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {
@@ -901,7 +924,7 @@ void HetuwMod::initSettings() {
 		{"first", 1},
 		{"full", 2}
 	};
-	yumConfig::registerMappedSetting("init_show_names", iDrawNames, drawNamesMap, {preComment: "\n", postComment: " // none, first, or full"});
+	yumConfig::registerMappedSetting("init_show_names", iDrawNames, drawNamesMap, {preComment: "// ^^^^^^^^ YummyLife ^^^^^^^^\n\n", postComment: " // none, first, or full"});
 	yumConfig::registerSetting("init_show_selectedplayerinfo", bDrawSelectedPlayerInfo, {postComment: " // draw names bigger and show age when hovering over a player"});
 	yumConfig::registerSetting("init_show_cords", bDrawCords);
 	static std::map<std::string, int> drawPlayersInRangePanelMap = {
@@ -1039,6 +1062,9 @@ void HetuwMod::initSettings() {
 	} else {
 		phexIsEnabled = phexIsEnabledAsConfigured;
 	}
+
+	validateFilteredIDs(vFilteredSprites);
+	filterSprites = bFilterSprites;
 
 	cfgVersionActive = cfgVersionLatest;
 	yumConfig::saveSettings(hetuwSettingsFileName);

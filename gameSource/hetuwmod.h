@@ -17,6 +17,8 @@
 #include <fstream>
 #include <unordered_map>
 
+#include <algorithm>
+
 #include "LivingLifePage.h"
 #include "hetuwFont.h"
 
@@ -323,6 +325,8 @@ public:
 	static bool bStoreEatenYums;
 	static bool bGalleryEnabled;
 	static bool bCheckGitHubForUpdates;
+	static bool filterSprites;
+	static vector<int> filteredSprites;
 	// <-
 
 	static int iDrawNames;

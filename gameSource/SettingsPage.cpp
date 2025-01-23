@@ -15,6 +15,8 @@
 #include "objectBank.h"
 #include "buttonStyle.h"
 
+#include "hetuwmod.h"
+
 
 extern Font *mainFont;
 
@@ -55,7 +57,8 @@ SettingsPage::SettingsPage()
           mPasteButton( mainFont, 518, -216, translate( "paste" ) ),
           mCursorScaleSlider( mainFont, 297, 155, 4, 200, 30,
                                        1.0, 10.0, 
-                                       translate( "scale" ) ) {
+                                       translate( "scale" ) ),
+          mFilterSpritesBox( -168, -195, 4)  {
                             
 
     
@@ -82,6 +85,7 @@ SettingsPage::SettingsPage()
     setButtonStyle( &mRedetectButton );
     setButtonStyle( &mCopyButton );
     setButtonStyle( &mPasteButton );
+    setButtonStyle( &mFilterSpritesBox );
 
     addComponent( &mBackButton );
     mBackButton.addActionListener( this );
@@ -108,6 +112,9 @@ SettingsPage::SettingsPage()
     
     addComponent( &mRedetectButton );
     mRedetectButton.addActionListener( this );
+
+    addComponent( &mFilterSpritesBox );
+    mFilterSpritesBox.addActionListener( this );
 
     addComponent( &mUseCustomServerBox );
     addComponent( &mCustomServerAddressField );
@@ -159,6 +166,10 @@ SettingsPage::SettingsPage()
 
     if( getCountingOnVsync() ) {
         mTargetFrameRateField.setVisible( false );
+        }
+
+    if( HetuwMod::filterSprites ) {
+        mFilterSpritesBox.setToggled( true );
         }
     }
 
@@ -462,6 +473,9 @@ void SettingsPage::actionPerformed( GUIComponent *inTarget ) {
     else if( inTarget == &mCursorScaleSlider ) {
         setEmulatedCursorScale( mCursorScaleSlider.getValue() );
         }
+    else if( inTarget == &mFilterSpritesBox ) {
+        HetuwMod::filterSprites = mFilterSpritesBox.getToggled();
+        }
     
     
     }
@@ -497,6 +511,14 @@ void SettingsPage::draw( doublePair inViewCenter,
     pos.y -= 2;
     
     mainFont->drawString( translate( "useCustomServer" ), pos, alignRight );
+
+
+    pos = mFilterSpritesBox.getPosition();
+
+    pos.x -= 24;
+    pos.y -= 2;
+
+    mainFont->drawString( "FILTER SPRITE ID'S", pos, alignRight );
     
 
     if( mBorderlessBox.isVisible() ) {
@@ -592,6 +614,9 @@ void SettingsPage::makeActive( char inFresh ) {
             SettingsManager::getIntSetting( "useCustomServer", 0 );
         
         mUseCustomServerBox.setToggled( useCustomServer );
+
+
+        mFilterSpritesBox.setToggled( HetuwMod::filterSprites );
         
 
         char *address = 
