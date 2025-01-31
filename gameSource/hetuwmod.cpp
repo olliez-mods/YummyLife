@@ -152,6 +152,7 @@ bool HetuwMod::filterSprites;
 bool bFilterSprites;
 vector<string> vFilteredSprites;
 vector<int> HetuwMod::filteredSprites;
+bool HetuwMod::bShowDangerTilesWhenRiding;
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -400,6 +401,7 @@ void HetuwMod::init() {
 	bCheckGitHubForUpdates = true;
 	bFilterSprites = false;
 	vFilteredSprites = {"592", "593", "594", "595", "596", "597", "598", "599", "600"};
+	bShowDangerTilesWhenRiding = false;
 
 	iDrawNames = 1;
 	bDrawCords = true;
@@ -730,11 +732,11 @@ bool HetuwMod::isObjectDangerous(int objID) {
 }
 
 // Checks if an object is dangerous, also taking into account our held item
-bool HetuwMod::isGroundDangerousWithHeld(int heldID, int groundID) { // Note: Running this for every tile each frame is not optimal, but it's not a big deal
+bool HetuwMod::isGroundDangerousWithHeld(int heldID, int groundID, bool ignoreTransition) { // Note: Running this for every tile each frame is not optimal, but it's not a big deal
 	if (!isObjectDangerous(groundID)) return false; // If it isn't usually dangerous, it's not ever (I hope)
 
 	ObjectRecord *held = getObject(heldID, true);
-	if (held == NULL || !held->rideable) return true; // If we aren't holding an item, or it's not rideable; it's dangerous
+	if (held == NULL || !held->rideable || ignoreTransition) return true; // If we aren't holding an item, or it's not rideable; it's dangerous
 
 	// Now check transition, if the object is dangerous and affects our ridden object, we assume it is dangerous
 	// e.g. a bear is still dangerous if we are riding a horse and cart
@@ -887,6 +889,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("init_check_github", bCheckGitHubForUpdates, {postComment: " // Automatically check for updates on GitHub"});
 	yumConfig::registerSetting("sprite_ids_to_filter", vFilteredSprites, {preComment: "\n//Sprite IDs that will be skipped when drawing each frame\n"});
 	yumConfig::registerSetting("enable_sprite_filter", bFilterSprites, {postComment: " // Filtering enabled - can be toggled in settings menu"});
+	yumConfig::registerSetting("render_all_danger_tiles_while_riding", bShowDangerTilesWhenRiding, {postComment: " // Always render red box over danger tiles even when riding a vehicle"});
 	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {
@@ -2372,7 +2375,7 @@ void HetuwMod::drawHostileTiles() {
 		for (int y = startY; y < endY; y++) {
 			int objId = livingLifePage->hetuwGetObjId( x, y );
 			if (objId >= 0 && objId < maxObjects) {
-				if(isGroundDangerousWithHeld(heldObjectID, objId)) drawTileRect( x, y );
+				if(isGroundDangerousWithHeld(heldObjectID, objId, bShowDangerTilesWhenRiding)) drawTileRect( x, y );
 			}
 		}
 	}

@@ -327,6 +327,7 @@ public:
 	static bool bCheckGitHubForUpdates;
 	static bool filterSprites;
 	static vector<int> filteredSprites;
+	static bool bShowDangerTilesWhenRiding;
 	// <-
 
 	static int iDrawNames;
@@ -536,7 +537,7 @@ public:
 
 	static std::vector<std::string> splitStrXTimes(const std::string &str, char splitChar, int count);
 
-	static bool isGroundDangerousWithHeld(int heldID, int groundID);
+	static bool isGroundDangerousWithHeld(int heldID, int groundID, bool ignoreTransition = false);
 	static bool isObjectDangerous(int objID);
 
 	static void setTakingPhoto( bool inTakingPhoto );
