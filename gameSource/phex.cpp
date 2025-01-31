@@ -396,7 +396,9 @@ void Phex::serverCmdSAY(std::vector<std::string> input) {
 
 	chatElement.name = string(*getUserDisplayName(chatElement.hash));
 
-	chatElement.textToDraw = colorCodeNamesInChat+chatElement.name+": "+colorCodeWhite+chatElement.text;
+	std::string unWrappedText = colorCodeNamesInChat+chatElement.name+": "+colorCodeWhite+chatElement.text;
+	chatElement.textToDraw = wrapText(unWrappedText);
+
 	mainChatWindow.addElement(chatElement);
 }
 
@@ -906,6 +908,57 @@ time_t Phex::strToTimeT(std::string str) {
 void Phex::onZoom() {
 	setMainFontScale();
 	mainChatWindow.onZoom();
+}
+
+static bool isWordSeperator(char c) {
+	return c == ' ' || c == '\n' || c == '\r';
+}
+
+static std::string trimTrailingWhitespace(const std::string& str) {
+    size_t end = str.find_last_not_of(" \t\n\r");
+    if (end == std::string::npos) {
+        return ""; // The string is all whitespace
+    }
+    return str.substr(0, end + 1);
+}
+
+// YummyLife: Implement simple text-wrapping onto old code
+std::string Phex::wrapText(std::string text) {
+	size_t textLen = text.length();
+
+	double singleLineHeight = getStringWidthHeight({0, 0}, "Ap").y;
+
+	std::string wrappedText = "";
+
+
+	std::string line = "";
+	size_t i = 0;
+	while (i < textLen) {
+		// Add any next whitespace
+		while(i < textLen && isWordSeperator(text[i])) {
+			line += text[i];
+			i++;
+		}
+
+		// Get next whole word
+		std::string word = "";
+		while(i < textLen && !isWordSeperator(text[i])) {
+			word += text[i];
+			i++;
+		}
+
+		// If the word fits on the current line put it in
+		if(getStringWidthHeight({0, 0}, line + word).y <= singleLineHeight*1.1) {
+			line += word;
+		} else {
+			// If the word doesn't fit, add it to the next line
+			line = trimTrailingWhitespace(line); // This could remove \n if there is multiple at the end of a line
+			wrappedText += line + "\n" + word;
+			line = "";
+		}
+	}
+	wrappedText += line;
+	return wrappedText;
 }
 
 void Phex::ChatWindow::addElement(ChatElement element) {

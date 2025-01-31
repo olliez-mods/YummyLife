@@ -357,6 +357,7 @@ public:
 	static std::string joinStr(std::vector<std::string> strVector, std::string seperator=" ", int offset=0);
 	static doublePair getStringWidthHeight(doublePair startPos, std::string str);
 	static double getLineHeight(HetuwFont *font);
+	static std::string wrapText(std::string text);
 	static void drawString(std::string str, doublePair startPos);
 
 	static void createUser(std::string &hash, bool active);
