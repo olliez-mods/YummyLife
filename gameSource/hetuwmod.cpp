@@ -752,14 +752,27 @@ std::vector<std::string> HetuwMod::splitStrXTimes(const std::string &str, char s
 	};
 // -------------
 
+// -- AHAP ----- (See above for variable descriptions)
+	static const std::unordered_set<std::string> nonDangerousStringsAHAP = {};
+	static const std::unordered_set<std::string> dangerousStringsAHAP = {
+		"Noxious Gas"
+	};
+	static const std::unordered_set<int> dangerousIntsAHAP = {
+		189, // Thorny Bramble
+		514 // Chopped Thorny Bramble
+	};
+// -------------
+
 bool HetuwMod::isDangerousObject(int objId) {
 	const std::unordered_set<std::string>* nonDangStrs = &nonDangerousStringsOHOL;
 	const std::unordered_set<std::string>* dangStrs = &dangerousStringsOHOL;
 	const std::unordered_set<int>* dangInts = &dangerousIntsOHOL;
 
 	// For AHAP replace the variables with the AHAP ones
-	if(isAHAP) {
-		return false;
+	if(isAHAP) { // *Maybe this should be done outside of function for performance*
+		nonDangStrs = &nonDangerousStringsAHAP;
+		dangStrs = &dangerousStringsAHAP;
+		dangInts = &dangerousIntsAHAP;
 	}
 
 	ObjectRecord* obj = getObject(objId);
