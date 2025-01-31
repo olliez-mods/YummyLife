@@ -132,7 +132,6 @@ int HetuwMod::currentEmote = -1;
 time_t HetuwMod::lastEmoteTime;
 time_t HetuwMod::lastSpecialEmote = 0;
 
-bool *HetuwMod::isDangerousAnimal = NULL;
 
 int* HetuwMod::closedDoorIDs;
 int HetuwMod::closedDoorIDsLength;
@@ -723,57 +722,28 @@ std::vector<std::string> HetuwMod::splitStrXTimes(const std::string &str, char s
 	return result;
 }
 
-// does not check for all dangerous animals, use isDangerousAnimal(int objId) instead
-bool HetuwMod::strContainsDangerousAnimal(const char* str) {
-	if (strstr( str, "Dying Semi-tame Wolf") != NULL) return false;
-	if (strstr( str, "Dead Semi-tame Wolf") != NULL) return false;
-	if (strstr( str, "Old Semi-tame Wolf") != NULL) return false;
-	if (strstr( str, "Wolf Puppy") != NULL) return false;
-	if (strstr( str, "Semi-tame Wolf with Pup") != NULL) return false;
-	if (strstr( str, "Wolf Skin") != NULL) return false;
-	if (strstr( str, "Wolf Crown") != NULL) return false;
-	if (strstr( str, "Wolf Hat") != NULL) return false;
-	if (strstr( str, "Skinned Wolf") != NULL) return false;
-	if (strstr( str, "Skinless Wolf") != NULL) return false;
-	if (strstr( str, "Dead Wolf") != NULL) return false;
-	if (strstr( str, "Buried Wolf") != NULL) return false;
-	if (strstr( str, "Shot Domestic Boar with Piglet") != NULL) return false;
-	if (strstr( str, "Shot Wild Boar with Piglet") != NULL) return false;
-	if (strstr( str, "Dead Grizzly Bear") != NULL) return false;
+// YummyLife: Convert to an automated way of checking for dangrous tiles, thank you @moon ...
+bool HetuwMod::isObjectDangerous(int objID) {
+	ObjectRecord *obj = getObject(objID);
+	if (obj == NULL) return false;
+	return obj->permanent && obj->deadlyDistance > 0;
+}
 
-	if (strstr( str, "Grizzly Bear") != NULL) return true;
-	if (strstr( str, "Wild Boar") != NULL) return true;
-	if (strstr( str, "Domestic Boar") != NULL) return true;
-	if (strstr( str, "Wolf") != NULL) return true;
+// Checks if an object is dangerous, also taking into account our held item
+bool HetuwMod::isGroundDangerousWithHeld(int heldID, int groundID) { // Note: Running this for every tile each frame is not optimal, but it's not a big deal
+	if (!isObjectDangerous(groundID)) return false; // If it isn't usually dangerous, it's not ever (I hope)
 
+	ObjectRecord *held = getObject(heldID, true);
+	if (held == NULL || !held->rideable) return true; // If we aren't holding an item, or it's not rideable; it's dangerous
+
+	// Now check transition, if the object is dangerous and affects our ridden object, we assume it is dangerous
+	// e.g. a bear is still dangerous if we are riding a horse and cart
+	TransRecord *trans = getTrans(heldID, groundID);
+	if (trans == NULL) return false;
+	if (heldID != trans->newActor) return true;
 	return false;
 }
-
-void HetuwMod::initDangerousAnimals() {
-	// bypass for now
-	if (isAHAP) return;
-
-	if (isDangerousAnimal) delete[] isDangerousAnimal;
-	isDangerousAnimal = new bool[maxObjects];
-
-	for (int i=0; i<maxObjects; i++) {
-		ObjectRecord* obj = getObject(i);
-		if (obj && obj->description && strContainsDangerousAnimal(obj->description)) {
-			isDangerousAnimal[i] = true;
-		} else if (   i == 2156 // Mosquito swarm
-		           || i == 2157 // Mosquito swarm - just bit
-		           || i == 764  // Rattle Snake
-		           || i == 1385 // Attacking Rattle Snake
-		           || i == 1789 // Abused Pit Bull
-		           || i == 1747 // Mean Pit Bull
-		           || i == 1712 // Attacking Pit Bull
-		          ) {
-			isDangerousAnimal[i] = true;
-		} else {
-			isDangerousAnimal[i] = false;
-		}
-	}
-}
+// ...
 
 void HetuwMod::initClosedDoorIDs() {
 	// bypass for now
@@ -1206,7 +1176,6 @@ void HetuwMod::setLivingLifePage(LivingLifePage *inLivingLifePage, SimpleVector<
 
 	maxObjects = getMaxObjectID() + 1;
 
-	initDangerousAnimals();
 
 	if (objIsBeingSearched != NULL) delete[] objIsBeingSearched;
 	objIsBeingSearched = new bool[maxObjects];
@@ -2392,6 +2361,8 @@ void HetuwMod::drawHostileTiles() {
 	setDrawColor( 1, 0, 0, alpha );
 	//drawTileRect( ourLiveObject->xd, ourLiveObject->yd );
 
+	int heldObjectID = ourLiveObject->holdingID;
+
 	int radius = 32;
 	int startX = ourLiveObject->xd - radius;
 	int endX = ourLiveObject->xd + radius;
@@ -2401,7 +2372,7 @@ void HetuwMod::drawHostileTiles() {
 		for (int y = startY; y < endY; y++) {
 			int objId = livingLifePage->hetuwGetObjId( x, y );
 			if (objId >= 0 && objId < maxObjects) {
-				if (isDangerousAnimal != NULL && isDangerousAnimal[objId]) drawTileRect( x, y );
+				if(isGroundDangerousWithHeld(heldObjectID, objId)) drawTileRect( x, y );
 			}
 		}
 	}
@@ -3953,30 +3924,10 @@ int HetuwMod::getNextMoveDir(int direction, int add) {
 }
 
 bool HetuwMod::tileHasNoDangerousAnimals(int x, int y) {
-	int objId = livingLifePage->hetuwGetObjId( x, y);
-	if (objId <= 0) return true;
-	if (ourLiveObject->holdingID > 0 && getObject(ourLiveObject->holdingID)->rideable) {
-		if (ourLiveObject->holdingID == 2396 || // Running Crude Car
-			ourLiveObject->holdingID == 4655 || // Deliver Truck - +slotsInvis driving
-			ourLiveObject->holdingID == 4660 || // Red Sports Car $30 - driving +varNumeral
-			ourLiveObject->holdingID == 4681 || // Blue Sports Car $30 - driving +varNumeral
-			ourLiveObject->holdingID == 4690 || // Green Sports Car $30 - driving +varNumeral
-			ourLiveObject->holdingID == 4699 || // Yellow Sports Car $30 - driving +varNumeral
-			ourLiveObject->holdingID == 4708 || // Black Sports Car $30 - driving +varNumeral
-			ourLiveObject->holdingID == 4719) { // White Sports Car $30 - driving +varNumeral
-				return true; // no dangerous animals for cars
-		}
-		// check dangerous animals for horses
-		if (objId == 764) return false; // Rattle Snake	
-		if (objId == 1385) return false; // Attacking Rattle Snake
-		if (objId == 631) return false; // Hungry Grizzly Bear
-		if (objId == 628) return false; // Grizzly Bear
-		if (objId == 645) return false; // Fed Grizzly Bear
-		if (objId == 4762) return false; // Sleepy Grizzly Bear
-	} else { // moving by walking / not riding
-		if (objId < maxObjects && isDangerousAnimal != NULL && isDangerousAnimal[objId]) return false;
-	}
-	return true;
+	int objId = livingLifePage->hetuwGetObjId(x, y);
+	int heldID = ourLiveObject->holdingID;
+
+	return !isGroundDangerousWithHeld(heldID, objId);
 }
 
 bool HetuwMod::tileHasClosedDoor(int x, int y) {
@@ -4558,7 +4509,7 @@ void HetuwMod::onPlayerUpdate( LiveObject* inO, const char* line ) {
 			strKillerId += sstr[i]; 
 		}
 		int killerObjId = stoi(strKillerId); // object id - like knife or grizzly bear
-		if (killerObjId >= 0 && killerObjId < maxObjects && isDangerousAnimal != NULL && isDangerousAnimal[killerObjId]) {
+		if (killerObjId >= 0 && killerObjId < maxObjects && isObjectDangerous(killerObjId)) {
 			deathMsg->deathReason = 1; // animal
 		}
 		ObjectRecord *ko = getObject( killerObjId );

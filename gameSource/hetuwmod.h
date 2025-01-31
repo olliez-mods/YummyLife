@@ -536,8 +536,8 @@ public:
 
 	static std::vector<std::string> splitStrXTimes(const std::string &str, char splitChar, int count);
 
-	static bool strContainsDangerousAnimal(const char* str);
-	static bool *isDangerousAnimal;
+	static bool isGroundDangerousWithHeld(int heldID, int groundID);
+	static bool isObjectDangerous(int objID);
 
 	static void setTakingPhoto( bool inTakingPhoto );
 	static bool takingPhoto;
@@ -681,7 +681,6 @@ private:
 	static bool mapZoomInKeyDown;
 	static bool mapZoomOutKeyDown;
 	
-	static void initDangerousAnimals();
 	static void initClosedDoorIDs();
 	static void writeSettings(ofstream &);
 	static void initSettings();
