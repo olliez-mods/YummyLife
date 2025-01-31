@@ -536,7 +536,7 @@ public:
 
 	static std::vector<std::string> splitStrXTimes(const std::string &str, char splitChar, int count);
 
-	static bool strContainsDangerousAnimal(const char* str);
+	static bool isDangerousObject(int objID);
 	static bool *isDangerousAnimal;
 
 	static void setTakingPhoto( bool inTakingPhoto );

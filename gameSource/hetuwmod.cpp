@@ -723,57 +723,77 @@ std::vector<std::string> HetuwMod::splitStrXTimes(const std::string &str, char s
 	return result;
 }
 
-// does not check for all dangerous animals, use isDangerousAnimal(int objId) instead
-bool HetuwMod::strContainsDangerousAnimal(const char* str) {
-	if (strstr( str, "Dying Semi-tame Wolf") != NULL) return false;
-	if (strstr( str, "Dead Semi-tame Wolf") != NULL) return false;
-	if (strstr( str, "Old Semi-tame Wolf") != NULL) return false;
-	if (strstr( str, "Wolf Puppy") != NULL) return false;
-	if (strstr( str, "Semi-tame Wolf with Pup") != NULL) return false;
-	if (strstr( str, "Wolf Skin") != NULL) return false;
-	if (strstr( str, "Wolf Crown") != NULL) return false;
-	if (strstr( str, "Wolf Hat") != NULL) return false;
-	if (strstr( str, "Skinned Wolf") != NULL) return false;
-	if (strstr( str, "Skinless Wolf") != NULL) return false;
-	if (strstr( str, "Dead Wolf") != NULL) return false;
-	if (strstr( str, "Buried Wolf") != NULL) return false;
-	if (strstr( str, "Shot Domestic Boar with Piglet") != NULL) return false;
-	if (strstr( str, "Shot Wild Boar with Piglet") != NULL) return false;
-	if (strstr( str, "Dead Grizzly Bear") != NULL) return false;
 
-	if (strstr( str, "Grizzly Bear") != NULL) return true;
-	if (strstr( str, "Wild Boar") != NULL) return true;
-	if (strstr( str, "Domestic Boar") != NULL) return true;
-	if (strstr( str, "Wolf") != NULL) return true;
+// YummyLife: Redo how danger tiles are initilized, cleaned up and added AHAP info ...
 
-	return false;
+// -- OHOL -----
+	// Any items that match these first will be skipped
+	static const std::unordered_set<std::string> nonDangerousStringsOHOL = {
+		"Dying Semi-tame Wolf", "Dead Semi-tame Wolf", "Old Semi-tame Wolf", // Semi-tame Wolf
+		"Wolf Puppy", "Semi-tame Wolf with Pup",                             // Wolf Puppy
+		"Wolf Skin", "Wolf Crown", "Wolf Hat",                               // Wolf Clothes
+		"Skinned Wolf", "Skinless Wolf", "Dead Wolf", "Buried Wolf",         // Dead Wolf
+		"Shot Domestic Boar with Piglet", "Shot Wild Boar with Piglet",      // Dead Boar
+		"Dead Grizzly Bear"                                                  // Dead Bear
+	};
+	// Any items not skipped and match these will be considered dangerous
+	static const std::unordered_set<std::string> dangerousStringsOHOL = {
+		"Grizzly Bear", "Wild Boar", "Domestic Boar", "Wolf"
+	};
+	// Manually added dangerous objects
+	static const std::unordered_set<int> dangerousIntsOHOL = {
+		2156, // Mosquito swarm
+		2157, // Mosquito swarm - just bit
+		764,  // Rattle Snake
+		1385, // Attacking Rattle Snake
+		1789, // Abused Pit Bull
+		1747, // Mean Pit Bull
+		1712 // Attacking Pit Bull
+	};
+// -------------
+
+bool HetuwMod::isDangerousObject(int objId) {
+	const std::unordered_set<std::string>* nonDangStrs = &nonDangerousStringsOHOL;
+	const std::unordered_set<std::string>* dangStrs = &dangerousStringsOHOL;
+	const std::unordered_set<int>* dangInts = &dangerousIntsOHOL;
+
+	// For AHAP replace the variables with the AHAP ones
+	if(isAHAP) {
+		return false;
+	}
+
+	ObjectRecord* obj = getObject(objId);
+	if(!obj || obj == NULL) return false;
+	std::string desc = obj->description;
+
+    // Check for non-dangerous substrings and leave early if found
+    for (const auto& nonDangerous : *nonDangStrs)
+    if (desc.find(nonDangerous) != std::string::npos)
+        return false;
+
+    // Check for dangerous substrings that weren't skipped
+    for (const auto& dangerous : *dangStrs)
+    if (desc.find(dangerous) != std::string::npos)
+        return true;
+
+    // Check for dangerous IDs manualy added
+    if (dangInts->find(objId) != dangInts->end()){
+        return true;
+	}
+
+	return false; // Everything else is "safe"
 }
 
 void HetuwMod::initDangerousAnimals() {
-	// bypass for now
-	if (isAHAP) return;
 
 	if (isDangerousAnimal) delete[] isDangerousAnimal;
 	isDangerousAnimal = new bool[maxObjects];
 
 	for (int i=0; i<maxObjects; i++) {
-		ObjectRecord* obj = getObject(i);
-		if (obj && obj->description && strContainsDangerousAnimal(obj->description)) {
-			isDangerousAnimal[i] = true;
-		} else if (   i == 2156 // Mosquito swarm
-		           || i == 2157 // Mosquito swarm - just bit
-		           || i == 764  // Rattle Snake
-		           || i == 1385 // Attacking Rattle Snake
-		           || i == 1789 // Abused Pit Bull
-		           || i == 1747 // Mean Pit Bull
-		           || i == 1712 // Attacking Pit Bull
-		          ) {
-			isDangerousAnimal[i] = true;
-		} else {
-			isDangerousAnimal[i] = false;
-		}
+		isDangerousAnimal[i] = isDangerousObject(i);
 	}
 }
+// ...
 
 void HetuwMod::initClosedDoorIDs() {
 	// bypass for now
