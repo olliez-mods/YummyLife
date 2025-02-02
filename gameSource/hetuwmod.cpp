@@ -153,6 +153,7 @@ bool bFilterSprites;
 vector<string> vFilteredSprites;
 vector<int> HetuwMod::filteredSprites;
 bool HetuwMod::bShowDangerTilesWhenRiding;
+int HetuwMod::iAfkHungerThreshold;
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -402,6 +403,7 @@ void HetuwMod::init() {
 	bFilterSprites = false;
 	vFilteredSprites = {"592", "593", "594", "595", "596", "597", "598", "599", "600"};
 	bShowDangerTilesWhenRiding = false;
+	iAfkHungerThreshold = 8;
 
 	iDrawNames = 1;
 	bDrawCords = true;
@@ -890,6 +892,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("sprite_ids_to_filter", vFilteredSprites, {preComment: "\n//Sprite IDs that will be skipped when drawing each frame\n"});
 	yumConfig::registerSetting("enable_sprite_filter", bFilterSprites, {postComment: " // Filtering enabled - can be toggled in settings menu"});
 	yumConfig::registerSetting("render_all_danger_tiles_while_riding", bShowDangerTilesWhenRiding, {postComment: " // Always render red box over danger tiles even when riding a vehicle"});
+	yumConfig::registerSetting("AFK_auto_eat_hunger_threshold", iAfkHungerThreshold, {postComment: " // How many pips below max food triggers eating. We always eat if below 2 pips"});
 	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {
@@ -3094,7 +3097,9 @@ void HetuwMod::setOurSendPosXY(int &x, int &y) {
 	y = livingLifePage->sendY(y);
 }
 
-void HetuwMod::useBackpack(bool replace) {
+// YummyLife: Update function to allow specific index
+
+void HetuwMod::useBackpack(bool replace, int index) {
 	int clothingSlot = 5; // backpack clothing slot
 
 	int x, y;
@@ -3113,7 +3118,7 @@ void HetuwMod::useBackpack(bool replace) {
 			}
 		}
 	} else {
-		snprintf( msg, sizeof(msg), "SREMV %d %d %d %d#", x, y, clothingSlot, -1 );
+		snprintf( msg, sizeof(msg), "SREMV %d %d %d %d#", x, y, clothingSlot, index );
 	}
 
 	if (msg[0] != 0) {
@@ -5186,6 +5191,14 @@ void HetuwMod::drawHelp() {
 		livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
 		drawPos.y -= lineHeight;
 	}
+
+	// YummyLife ...
+	drawPos.y -= lineHeight;
+
+	snprintf(str, sizeof(str), "/AFK - START AFK AUTO EAT");
+	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
+	drawPos.y -= lineHeight;
+	// ...
 
 	drawPos = lastScreenViewCenter;
 	drawPos.x -= viewWidth/2 - 640*guiScale;

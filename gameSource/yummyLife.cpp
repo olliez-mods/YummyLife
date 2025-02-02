@@ -9,6 +9,7 @@
 #include "minorGems/io/file/File.h"
 
 #include "hetuwmod.h"
+#include "LivingLifePage.h"
 
 #include "minorGems/game/gameGraphics.h"
 
@@ -24,6 +25,19 @@
 #define ONLY_ADD_UNIQUE_YUMS true
 
 JenkinsRandomSource jRand;
+
+extern doublePair lastScreenViewCenter;
+
+int YummyLife::AFK::numCycles = 0;
+bool YummyLife::AFK::is_afk = false;
+bool YummyLife::AFK::bIsWaiting = false;
+int YummyLife::AFK::waitingForNotID = -1;
+bool YummyLife::AFK::is_enabled = false;
+const char* YummyLife::AFK::statusMessage = nullptr;
+time_t YummyLife::AFK::waitStartTime = 0;
+time_t YummyLife::AFK::startAfkTime = 0;
+doublePair YummyLife::AFK::startAfkPos = {0, 0};
+int YummyLife::AFK::timesEaten = 0;
 
 std::vector<std::string> galleryFileNames;
 int galleryImageIndex = -1;
@@ -76,6 +90,52 @@ bool isTgaFileName(std::string fileName) {
 
     // Compare the extracted part with ".tga"
     return extension == ".tga";
+}
+
+void YummyLife::livingLifeStep(){
+    AFK::step();
+}
+
+void YummyLife::livingLifeDraw(){
+    if(AFK::isAFK()){
+        HetuwFont *customFont = HetuwMod::customFont;
+        double scale = customFont->hetuwGetScaleFactor();
+	    customFont->hetuwSetScaleFactor(scale * HetuwMod::guiScale * 1.4);
+	    doublePair drawPos = lastScreenViewCenter;
+        int afkDuration = HetuwMod::curStepSecondsSince1970 - AFK::getStartAfkTime();
+        char afkDurationStr[50];
+        if (afkDuration >= 60) {
+            snprintf(afkDurationStr, sizeof(afkDurationStr), " (%.1fm)", afkDuration / 60.0);
+        } else {
+            snprintf(afkDurationStr, sizeof(afkDurationStr), " (%ds)", afkDuration);
+        }
+        char afkMessage[100];
+        snprintf(afkMessage, sizeof(afkMessage), "You are AFK%s", afkDurationStr);
+        drawPos = HetuwMod::drawCustomTextWithBckgr(drawPos, afkMessage);
+        char timesEatenStr[50];
+        snprintf(timesEatenStr, sizeof(timesEatenStr), "Eaten %d times", AFK::getTimesEaten());
+        drawPos = HetuwMod::drawCustomTextWithBckgr(drawPos, timesEatenStr);
+        if(AFK::isEnabled()) {
+            drawPos = HetuwMod::drawCustomTextWithBckgr(drawPos, "Status: Running");
+        }else{
+            drawPos = HetuwMod::drawCustomTextWithBckgr(drawPos, "Status: Disabled"); 
+            if(AFK::getStatusMessage()) {
+                drawPos = HetuwMod::drawCustomTextWithBckgr(drawPos, AFK::getStatusMessage());
+            }
+            drawPos = HetuwMod::drawCustomTextWithBckgr(drawPos, "Please turn AFK off, then on to re-enable");
+        }
+	    customFont->hetuwSetScaleFactor(scale);
+    }
+}
+
+// Return true to block command from being proccessed
+bool YummyLife::handlePlayerCommand(char* inCommand){
+    if(strcmp(inCommand, "/AFK") == 0){
+        if(!AFK::isAFK()) AFK::setAFK(true);
+        else              AFK::setAFK(false);
+        return true;
+    }
+    return false;
 }
 
 // Draws the players leaderboars name (if avaliable) at a given position
@@ -455,4 +515,104 @@ void YummyLife::API::parseVersionTag(const char* versionTag, int* major, int* mi
     int parsedMinor = 0;
     sscanf(versionTag, "%d.%d", major, &parsedMinor);
     *minor = parsedMinor;
+}
+
+// Sets flags to wait until item we're holding has changed
+void YummyLife::AFK::wait(){
+    waitingForNotID = HetuwMod::ourLiveObject->holdingID;
+    waitStartTime = HetuwMod::curStepSecondsSince1970;
+    bIsWaiting = true;
+}
+
+int YummyLife::AFK::secondsWaited(){
+    return HetuwMod::curStepSecondsSince1970 - waitStartTime;
+}
+
+void YummyLife::AFK::stopWaiting(){
+    bIsWaiting = false;
+}
+
+// Check and update waiting status based on held item
+bool YummyLife::AFK::updateWaitingStatus(){
+    if(!bIsWaiting) return false; // Return early to prevent redundant checks
+    if(waitingForNotID != HetuwMod::ourLiveObject->holdingID)
+        bIsWaiting = false;
+    return bIsWaiting;
+}
+
+void YummyLife::AFK::step(){
+    if(!is_enabled || !is_afk) return;
+    if(startAfkPos != HetuwMod::ourLiveObject->currentPos) setAFK(false, "Moved, AFK stopped");
+    if (HetuwMod::curStepSecondsSince1970 - startAfkTime > (600)) setEnabled(false, "AFK timeout after 10 minutes"); // 600 seconds = 10 minutes
+    if (updateWaitingStatus()) {
+        if (secondsWaited() > 2) setEnabled(false, "Use backpack timeout");
+        return; // Return early if we're waiting for an item to change
+    }
+    if(!is_enabled || !is_afk) return;
+
+    LiveObject *ourLiveObject = HetuwMod::ourLiveObject;
+
+    // If we don't need to eat, nothing more needs to be done
+    if(ourLiveObject->foodStore > ourLiveObject->maxFoodCapacity - HetuwMod::iAfkHungerThreshold && ourLiveObject->foodStore > 1) return;
+
+    bool holdingItem = (ourLiveObject->holdingID > 0);
+    bool edibleItem = false;
+    float itemSize = 0;
+    if(holdingItem){
+        ObjectRecord* obj = getObject(ourLiveObject->holdingID, true);
+        if(obj) {
+            edibleItem = (obj->foodValue > 0);
+            itemSize = obj->containSize;
+            }
+    }
+
+    // Eat held item
+    if (edibleItem) {
+        HetuwMod::useOnSelf();
+        timesEaten++;
+        numCycles = 0;
+        wait();
+        return;
+    }
+
+    if (!HetuwMod::weAreWearingABackpack()){
+        // Not wearing a backpack, so can't put item away, stop AFK
+        setEnabled(false, "No backpack");
+        return;
+    }
+
+    ObjectRecord *backpackItem = ourLiveObject->clothing.backpack;
+    if(numCycles > backpackItem->numSlots){
+        // We've cycled through all backpack slots, stop AFK
+        setEnabled(false, "Cycled through all backpack slots, no food found");
+        return;
+    }
+
+    if(itemSize > backpackItem->slotSize){
+        // Item is too big for backpack, stop AFK
+        setEnabled(false, "Item too big for backpack");
+        return;
+    }
+
+    // Note: I don't know how to check what items are in our backpack, so I just cycle through them all for now
+    HetuwMod::useBackpack(true, -1);
+    numCycles++;
+    wait();
+}
+
+void YummyLife::AFK::setAFK(bool afk, const char* msg){
+    is_afk = afk;
+    numCycles = 0;
+    is_enabled = true;
+    statusMessage = msg;
+    startAfkPos = HetuwMod::ourLiveObject->currentPos;
+    startAfkTime = HetuwMod::curStepSecondsSince1970;
+    timesEaten = 0;
+    if(msg) std::cout << msg << "\n";
+}
+
+void YummyLife::AFK::setEnabled(bool enable, const char* msg){
+    is_enabled = enable;
+    statusMessage = msg;
+    if(msg) std::cout << msg << "\n";
 }

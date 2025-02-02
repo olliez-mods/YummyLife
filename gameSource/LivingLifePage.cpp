@@ -67,6 +67,7 @@
 #include <string>
 #include "minitech.h"
 #include "yumRebirthComponent.h"
+#include "yummyLife.h"
 
 static ObjectPickable objectPickable;
 
@@ -11779,6 +11780,7 @@ void LivingLifePage::draw( doublePair inViewCenter,
         }
 
 	HetuwMod::livingLifeDraw();
+    YummyLife::livingLifeDraw();
 
 	// minitech
 	float worldMouseX, worldMouseY;
@@ -14905,6 +14907,7 @@ void LivingLifePage::step() {
     
 	minitech::livingLifeStep();
 	HetuwMod::livingLifeStep();
+    YummyLife::livingLifeStep();
 
     if (ourObject != NULL && !yumEvaluatedRebirth) {
         ObjectRecord *o = getObject(ourObject->displayID, true);
@@ -27245,9 +27248,13 @@ void LivingLifePage::keyDown( unsigned char inASCII ) {
                     
                         // a command, don't send to server
                         
+                        // YummyLife: send command to us first to handle
+                        bool yummyLifeBlocked = YummyLife::handlePlayerCommand(typedText);
+
                         const char *filterCommand = "/";
                         
-                        if( strstr( typedText, filterCommand ) == typedText ) {
+                        // YummyLife: if the command is not handled by us, proccess it as usual
+                        if( !yummyLifeBlocked && strstr( typedText, filterCommand ) == typedText ) {
                             // starts with filter command
                             
                             LiveObject *ourLiveObject = getOurLiveObject();

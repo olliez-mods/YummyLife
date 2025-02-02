@@ -12,6 +12,10 @@ class YummyLife {
     public:
         static void drawLeaderboardName(doublePair pos);
 
+        static void livingLifeStep();
+        static void livingLifeDraw();
+        static bool handlePlayerCommand(char* inCommand);
+
         class Gallery{
             public:
                 static void initGallery(const char* galleryDirPath);
@@ -33,6 +37,40 @@ class YummyLife {
                 static const char* getLatestVersionTag(const char* repoTag); // Calls a web API - Expect delays
                 static void parseVersionTag(const char* versionTag, int* major, int* minor);
                 static const char* getGitHubRepoURL();
+        };
+
+        class AFK{
+            static bool is_afk;
+
+            static int numCycles;
+
+            static int timesEaten;
+
+            static doublePair startAfkPos;
+            static time_t startAfkTime;
+
+            static bool is_enabled;
+            static const char* statusMessage;
+
+
+            static time_t waitStartTime;
+            static bool bIsWaiting;
+            static int waitingForNotID;
+            static void wait();
+            static void stopWaiting();
+            static bool updateWaitingStatus();
+            static int secondsWaited();
+
+            public:
+                static void step();
+                static void setAFK(bool afk, const char* msg = nullptr);
+                static void setEnabled(bool disable, const char* msg = nullptr);
+                static bool isEnabled(){return is_enabled;}
+                static const char* getStatusMessage(){return statusMessage;}
+                static time_t getStartAfkTime(){return startAfkTime;}
+                static bool isAFK(){return is_afk;}
+                static bool isWaiting(){return bIsWaiting;}
+                static int getTimesEaten(){return timesEaten;}
         };
 
         static void cleanUp();

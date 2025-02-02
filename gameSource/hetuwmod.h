@@ -328,6 +328,7 @@ public:
 	static bool filterSprites;
 	static vector<int> filteredSprites;
 	static bool bShowDangerTilesWhenRiding;
+	static int iAfkHungerThreshold;
 	// <-
 
 	static int iDrawNames;
@@ -429,7 +430,7 @@ public:
 	static void actionGammaRelativeToMe( int x, int y );
 
 	static void setOurSendPosXY(int &x, int &y);
-	static void useBackpack(bool replace=false);
+	static void useBackpack(bool replace=false, int index=-1);
 	static void useApronPocket();
 	static void usePantsPocket();
 	static void usePocket(int clothingID);
