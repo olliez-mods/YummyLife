@@ -105,9 +105,9 @@ void YummyLife::livingLifeDraw(){
         int afkDuration = HetuwMod::curStepSecondsSince1970 - AFK::getStartAfkTime();
         char afkDurationStr[50];
         if (afkDuration >= 60) {
-            snprintf(afkDurationStr, sizeof(afkDurationStr), " (%.1fm)", afkDuration / 60.0);
+            snprintf(afkDurationStr, sizeof(afkDurationStr), " (%.1f min)", afkDuration / 60.0);
         } else {
-            snprintf(afkDurationStr, sizeof(afkDurationStr), " (%ds)", afkDuration);
+            snprintf(afkDurationStr, sizeof(afkDurationStr), " (%d sec)", afkDuration);
         }
         char afkMessage[100];
         snprintf(afkMessage, sizeof(afkMessage), "You are AFK%s", afkDurationStr);

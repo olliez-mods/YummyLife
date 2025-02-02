@@ -403,7 +403,7 @@ void HetuwMod::init() {
 	bFilterSprites = false;
 	vFilteredSprites = {"592", "593", "594", "595", "596", "597", "598", "599", "600"};
 	bShowDangerTilesWhenRiding = false;
-	iAfkHungerThreshold = 8;
+	iAfkHungerThreshold = 6;
 
 	iDrawNames = 1;
 	bDrawCords = true;
