@@ -1063,6 +1063,7 @@ class LivingLifePage : public GamePage, public ActionListener {
 
 		public: // hetuw mod
         LiveObject *getOurLiveObject();
+        void publicDisplayGlobalMessage( const char *inMessage ); // YummyLife: For testing
         protected: // hetuw mod
 
         void clearLiveObjects();

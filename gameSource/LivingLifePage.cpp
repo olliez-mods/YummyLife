@@ -13335,8 +13335,12 @@ doublePair LivingLifePage::getPlayerPos( LiveObject *inPlayer ) {
     return inPlayer->currentPos;
     }
 
-
-
+// YummyLife: Public method for this
+void LivingLifePage::publicDisplayGlobalMessage( const char *inMessage ) {
+    char* modifiableMsg = strdup(inMessage);
+    displayGlobalMessage(const_cast<char*>(inMessage));
+    free(modifiableMsg);
+}
 
 void LivingLifePage::displayGlobalMessage( char *inMessage ) {
     
