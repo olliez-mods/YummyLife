@@ -7,6 +7,8 @@ typedef struct doublePair {
         double y;
     } doublePair;
 
+bool operator!=(const doublePair& lhs, const doublePair& rhs);
+bool operator==(const doublePair& lhs, const doublePair& rhs);
 
 doublePair add( doublePair inP, double inV );
 

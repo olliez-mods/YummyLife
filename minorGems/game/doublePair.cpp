@@ -2,6 +2,13 @@
 
 #include <math.h>
 
+bool operator!=(const doublePair& lhs, const doublePair& rhs) {
+    return lhs.x != rhs.x || lhs.y != rhs.y;
+}
+
+bool operator==(const doublePair& lhs, const doublePair& rhs) {
+    return lhs.x == rhs.x && lhs.y == rhs.y;
+}
 
 doublePair add( doublePair inP, double inV ) {
     inP.x += inV;
