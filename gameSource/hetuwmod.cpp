@@ -2904,10 +2904,11 @@ void HetuwMod::drawPlayerNames( LiveObject* player ) {
 		if (it != Phex::lifeIdToProfiles.end()) {
 			const Phex::LifeProfile& profile = it->second;
 			// Profile exists
-			const std::string& displayName = profile.getDisplayName();
-			std::replace(displayName.begin(), displayName.end(), '_', ' ');	
+			std::string displayName = profile.getDisplayName();
+			std::replace(displayName.begin(), displayName.end(), '_', ' '); // Replace underscores with spaces
 			char profile_name[48];
 			strncpy(profile_name, displayName.c_str(), sizeof(profile_name) - 1);
+			profile_name[sizeof(profile_name) - 1] = '\0'; // Ensure null-termination
 			double t_scale = customFont->hetuwGetScaleFactor();
 			customFont->hetuwSetScaleFactor(t_scale * 0.5);
 			float textWidth = customFont->measureString(profile_name);
