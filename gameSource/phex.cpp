@@ -19,6 +19,8 @@ bool Phex::lifeStarted = false;
 std::unordered_map<std::string, Phex::ServerCommand> Phex::serverCommands;
 std::unordered_map<std::string, Phex::ChatCommand> Phex::chatCommands;
 
+int Phex::phexServerVersion = 7; // YummyLife: assume version 7 until we receive a version command
+
 char Phex::chatServerCmdChar = '/';
 
 char Phex::chatCmdChar = '.';
@@ -27,7 +29,7 @@ std::string Phex::strCmdChar;
 std::string Phex::publicHash = "";
 std::unordered_map<std::string, Phex::User> Phex::users;
 std::unordered_map<int, std::string> Phex::playerIdToHash;
-std::unordered_map<int, Phex::LifeProfile> Phex::lifeIdToProfile;
+std::unordered_map<int, Phex::LifeProfile> Phex::lifeIdToProfiles;
 std::unordered_set<std::string> Phex::blockedUsers;
 
 bool Phex::hasFocus = false;
@@ -356,7 +358,14 @@ void Phex::initServerCommands() {
 }
 
 void Phex::serverCmdVERSION(std::vector<std::string> input) {
-
+	try {
+		phexServerVersion = stoi(input[1]);
+	} catch (std::exception const & ex){
+		printf("Phex EXCEPTION when receiving VERSION command\n");
+		printf("Phex command: %s\n", joinStr(input, " ", 0).c_str());
+		printf("Phex EXCEPTION: %s\n", ex.what());
+		return;
+	}
 }
 
 void Phex::serverCmdHASH(std::vector<std::string> input) {
@@ -605,11 +614,11 @@ void Phex::serverCmdLIFE_PROFILE(std::vector<std::string> input) {
 
 	// Delete the profile if requested
 	if (deleteProfile) {
-		lifeIdToProfile.erase(life_id);
+		lifeIdToProfiles.erase(life_id);
 		return;
 	}
 
-	LifeProfile &profile = lifeIdToProfile[life_id];
+	LifeProfile &profile = lifeIdToProfiles[life_id];
 
 	// Go over the rest of the parameters and set the profile fields
 	for (size_t i = 4; i < input.size(); ++i) {
@@ -935,12 +944,12 @@ void Phex::createUser(std::string &hash, bool active) {
 }
 
 void Phex::createLifeProfile(int lifeID, std::string channel) {
-    if (lifeIdToProfile.find(lifeID) == lifeIdToProfile.end()) {
+    if (lifeIdToProfiles.find(lifeID) == lifeIdToProfiles.end()) {
         LifeProfile newProfile;
         newProfile.lifeID = lifeID;
 		newProfile.channel = channel;
         // Insert the new profile into the map
-        lifeIdToProfile[lifeID] = newProfile;
+        lifeIdToProfiles[lifeID] = newProfile;
     }
 }
 
@@ -1239,6 +1248,9 @@ void Phex::joinChannel(std::string inChannelName) {
 	if (!HetuwMod::phexSkipTOS) {
 		tcp.send("USER_CMD tos");
 	}
+	lifeIdToProfiles.clear(); // Sendinf GET_LIFE_PROFILES will get us all of them again
+	// First Phex protocol that supports life profiles is 8; PhexPlus
+	tcp.send("GET_LIFE_PROFILES "+channelName);
 }
 
 void Phex::sendServerLife(int life) {

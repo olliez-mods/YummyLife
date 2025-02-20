@@ -261,6 +261,8 @@ public:
 	static std::unordered_map<std::string, ServerCommand> serverCommands;
 	static std::unordered_map<std::string, ChatCommand> chatCommands;
 
+	static int phexServerVersion;
+
 	static char chatServerCmdChar;
 
 	static char chatCmdChar;
@@ -270,7 +272,7 @@ public:
 	static std::unordered_map<std::string, User> users;
 	static std::unordered_map<int, std::string> playerIdToHash;
 	// If switching channels, old profiles will exist, but channel attribute can be used to filter
-	static std::unordered_map<int, Phex::LifeProfile> lifeIdToProfile; // YummyLife
+	static std::unordered_map<int, Phex::LifeProfile> lifeIdToProfiles; // YummyLife
 	static std::unordered_set<std::string> blockedUsers;
 	
 	static bool hasFocus;

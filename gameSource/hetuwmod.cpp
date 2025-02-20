@@ -2898,20 +2898,24 @@ void HetuwMod::drawPlayerNames( LiveObject* player ) {
 
 	// YummyLife: Draw Phex Profile data on players it's available for
 	setDrawColor( 0.0, 0.0, 0.0, 0.8 );
-	playerNamePos.y -= 32;
+	playerNamePos.y -= 24;
 	if (true) {
-		auto it = Phex::lifeIdToProfile.find(player->id);
-		if (it != Phex::lifeIdToProfile.end()) {
+		auto it = Phex::lifeIdToProfiles.find(player->id);
+		if (it != Phex::lifeIdToProfiles.end()) {
 			const Phex::LifeProfile& profile = it->second;
 			// Profile exists
 			const std::string& displayName = profile.getDisplayName();
+			std::replace(displayName.begin(), displayName.end(), '_', ' ');	
 			char profile_name[48];
 			strncpy(profile_name, displayName.c_str(), sizeof(profile_name) - 1);
+			double t_scale = customFont->hetuwGetScaleFactor();
+			customFont->hetuwSetScaleFactor(t_scale * 0.5);
 			float textWidth = customFont->measureString(profile_name);
-			drawRect(playerNamePos, textWidth / 2 + 6, 16);
+			drawRect(playerNamePos, textWidth / 2 + 6, 8);
 			const float* color = profile.getTagColor();
 			setDrawColor(color[0], color[1], color[2], color[3]);
 			customFont->drawString(profile_name, playerNamePos, alignCenter);
+			customFont->hetuwSetScaleFactor(t_scale);
 		}
 	}
 }
