@@ -27,6 +27,7 @@ std::string Phex::strCmdChar;
 std::string Phex::publicHash = "";
 std::unordered_map<std::string, Phex::User> Phex::users;
 std::unordered_map<int, std::string> Phex::playerIdToHash;
+std::unordered_map<int, Phex::LifeProfile> Phex::lifeIdToProfile;
 std::unordered_set<std::string> Phex::blockedUsers;
 
 bool Phex::hasFocus = false;
@@ -348,6 +349,10 @@ void Phex::initServerCommands() {
 	serverCommands["JASON_AUTH"].minWords = 2;
 	serverCommands["IDK"].func = serverCmdIDK;
 	serverCommands["IDK"].minWords = 1;
+
+	// YummyLife: New PhexPlus (version 8) commands
+	serverCommands["LIFE_PROFILE"].func = serverCmdLIFE_PROFILE;
+	serverCommands["LIFE_PROFILE"].minWords = 4;
 }
 
 void Phex::serverCmdVERSION(std::vector<std::string> input) {
@@ -544,7 +549,7 @@ void Phex::serverCmdGET_ALL_CURSENAMES(std::vector<std::string> input) {
 		if (!obj) continue;
 
 		const char* cursename = o->curseName;
-		if (not cursename || strlen(cursename) <= 1) continue;
+		if (!cursename || strlen(cursename) <= 1) continue;
 
 		str += to_string(o->id) + " " + cursename + ",";
 	}
@@ -588,6 +593,46 @@ void Phex::serverCmdJASON_AUTH(std::vector<std::string> input) {
 
 	delete [] pureKey;
 	delete [] keyHash;
+}
+
+// LIFE_PROFILE <life_id> <delete> <channel> [ti=title] [op=opinion] [tc=r,g,b,a] [si=speacialId] [cn=cursename] [ln=leaderboardName] [li=leaderboardId]
+void Phex::serverCmdLIFE_PROFILE(std::vector<std::string> input) {
+	printf("Packet: %s\n", joinStr(input).c_str());
+	int life_id = stoi(input[1]);
+	int deleteProfile = stoi(input[2]);
+	std::string channel = input[3];
+	createLifeProfile(life_id, channel);
+
+	// Delete the profile if requested
+	if (deleteProfile) {
+		lifeIdToProfile.erase(life_id);
+		return;
+	}
+
+	LifeProfile &profile = lifeIdToProfile[life_id];
+
+	// Go over the rest of the parameters and set the profile fields
+	for (size_t i = 4; i < input.size(); ++i) {
+		std::string param = input[i];
+
+		// Make sure the parameter is in the form "key=value"
+        size_t pos = param.find('=');
+        if (pos == std::string::npos) {
+            continue; // Invalid parameter format
+        }
+
+        std::string key = param.substr(0, pos);
+        std::string value = param.substr(pos + 1);
+
+        if (key == "ti") profile.title = value;
+        else if (key == "op") profile.opinion = std::stoi(value);
+        else if (key == "tc")
+			sscanf(value.c_str(), "%f,%f,%f,%f", &profile.tagColor[0], &profile.tagColor[1], &profile.tagColor[2], &profile.tagColor[3]);
+        else if (key == "si") profile.specialID = std::stoi(value);
+        else if (key == "cn") profile.cursename = value;
+        else if (key == "ln") profile.leaderboardname = value;
+        else if (key == "li") profile.leaderboardID = value;
+	}
 }
 
 void Phex::serverCmdIDK(std::vector<std::string> input) {
@@ -887,6 +932,16 @@ void Phex::createUser(std::string &hash, bool active) {
 	if (active) {
 		users[hash].lastSeen = time(NULL);
 	}
+}
+
+void Phex::createLifeProfile(int lifeID, std::string channel) {
+    if (lifeIdToProfile.find(lifeID) == lifeIdToProfile.end()) {
+        LifeProfile newProfile;
+        newProfile.lifeID = lifeID;
+		newProfile.channel = channel;
+        // Insert the new profile into the map
+        lifeIdToProfile[lifeID] = newProfile;
+    }
 }
 
 std::string* Phex::getUserDisplayName(std::string &hash) {

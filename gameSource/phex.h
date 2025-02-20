@@ -1,7 +1,8 @@
 #ifndef PHEX_H
 #define PHEX_H
 
-#define PHEX_VERSION 5
+// YummyLife: Phex version 8 is PhexPlus
+#define PHEX_VERSION 8
 #define PHEX_CHAR_END 4
 #define PHEX_MAX_INPUT_STR_LENGTH 127
 
@@ -221,6 +222,38 @@ public:
 		time_t lastSeen = 0;
 	};
 
+	// YummyLife: Explains data about a specific life
+	struct LifeProfile {
+		int lifeID = -1;
+		std::string channel = "";
+		std::string title = "";
+		int opinion = 0; // -1 = bad, 0 = neutral, 1 = good
+		float tagColor[4] = {0, 0, 0, 0}; // Overwrites opinion if not 0
+		int specialID = -1; // Certain individuals have special things
+
+		std::string cursename = "";
+		std::string leaderboardname = "";
+		std::string leaderboardID = "";
+
+		const std::string getDisplayName() const {
+			if (title.length() > 0) return title;
+			if (leaderboardname.length() > 0) return leaderboardname;
+			if (cursename.length() > 0) return cursename;
+			return "";
+		}
+
+		const float* getTagColor() const {
+			static const float defaultColor[4] = {1, 1, 1, 1};
+			static const float badColor[4] = {1, 0, 0, 1};
+			static const float goodColor[4] = {0, 1, 0, 1};
+
+			if (tagColor[0] > 0 || tagColor[1] > 0 || tagColor[2] > 0 || tagColor[3] > 0) return tagColor;
+			if (opinion == -1) return badColor;
+			if (opinion == 1) return goodColor;
+			return defaultColor;
+		}
+	};
+
 	static TCPConnection tcp;
 	static bool bSendFirstMsg;
 	static bool lifeStarted;
@@ -236,6 +269,8 @@ public:
 	static std::string publicHash;
 	static std::unordered_map<std::string, User> users;
 	static std::unordered_map<int, std::string> playerIdToHash;
+	// If switching channels, old profiles will exist, but channel attribute can be used to filter
+	static std::unordered_map<int, Phex::LifeProfile> lifeIdToProfile; // YummyLife
 	static std::unordered_set<std::string> blockedUsers;
 	
 	static bool hasFocus;
@@ -335,6 +370,7 @@ public:
 	static void serverCmdGET_ALL_CURSENAMES(std::vector<std::string> input);
 	static void serverCmdJASON_AUTH(std::vector<std::string> input);
 	static void serverCmdIDK(std::vector<std::string> input);
+	static void serverCmdLIFE_PROFILE(std::vector<std::string> input); // Phex v8
 
 	static void chatCmdHELP(std::vector<std::string> input);
 	static void chatCmdNAME(std::vector<std::string> input);
@@ -360,6 +396,7 @@ public:
 	static std::string wrapText(std::string text);
 	static void drawString(std::string str, doublePair startPos);
 
+	static void createLifeProfile(int lifeID, std::string channel);
 	static void createUser(std::string &hash, bool active);
 	static std::string* getUserDisplayName(std::string &hash);
 
