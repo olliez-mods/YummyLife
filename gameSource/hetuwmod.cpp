@@ -5303,6 +5303,10 @@ void HetuwMod::drawHelp() {
 	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
 	drawPos.y -= lineHeight;
 
+	snprintf(str, sizeof(str), "SHIFT+M - OPEN PLAYER MAP");
+	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
+	drawPos.y -= lineHeight;
+
 	if (connectedToMainServer && arcRunningSince > 0) {
 		drawPos = lastScreenViewCenter;
 		drawPos.x += viewWidth/2 - 440*guiScale;
