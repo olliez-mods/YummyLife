@@ -1250,7 +1250,12 @@ void Phex::joinChannel(std::string inChannelName) {
 	}
 	lifeIdToProfiles.clear(); // Sendinf GET_LIFE_PROFILES will get us all of them again
 	// First Phex protocol that supports life profiles is 8; PhexPlus
-	tcp.send("GET_LIFE_PROFILES "+channelName);
+	if(HetuwMod::bRequestLifeProfiles){
+		tcp.send("GET_LIFE_PROFILES "+channelName+" 1");
+	}
+	if(HetuwMod::bIdentifyMyself){
+		tcp.send("USER_CMD identify");
+	}
 }
 
 void Phex::sendServerLife(int life) {

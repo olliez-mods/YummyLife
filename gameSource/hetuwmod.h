@@ -329,6 +329,8 @@ public:
 	static vector<int> filteredSprites;
 	static bool bShowDangerTilesWhenRiding;
 	static int iAfkHungerThreshold;
+	static bool bRequestLifeProfiles;
+	static bool bIdentifyMyself;
 	// <-
 
 	static int iDrawNames;

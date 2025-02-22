@@ -154,6 +154,8 @@ vector<string> vFilteredSprites;
 vector<int> HetuwMod::filteredSprites;
 bool HetuwMod::bShowDangerTilesWhenRiding;
 int HetuwMod::iAfkHungerThreshold;
+bool HetuwMod::bRequestLifeProfiles;
+bool HetuwMod::bIdentifyMyself;
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -404,6 +406,8 @@ void HetuwMod::init() {
 	vFilteredSprites = {"592", "593", "594", "595", "596", "597", "598", "599", "600"};
 	bShowDangerTilesWhenRiding = false;
 	iAfkHungerThreshold = 6;
+	bRequestLifeProfiles = true;
+	bIdentifyMyself = false;
 
 	iDrawNames = 1;
 	bDrawCords = true;
@@ -893,6 +897,8 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("enable_sprite_filter", bFilterSprites, {postComment: " // Filtering enabled - can be toggled in settings menu"});
 	yumConfig::registerSetting("render_all_danger_tiles_while_riding", bShowDangerTilesWhenRiding, {postComment: " // Always render red box over danger tiles even when riding a vehicle"});
 	yumConfig::registerSetting("AFK_auto_eat_hunger_threshold", iAfkHungerThreshold, {postComment: " // How many pips below max food triggers eating. We always eat if below 2 pips"});
+	yumConfig::registerSetting("request_life_profiles", bRequestLifeProfiles, {preComment:"\n", postComment: " // Request to receive data about lives when on BS2"});
+	yumConfig::registerSetting("identify_myself", bIdentifyMyself, {postComment: " // Let Phex identify my profile to others"});
 	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {
