@@ -304,8 +304,9 @@ bool HetuwMod::isMovingInVog = false;
 HetuwMod::IntervalTimed HetuwMod::intervalVogMove(0.1);
 
 bool HetuwMod::phexIsEnabled = true;
-static const char *defaultPhexIP = "chat.onelifeglobal.chat";
-std::string HetuwMod::phexIp = defaultPhexIP;
+static const char *tuxPhexIP = "chat.onelifeglobal.chat";
+static const char *yummyPhexIP = "phex.antinoid.com";
+std::string HetuwMod::phexIp = yummyPhexIP;
 int HetuwMod::phexPort = 6567;
 bool HetuwMod::debugPhex = false;
 bool HetuwMod::phexStartOffline = false;
@@ -816,7 +817,7 @@ static void validateFilteredIDs(std::vector<std::string>& ids) {
 }
 
 void HetuwMod::initSettings() {
-	const int cfgVersionLatest = 6;
+	const int cfgVersionLatest = 7;
 	static int cfgVersionActive = cfgVersionLatest;
 
 	yumConfig::registerSetting("cfg_version", cfgVersionActive, {preComment: "// this file will be created whenever you start the mod\n// if you want to reset this file, just delete it\n\n"});
@@ -1018,7 +1019,11 @@ void HetuwMod::initSettings() {
 	}
 	if (cfgVersionActive < 5) {
 		// version 5 migrated from phexonelife.duckdns.org
-		phexIp = defaultPhexIP;
+		phexIp = tuxPhexIP;
+	}
+	if (cfgVersionActive < 7) {
+		// Version 7 migrate from chat.onelifeglobal.chat
+		phexIp = yummyPhexIP;
 	}
 	if (compatPhexForceLeft) {
 		phexSide = PHEX_ON_LEFT;
