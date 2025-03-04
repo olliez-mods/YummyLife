@@ -227,7 +227,7 @@ public:
 		int lifeID = -1;
 		std::string channel = "";
 		std::string title = "";
-		int opinion = 0; // -1 = bad, 0 = neutral, 1 = good
+		int opinion = 0; // -2 = bad, -1 = suspicious, 0 = neutral, 1 = good
 		float tagColor[4] = {0, 0, 0, 0}; // Overwrites opinion if not 0
 		int specialID = -1; // Certain individuals have special things
 
@@ -245,10 +245,12 @@ public:
 		const float* getTagColor() const {
 			static const float defaultColor[4] = {1, 1, 1, 1};
 			static const float badColor[4] = {1, 0, 0, 1};
+			static const float suspiciousColor[4] = {1, 0.5, 0, 1};
 			static const float goodColor[4] = {0, 1, 0, 1};
 
 			if (tagColor[0] > 0 || tagColor[1] > 0 || tagColor[2] > 0 || tagColor[3] > 0) return tagColor;
-			if (opinion == -1) return badColor;
+			if (opinion == -2) return badColor;
+			if (opinion == -1) return suspiciousColor;
 			if (opinion == 1) return goodColor;
 			return defaultColor;
 		}
