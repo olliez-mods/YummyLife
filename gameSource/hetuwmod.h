@@ -324,6 +324,7 @@ public:
 
 	// YummyLife ->
 	static int iDrawPhexNames;
+	static bool bDrawLeaderboardNames;
 	static bool bStoreEatenYums;
 	static bool bGalleryEnabled;
 	static bool bCheckGitHubForUpdates;
@@ -472,6 +473,8 @@ public:
 	static bool tileHasClosedDoor(int x, int y);
 	static bool dirIsSafeToWalk(int x, int y, int dir);
 	static bool findNextMove(int &x, int &y, int dir);
+
+	static void drawPhexLeaderboardName(doublePair pos, int lifeId, float scale);
 
 	static void setOurFamilyName(const char* lastName);
 	static void getOurFamilyName();

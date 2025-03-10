@@ -147,6 +147,7 @@ time_t HetuwMod::stopAutoRoadRunTime;
 bool HetuwMod::activateAutoRoadRun;
 
 int HetuwMod::iDrawPhexNames;
+bool HetuwMod::bDrawLeaderboardNames;
 bool HetuwMod::bStoreEatenYums;
 bool HetuwMod::bGalleryEnabled;
 bool HetuwMod::bCheckGitHubForUpdates;
@@ -402,6 +403,7 @@ void HetuwMod::init() {
 	bDrawHomeCords = false;
 
 	iDrawPhexNames = 1;
+	bDrawLeaderboardNames = true;
 	bStoreEatenYums = true;
 	bGalleryEnabled = true;
 	bCheckGitHubForUpdates = true;
@@ -896,6 +898,7 @@ void HetuwMod::initSettings() {
 		{"always", 2}
 	};
 	yumConfig::registerMappedSetting("init_show_phex_names", iDrawPhexNames, drawPhexNameMap, {preComment: "\n// ======== YummyLife ========\n", postComment: " // none, flash, always"});
+	yumConfig::registerSetting("init_display_leaderboard_names", bDrawLeaderboardNames, {postComment: " // Draw leaderboard names given by PhexPlus server"});
 	yumConfig::registerSetting("init_store_eaten_yums", bStoreEatenYums, {postComment: " // Store the eaten foods in 'lastYums.txt' so findYum works accross restarts"});
 	yumConfig::registerSetting("init_enable_gallery", bGalleryEnabled, {postComment: " // Should the main menu gallery be enabled"});
 	yumConfig::registerSetting("init_check_github", bCheckGitHubForUpdates, {postComment: " // Automatically check for updates on GitHub"});
@@ -2868,6 +2871,31 @@ bool HetuwMod::itsTimeToDrawPhexName() {
 	return stepCount%200 < 130;
 }
 
+// YummyLife: Draw a Phex Leaderboard name of an id at a position
+void HetuwMod::drawPhexLeaderboardName(doublePair pos, int lifeId, float scale){
+	setDrawColor( 0.0, 0.0, 0.0, 0.8 );
+	auto it = Phex::lifeIdToProfiles.find(lifeId);
+	if (it != Phex::lifeIdToProfiles.end()) {
+		const Phex::LifeProfile& profile = it->second;
+		// Profile exists
+		std::string displayName = profile.getDisplayName();
+		std::replace(displayName.begin(), displayName.end(), '_', ' '); // Replace underscores with spaces
+		// This needs to be on when drawing with handwritten font
+		std::transform(displayName.begin(), displayName.end(), displayName.begin(), ::toupper);
+
+		char profile_name[48];
+		strncpy(profile_name, displayName.c_str(), sizeof(profile_name) - 1);
+		profile_name[sizeof(profile_name) - 1] = '\0'; // Ensure null-termination
+
+		float textWidth = livingLifePage->hetuwMeasureScaledHandwritingFont( profile_name, scale );
+		const float* color = profile.getTagColor();
+
+		drawRect(pos, textWidth / 2 + 6*scale, 16*scale);
+		setDrawColor(color[0], color[1], color[2], color[3]);
+		livingLifePage->hetuwDrawScaledHandwritingFont( profile_name, pos, scale, alignCenter );
+	}
+}
+
 void HetuwMod::drawPlayerNames( LiveObject* player ) {
 	if ( bHidePlayers ) return;
 	if ( !player->name ) return;
@@ -2913,27 +2941,9 @@ void HetuwMod::drawPlayerNames( LiveObject* player ) {
 	}
 
 	// YummyLife: Draw Phex Profile data on players it's available for
-	setDrawColor( 0.0, 0.0, 0.0, 0.8 );
 	playerNamePos.y -= 24;
-	if (true) {
-		auto it = Phex::lifeIdToProfiles.find(player->id);
-		if (it != Phex::lifeIdToProfiles.end()) {
-			const Phex::LifeProfile& profile = it->second;
-			// Profile exists
-			std::string displayName = profile.getDisplayName();
-			std::replace(displayName.begin(), displayName.end(), '_', ' '); // Replace underscores with spaces
-			char profile_name[48];
-			strncpy(profile_name, displayName.c_str(), sizeof(profile_name) - 1);
-			profile_name[sizeof(profile_name) - 1] = '\0'; // Ensure null-termination
-			double t_scale = customFont->hetuwGetScaleFactor();
-			customFont->hetuwSetScaleFactor(t_scale * 0.5);
-			float textWidth = customFont->measureString(profile_name);
-			drawRect(playerNamePos, textWidth / 2 + 6, 8);
-			const float* color = profile.getTagColor();
-			setDrawColor(color[0], color[1], color[2], color[3]);
-			customFont->drawString(profile_name, playerNamePos, alignCenter);
-			customFont->hetuwSetScaleFactor(t_scale);
-		}
+	if (bRequestLifeProfiles && bDrawLeaderboardNames) {
+		drawPhexLeaderboardName(playerNamePos, player->id, 0.6);
 	}
 }
 
@@ -2982,6 +2992,11 @@ void HetuwMod::drawHighlightedPlayer() {
 		playerNamePos.y -= 32*guiScale;
 	}
 
+	if(bRequestLifeProfiles){
+		drawPhexLeaderboardName(playerNamePos, player->id, guiScale);
+		playerNamePos.y -= 32*guiScale;
+	}
+
 	char str[16]; char age[8];
 	livingLifePage->hetuwGetStringAge( age, player );
 	char gender = getObject(player->displayID)->male ? 'M' : 'F';
@@ -2991,8 +3006,6 @@ void HetuwMod::drawHighlightedPlayer() {
 	drawRect( playerNamePos, textWidth/2 + 6*guiScale, 16*guiScale );
 	setDrawColor( playerNameColor[0], playerNameColor[1], playerNameColor[2], 1 );
 	livingLifePage->hetuwDrawScaledHandwritingFont( str, playerNamePos, guiScale, alignCenter );
-
-	// Add raw logic for leaderboard name
 }
 
 void HetuwMod::useTileRelativeToMe( int x, int y ) {
