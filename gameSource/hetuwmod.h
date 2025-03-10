@@ -312,6 +312,8 @@ public:
 
 	static unsigned char charKey_ConfirmExit;
 
+	static unsigned char charKey_PrintOholCurseProfile;
+
 	static bool isCharKey( unsigned char c, unsigned char charKey );
 
 	static time_t lastSpecialEmote;

@@ -120,6 +120,8 @@ unsigned char HetuwMod::charKey_MapZoomOut = 'o';
 unsigned char HetuwMod::charKey_ConfirmExit = '%';
 unsigned char HetuwMod::charKey_Minitech = 'v';
 
+unsigned char HetuwMod::charKey_PrintOholCurseProfile = 'o';
+
 bool HetuwMod::upKeyDown;
 bool HetuwMod::downKeyDown;
 bool HetuwMod::leftKeyDown;
@@ -869,6 +871,9 @@ void HetuwMod::initSettings() {
 
 	yumConfig::registerSetting("key_phex", charKey_Phex, {preComment: "\n"});
 	yumConfig::registerSetting("key_minitech", charKey_Minitech);
+
+	// YummyLife
+	yumConfig::registerSetting("key_print_oholcurse_profile", charKey_PrintOholCurseProfile, {preComment: "\n"});
 
 	const char *photoInstructions =
 	    "\n"
@@ -2986,6 +2991,8 @@ void HetuwMod::drawHighlightedPlayer() {
 	drawRect( playerNamePos, textWidth/2 + 6*guiScale, 16*guiScale );
 	setDrawColor( playerNameColor[0], playerNameColor[1], playerNameColor[2], 1 );
 	livingLifePage->hetuwDrawScaledHandwritingFont( str, playerNamePos, guiScale, alignCenter );
+
+	// Add raw logic for leaderboard name
 }
 
 void HetuwMod::useTileRelativeToMe( int x, int y ) {
@@ -3486,6 +3493,14 @@ bool HetuwMod::livingLifeKeyDown(unsigned char inASCII) {
 //		return true;
 //	}
 
+	// YummyLife
+	if (!commandKey && isCharKey(inASCII, charKey_PrintOholCurseProfile)) {
+		if(bRequestLifeProfiles && phexIsEnabled) {
+			if(!shiftKey) Phex::printLastOholCurseProfile();
+			else Phex::printLastOholCurseProfile(true);
+			return true;
+		}
+	}
 	if (!commandKey && isCharKey(inASCII, charKey_ShowHelp)) {
 		bDrawHelp = !bDrawHelp;
 		return true;

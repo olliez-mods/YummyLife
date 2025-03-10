@@ -1025,6 +1025,34 @@ std::string Phex::wrapText(std::string text) {
 	return wrappedText;
 }
 
+// 'detailed' not implemented
+// YummyLife: Ask PhexPlus to send info (in form of SAY_RAW) about a cursename we hover over
+void Phex::printLastOholCurseProfile(bool detailed) {
+	if(!HetuwMod::bRequestLifeProfiles) return;
+	double timeSinceLastHover = game_getCurrentTime() - HetuwMod::timeLastPlayerHover;
+	int lifeID = HetuwMod::selectedPlayerID;
+
+	// Too long since last hover or no player selected
+	if(timeSinceLastHover > 2 || lifeID <= 0) {
+		addCmdMessageToChatWindow("You need to hover over a player", CMD_MSG_ERROR);
+		return;
+	}
+
+	LifeProfile &profile = lifeIdToProfiles[HetuwMod::selectedPlayerID];
+	std::string n = profile.cursename;
+	if(profile.lifeID == -1 || n.length() == 0) {
+		addCmdMessageToChatWindow("No profile found for this player", CMD_MSG_ERROR);
+		return; // No profile found
+	}
+
+	std::string life_id_str = std::to_string(lifeID);
+
+	std::string msg = "Requesting profile data";
+	addCmdMessageToChatWindow(msg);
+
+	tcp.send("USER_CMD getprofile " + n);
+}
+
 void Phex::ChatWindow::addElement(ChatElement element) {
 	doublePair pos = {rec[0], rec[1]};
 	doublePair widthHeight = getStringWidthHeight(pos, element.textToDraw);

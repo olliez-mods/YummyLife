@@ -404,6 +404,8 @@ public:
 	static void createUser(std::string &hash, bool active);
 	static std::string* getUserDisplayName(std::string &hash);
 
+	static void printLastOholCurseProfile(bool detailed = false);
+
 	static time_t strToTimeT(std::string str);
 	static void addCmdMessageToChatWindow(std::string msg, int type = 1);
 
