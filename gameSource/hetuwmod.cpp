@@ -2872,7 +2872,8 @@ bool HetuwMod::itsTimeToDrawPhexName() {
 }
 
 // YummyLife: Draw a Phex Leaderboard name of an id at a position
-void HetuwMod::drawPhexLeaderboardName(doublePair pos, int lifeId, float scale){
+// Returns True if it drew something
+bool HetuwMod::drawPhexLeaderboardName(doublePair pos, int lifeId, float scale){
 	setDrawColor( 0.0, 0.0, 0.0, 0.8 );
 	auto it = Phex::lifeIdToProfiles.find(lifeId);
 	if (it != Phex::lifeIdToProfiles.end()) {
@@ -2893,7 +2894,10 @@ void HetuwMod::drawPhexLeaderboardName(doublePair pos, int lifeId, float scale){
 		drawRect(pos, textWidth / 2 + 6*scale, 16*scale);
 		setDrawColor(color[0], color[1], color[2], color[3]);
 		livingLifePage->hetuwDrawScaledHandwritingFont( profile_name, pos, scale, alignCenter );
+
+		return true;
 	}
+	return false;
 }
 
 void HetuwMod::drawPlayerNames( LiveObject* player ) {
@@ -2993,8 +2997,8 @@ void HetuwMod::drawHighlightedPlayer() {
 	}
 
 	if(bRequestLifeProfiles){
-		drawPhexLeaderboardName(playerNamePos, player->id, guiScale);
-		playerNamePos.y -= 32*guiScale;
+		bool drewProfileName = drawPhexLeaderboardName(playerNamePos, player->id, guiScale);
+		if(drewProfileName) playerNamePos.y -= 32*guiScale; // Only move down if we drew the name
 	}
 
 	char str[16]; char age[8];

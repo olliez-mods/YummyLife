@@ -474,7 +474,7 @@ public:
 	static bool dirIsSafeToWalk(int x, int y, int dir);
 	static bool findNextMove(int &x, int &y, int dir);
 
-	static void drawPhexLeaderboardName(doublePair pos, int lifeId, float scale);
+	static bool drawPhexLeaderboardName(doublePair pos, int lifeId, float scale);
 
 	static void setOurFamilyName(const char* lastName);
 	static void getOurFamilyName();
