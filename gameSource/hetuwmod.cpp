@@ -3512,6 +3512,8 @@ bool HetuwMod::livingLifeKeyDown(unsigned char inASCII) {
 
 	// YummyLife
 	if (!commandKey && isCharKey(inASCII, charKey_PrintOholCurseProfile)) {
+		// These two keys 'o' overlap in v430.6, so we let drawMap take priority
+		if(not (charKey_PrintOholCurseProfile == charKey_MapZoomOut && bDrawMap))
 		if(bRequestLifeProfiles && phexIsEnabled) {
 			if(!shiftKey) Phex::printLastOholCurseProfile();
 			else Phex::printLastOholCurseProfile(true);
