@@ -27269,9 +27269,8 @@ void LivingLifePage::keyDown( unsigned char inASCII ) {
                                 sendToServerSocket( message );
                                 delete [] message;
                                 }
-                            else if( commandTyped( typedText, "dieCommand" ) 
-                                     &&
-                                     computeCurrentAge( ourLiveObject ) < 2 ) {
+                            // YummyLife: Removed age limitation on /DIE for people on custom servers
+                            else if( commandTyped( typedText, "dieCommand" ) ) {
                                 // die command issued from baby
                                 char *message = 
                                     autoSprintf( "DIE 0 0#" );
