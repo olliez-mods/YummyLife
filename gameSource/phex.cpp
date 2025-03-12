@@ -986,11 +986,13 @@ static std::string trimTrailingWhitespace(const std::string& str) {
     return str.substr(0, end + 1);
 }
 
+// Note: We do not break up long words that don't fit on a line. We let other processes handle that
 // YummyLife: Implement simple text-wrapping onto old code
 std::string Phex::wrapText(std::string text) {
 	size_t textLen = text.length();
 
-	double singleLineHeight = getStringWidthHeight({0, 0}, "Ap").y;
+	// 'Ig' goes to max heigh and low, so we can use it to get the max height of a single line
+	double singleLineHeight = getStringWidthHeight({0, 0}, "Ig").y;
 
 	std::string wrappedText = "";
 
@@ -1011,8 +1013,8 @@ std::string Phex::wrapText(std::string text) {
 			i++;
 		}
 
-		// If the word fits on the current line put it in
-		if(getStringWidthHeight({0, 0}, line + word).y <= singleLineHeight*1.1) {
+		// If the word fits on the current line put it in; 'Wi' is just an extra bit of length to make sure the word ALWAYS fits
+		if(getStringWidthHeight({0, 0}, line + word + "Wi").y <= singleLineHeight*1.1) {
 			line += word;
 		} else {
 			// If the word doesn't fit, add it to the next line
