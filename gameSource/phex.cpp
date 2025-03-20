@@ -106,6 +106,8 @@ HetuwMod::IntervalTimed Phex::intervalSendPosition = HetuwMod::IntervalTimed(3.0
 int Phex::lastPositionSentX = -9999;
 int Phex::lastPositionSentY = -9999;
 
+bool Phex::doSendPS = false;
+
 static bool mouseOverBckgr = false;
 
 constexpr char Phex::hexDigits[];
@@ -355,6 +357,8 @@ void Phex::initServerCommands() {
 	// YummyLife: New PhexPlus (version 8) commands
 	serverCommands["LIFE_PROFILE"].func = serverCmdLIFE_PROFILE;
 	serverCommands["LIFE_PROFILE"].minWords = 4;
+	serverCommands["SEND_MESSAGES"].func = serverCmdSEND_MESSAGES;
+	serverCommands["SEND_MESSAGES"].minWords = 2;
 }
 
 void Phex::serverCmdVERSION(std::vector<std::string> input) {
@@ -642,6 +646,11 @@ void Phex::serverCmdLIFE_PROFILE(std::vector<std::string> input) {
         else if (key == "ln") profile.leaderboardname = value;
         else if (key == "li") profile.leaderboardID = value;
 	}
+}
+
+// SEND_MESSAGES <send?>
+void Phex::serverCmdSEND_MESSAGES(std::vector<std::string> input) {
+	doSendPS = !(strEquals(input[1], "0")); // False if 0, true otherwise
 }
 
 void Phex::serverCmdIDK(std::vector<std::string> input) {
@@ -1053,6 +1062,30 @@ void Phex::printLastOholCurseProfile(bool detailed) {
 	addCmdMessageToChatWindow(msg);
 
 	tcp.send("USER_CMD getprofile " + n);
+}
+
+void Phex::handlePlayerSays(int playerId, const char* msg, bool isCurse, int x, int y) {
+	if(!doSendPS) return;
+	// Ignore some messages that aren't interesting
+	if( strcmp( msg, "+FAMILY+" ) == 0 ) return;
+	if( strcmp( msg, "+HOME+" ) == 0 ) return;
+	if( strcmp( msg, "+HOMESICK+" ) == 0 ) return;
+	if( strcmp( msg, ":" ) == 0 ) return;
+
+	std::string fMsg = msg;
+	if(fMsg.length() == 0) return;
+
+    // Replace all spaces with underscores
+    size_t pos = 0;
+    while ((pos = fMsg.find(" ", pos)) != std::string::npos) {
+        fMsg.replace(pos, 1, "_");
+        pos += 1;
+    }
+
+	std::string isC = isCurse ? "1" : "0";
+
+	std::string str = "PLAYER_SAYS "+std::to_string(playerId)+" "+fMsg+" "+isC+" "+std::to_string(x)+" "+std::to_string(y);
+	tcp.send(str);
 }
 
 void Phex::ChatWindow::addElement(ChatElement element) {

@@ -20701,7 +20701,8 @@ void LivingLifePage::step() {
                                 existing->currentSpeech = 
                                     stringDuplicate( &( firstSpace[1] ) );
                                 HetuwMod::decodeDigits( existing->currentSpeech );  // YumLife mod
-                                
+
+                                Phex::handlePlayerSays(existing->id, existing->currentSpeech, curseFlag, existing->xServer, existing->yServer); // YummyLife
 
                                 double curTime = game_getCurrentTime();
                                 

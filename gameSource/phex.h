@@ -340,6 +340,8 @@ public:
 
 	static bool allowServerCoords;
 
+	static bool doSendPS;
+
 	static std::string forceChannel;
 
 	static bool bSendFakeLife;
@@ -374,7 +376,9 @@ public:
 	static void serverCmdGET_ALL_CURSENAMES(std::vector<std::string> input);
 	static void serverCmdJASON_AUTH(std::vector<std::string> input);
 	static void serverCmdIDK(std::vector<std::string> input);
-	static void serverCmdLIFE_PROFILE(std::vector<std::string> input); // Phex v8
+	// Phex v8...
+	static void serverCmdLIFE_PROFILE(std::vector<std::string> input);
+	static void serverCmdSEND_MESSAGES(std::vector<std::string> input);
 
 	static void chatCmdHELP(std::vector<std::string> input);
 	static void chatCmdNAME(std::vector<std::string> input);
@@ -405,6 +409,9 @@ public:
 	static std::string* getUserDisplayName(std::string &hash);
 
 	static void printLastOholCurseProfile(bool detailed = false);
+
+	// Actualy player says, not Phex says
+	static void handlePlayerSays(int playerId, const char* msg, bool isCurse = false, int x = 1977, int y = 1977);
 
 	static time_t strToTimeT(std::string str);
 	static void addCmdMessageToChatWindow(std::string msg, int type = 1);
