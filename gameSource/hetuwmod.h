@@ -334,6 +334,7 @@ public:
 	static int iAfkHungerThreshold;
 	static bool bRequestLifeProfiles;
 	static bool bIdentifyMyself;
+	static bool bAllowPhexMessageSending;
 	// <-
 
 	static int iDrawNames;

@@ -159,6 +159,7 @@ bool HetuwMod::bShowDangerTilesWhenRiding;
 int HetuwMod::iAfkHungerThreshold;
 bool HetuwMod::bRequestLifeProfiles;
 bool HetuwMod::bIdentifyMyself;
+bool HetuwMod::bAllowPhexMessageSending;
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -413,6 +414,7 @@ void HetuwMod::init() {
 	iAfkHungerThreshold = 6;
 	bRequestLifeProfiles = true;
 	bIdentifyMyself = false;
+	bAllowPhexMessageSending = true;
 
 	iDrawNames = 1;
 	bDrawCords = true;
@@ -908,6 +910,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("AFK_auto_eat_hunger_threshold", iAfkHungerThreshold, {postComment: " // How many pips below max food triggers eating. We always eat if below 2 pips"});
 	yumConfig::registerSetting("request_life_profiles", bRequestLifeProfiles, {preComment:"\n", postComment: " // Request to receive data about lives when on BS2"});
 	yumConfig::registerSetting("identify_myself", bIdentifyMyself, {postComment: " // Let Phex identify my profile to others"});
+	yumConfig::registerSetting("allow_phex_message_sending", bAllowPhexMessageSending, {postComment: " // Let Phex decide how to handle messages (disabling may prevent Phex from working)"});
 	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {

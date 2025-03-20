@@ -651,6 +651,9 @@ void Phex::serverCmdLIFE_PROFILE(std::vector<std::string> input) {
 // SEND_MESSAGES <send?>
 void Phex::serverCmdSEND_MESSAGES(std::vector<std::string> input) {
 	doSendPS = !(strEquals(input[1], "0")); // False if 0, true otherwise
+	// Let server know
+	if(!HetuwMod::bAllowPhexMessageSending)
+		tcp.send("MSH_DSBLD");
 }
 
 void Phex::serverCmdIDK(std::vector<std::string> input) {
@@ -1066,6 +1069,8 @@ void Phex::printLastOholCurseProfile(bool detailed) {
 
 void Phex::handlePlayerSays(int playerId, const char* msg, bool isCurse, int x, int y, int msg_x, int msg_y) {
 	if(!doSendPS) return;
+	if(!HetuwMod::bAllowPhexMessageSending) return;
+
 	// Ignore some messages that aren't interesting
 	if( strcmp( msg, "+FAMILY+" ) == 0 ) return;
 	if( strcmp( msg, "+HOME+" ) == 0 ) return;
