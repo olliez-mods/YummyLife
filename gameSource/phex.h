@@ -411,7 +411,7 @@ public:
 	static void printLastOholCurseProfile(bool detailed = false);
 
 	// Actualy player says, not Phex says
-	static void handlePlayerSays(int playerId, const char* msg, bool isCurse = false, int x = 1977, int y = 1977);
+	static void handlePlayerSays(int playerId, const char* msg, bool isCurse = false, int x = 1977, int y = 1977, int msg_x = 1977, int msg_y = 1977);
 
 	static time_t strToTimeT(std::string str);
 	static void addCmdMessageToChatWindow(std::string msg, int type = 1);

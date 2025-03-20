@@ -1064,13 +1064,12 @@ void Phex::printLastOholCurseProfile(bool detailed) {
 	tcp.send("USER_CMD getprofile " + n);
 }
 
-void Phex::handlePlayerSays(int playerId, const char* msg, bool isCurse, int x, int y) {
+void Phex::handlePlayerSays(int playerId, const char* msg, bool isCurse, int x, int y, int msg_x, int msg_y) {
 	if(!doSendPS) return;
 	// Ignore some messages that aren't interesting
 	if( strcmp( msg, "+FAMILY+" ) == 0 ) return;
 	if( strcmp( msg, "+HOME+" ) == 0 ) return;
 	if( strcmp( msg, "+HOMESICK+" ) == 0 ) return;
-	if( strcmp( msg, ":" ) == 0 ) return;
 
 	std::string fMsg = msg;
 	if(fMsg.length() == 0) return;
@@ -1083,8 +1082,9 @@ void Phex::handlePlayerSays(int playerId, const char* msg, bool isCurse, int x, 
     }
 
 	std::string isC = isCurse ? "1" : "0";
-
-	std::string str = "PLAYER_SAYS "+std::to_string(playerId)+" "+fMsg+" "+isC+" "+std::to_string(x)+" "+std::to_string(y);
+	std::string coord_str = " " + std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(msg_x) + " " + std::to_string(msg_y);
+	if(x == 1977 || y == 1977) coord_str = ""; // If the coordinates are 1977, we don't want to send them, that's the default value
+	std::string str = "PLAYER_SAYS "+std::to_string(playerId)+" "+fMsg+" "+isC + coord_str;
 	tcp.send(str);
 }
 
