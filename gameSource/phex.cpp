@@ -1075,6 +1075,7 @@ void Phex::handlePlayerSays(int playerId, const char* msg, bool isCurse, int x, 
 	if( strcmp( msg, "+FAMILY+" ) == 0 ) return;
 	if( strcmp( msg, "+HOME+" ) == 0 ) return;
 	if( strcmp( msg, "+HOMESICK+" ) == 0 ) return;
+	if( strcmp( msg, "+MORE FOOD+" ) == 0 ) return;
 
 	std::string fMsg = msg;
 	if(fMsg.length() == 0) return;
