@@ -346,6 +346,9 @@ public:
 
 	static bool bSendFakeLife;
 
+	static bool beenPoked;
+	static std::string lastPokeHash;
+
 	static constexpr char hexDigits[16] = { '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f' };
 
 	static void init();
@@ -379,6 +382,8 @@ public:
 	// Phex v8...
 	static void serverCmdLIFE_PROFILE(std::vector<std::string> input);
 	static void serverCmdSEND_MESSAGES(std::vector<std::string> input);
+	static void serverCmdPOKE(std::vector<std::string> input);
+	static void serverCmdSTOP_POKE(std::vector<std::string> input);
 
 	static void chatCmdHELP(std::vector<std::string> input);
 	static void chatCmdNAME(std::vector<std::string> input);
@@ -387,6 +392,9 @@ public:
 	static void chatCmdLIFE(std::vector<std::string> input);
 	static void chatCmdOPTIN(std::vector<std::string> input);
 	static void chatCmdTEST(std::vector<std::string> input);
+
+	// Respond to a poke
+	static void pokeResp(std::string message);
 
 	static void setArray(float arrDst[], const float arrSrc[], int size);
 	static void setArray(double arrDst[], const double arrSrc[], int size);

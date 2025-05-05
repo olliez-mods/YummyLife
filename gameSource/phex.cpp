@@ -96,6 +96,9 @@ std::string Phex::forceChannel = "";
 
 bool Phex::bSendFakeLife = false;
 
+bool Phex::beenPoked = false;
+std::string Phex::lastPokeHash = "";
+
 bool Phex::sendBiomeDataActive = false;
 char Phex::biomeChunksSent[biomeChunksSentSize][biomeChunksSentSize];
 HetuwMod::IntervalTimed Phex::intervalSendBiomeData = HetuwMod::IntervalTimed(1.0);
@@ -359,6 +362,10 @@ void Phex::initServerCommands() {
 	serverCommands["LIFE_PROFILE"].minWords = 4;
 	serverCommands["SEND_MESSAGES"].func = serverCmdSEND_MESSAGES;
 	serverCommands["SEND_MESSAGES"].minWords = 2;
+	serverCommands["POKE"].func = serverCmdPOKE;
+	serverCommands["POKE"].minWords = 3;
+	serverCommands["STOP_POKE"].func = serverCmdSTOP_POKE;
+	serverCommands["STOP_POKE"].minWords = 1;
 }
 
 void Phex::serverCmdVERSION(std::vector<std::string> input) {
@@ -656,6 +663,29 @@ void Phex::serverCmdSEND_MESSAGES(std::vector<std::string> input) {
 		tcp.send("MSH_DSBLD");
 }
 
+// Used for testing purposes - No defined inputs or results
+void Phex::serverCmdPOKE(std::vector<std::string> input) {
+	lastPokeHash = input[1];
+	beenPoked = true;
+	std::string pokeCmd = input[2];
+	strToLower(pokeCmd);
+
+	printf("Phex poked: %s", pokeCmd.c_str());
+
+	// Note to Oliver, making debug tests;
+	// Check what pokeCmd is, implementent any tests you want done
+	// respond using pokeResp("test"), or pokeResp("test2") or whatever
+
+	if(pokeCmd == "hello") {
+		// Do things...
+		pokeResp("Hello back!");
+	}
+}
+
+void Phex::serverCmdSTOP_POKE(std::vector<std::string> input) {
+	beenPoked = false;
+}
+
 void Phex::serverCmdIDK(std::vector<std::string> input) {
 	printf("Phex IDK: %s\n", joinStr(input).c_str());
 }
@@ -803,6 +833,13 @@ void Phex::chatCmdTEST(std::vector<std::string> input) {
 		str += " "+to_string((int)(obj->spriteColor[i].b*255));
 		printf("Phex %d: %s\n", i, str.c_str());
 	}
+}
+
+// Respond to pokes for testing
+void Phex::pokeResp(std::string message) {
+	if(!beenPoked) return;
+	if(message.length() < 1) return;
+	tcp.send("POKE_RESPONSE " + lastPokeHash + " " + message);
 }
 
 void Phex::setArray(float arrDst[], const float arrSrc[], int size) {
