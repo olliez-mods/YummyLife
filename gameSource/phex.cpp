@@ -429,6 +429,11 @@ void Phex::serverCmdSAY(std::vector<std::string> input) {
 
 void Phex::serverCmdSAY_RAW(std::vector<std::string> input) {
 	addCmdMessageToChatWindow(joinStr(input, " ", 1));
+
+	// Poke logic: Print the PokeResp message to output
+	if (input.size() > 1 && input[1].rfind("PokeResp", 0) == 0) {
+		printf("Phex PokeResp: %s\n", joinStr(input, " ", 1).c_str());
+	}
 }
 
 void Phex::serverCmdHASH_USERNAME(std::vector<std::string> input) {
@@ -670,14 +675,13 @@ void Phex::serverCmdPOKE(std::vector<std::string> input) {
 	std::string pokeCmd = input[2];
 	strToLower(pokeCmd);
 
-	printf("Phex poked: %s", pokeCmd.c_str());
-
 	// Note to Oliver, making debug tests;
 	// Check what pokeCmd is, implementent any tests you want done
 	// respond using pokeResp("test"), or pokeResp("test2") or whatever
 
 	if(pokeCmd == "hello") {
 		// Do things...
+		printf("Phex received hello poke\n");
 		pokeResp("Hello back!");
 	}
 }
