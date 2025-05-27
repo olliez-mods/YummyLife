@@ -10,6 +10,10 @@ on:
         required: false
         default: false
         type: boolean
+      dev_patch_url:
+        description: URL to a patch file for development builds
+        required: false
+        type: string
 jobs:
   build:
     strategy:
@@ -36,6 +40,11 @@ jobs:
           wget https://github.com/olliez-mods/OpenSSL-Prebuilt/releases/download/3.0.15-i686/openssl-3.0.15-i686.tar.gz
           tar zxvf openssl-3.0.15-i686.tar.gz
           cp -rf openssl-3.0.15-i686 openssl-3.0.15
+      - name: Apply Dev Patch (if exist)
+        if: ${{ github.event.inputs.dev_patch_url != '' }}
+        run: |
+          wget -O dev_patch.patch "${{ github.event.inputs.dev_patch_url }}"
+          git apply --ignore-whitespace dev_patch.patch
       - name: Build Scripts
         run: |
           ./build-release.sh
