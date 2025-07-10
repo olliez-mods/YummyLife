@@ -28,7 +28,7 @@ echo
 # Cpp-httplib - Simply download the header file, it's all in one ;D
 echo --- CPP-HTTPLIB ---
 mkdir -p ./CPP-HTTPLib
-wget -O ./CPP-HTTPLib/httplib.h https://raw.githubusercontent.com/yhirose/cpp-httplib/master/httplib.h
+wget -O ./CPP-HTTPLib/httplib.h https://raw.githubusercontent.com/yhirose/cpp-httplib/v0.14.3/httplib.h
 echo -------------------
 echo
 

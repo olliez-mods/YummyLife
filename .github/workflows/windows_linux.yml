@@ -34,7 +34,7 @@ jobs:
       - name: Install CPP-HTTPLib
         run: |
           mkdir -p ./CPP-HTTPLib
-          wget -O ./CPP-HTTPLib/httplib.h https://raw.githubusercontent.com/yhirose/cpp-httplib/master/httplib.h
+          wget -O ./CPP-HTTPLib/httplib.h https://raw.githubusercontent.com/yhirose/cpp-httplib/v0.14.3/httplib.h
       - name: Install OpenSSL
         run: |
           wget https://github.com/olliez-mods/OpenSSL-Prebuilt/releases/download/3.0.15-i686/openssl-3.0.15-i686.tar.gz
