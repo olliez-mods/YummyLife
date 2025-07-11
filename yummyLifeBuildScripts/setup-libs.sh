@@ -14,6 +14,7 @@ rm -rf ./CPP-HTTPLib
 rm -rf ./openssl-3.0.15-i686.tar.gz
 rm -rf ./openssl-3.0.15-i686
 rm -rf ./openssl-3.0.15
+rm -rf ./nlohmann
 echo -------------------
 echo
 
@@ -40,5 +41,12 @@ tar zxvf openssl-3.0.15-i686.tar.gz
 rm openssl-3.0.15-i686.tar.gz
 cp -rf openssl-3.0.15-i686 openssl-3.0.15
 rm -rf openssl-3.0.15-i686
+echo -------------------
+echo
+
+# Download single header file for nlohmann/json
+echo -- NLOHMANN/JSON --
+mkdir -p ./nlohmann
+wget -O ./nlohmann/json.hpp https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp
 echo -------------------
 echo

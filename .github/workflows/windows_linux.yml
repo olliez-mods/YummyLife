@@ -40,6 +40,10 @@ jobs:
           wget https://github.com/olliez-mods/OpenSSL-Prebuilt/releases/download/3.0.15-i686/openssl-3.0.15-i686.tar.gz
           tar zxvf openssl-3.0.15-i686.tar.gz
           cp -rf openssl-3.0.15-i686 openssl-3.0.15
+      - name: Install Nlohmann/json
+        run: |
+          mkdir -p ./nlohmann
+          wget -O ./nlohmann/json.hpp https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp
       - name: Apply Dev Patch (if exist)
         if: ${{ github.event.inputs.dev_patch_url != '' }}
         run: |
