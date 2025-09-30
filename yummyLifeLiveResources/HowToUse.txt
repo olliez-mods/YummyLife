@@ -1,0 +1,50 @@
+
+YummyLife has live resources
+
+These are files (images mostly) that are kept on the GitHub repo
+and updated, added, changed on the rpo, with the changes being synced
+with the client (in './YummyLiveResources').
+
+
+
+Resources are synced on launch using the GitHub repos 'liveResources.json' file
+It has the following format:
+
+{
+  "resources" : {
+    "images/test.png" : { // Name of the file (same in repo and local)
+      "version" : 1, // Version of the file, when the file gets changed repo side, the client will update
+      "firstSupV" : "v430.9", // The first client release version that supports this file (older clients won't download it)
+      "lastSupV: : "v430.10", // The last supported release version (newer clients won't download this)
+      "deprecated" : false, // If depricated it won't be downloaded anymore, but clients can still use it (remains in local)
+      "required" : false, // If required, client will crash if failed to download or verify,
+      "hash" : "7s6789gf..." // If present client will verify that the hash of the local file matches repo file (redownload if not)
+    },
+    "test2.tga" : {}
+  }
+}
+
+Each of those entries are optional and don't need to be included
+(Version 0 means no version)
+
+
+
+A user may want to have custom files that override or add to the local live resources, this can be done by adding each custom
+file to the 'localwhitelist.txt' file (resources with hashes are exempt from the whitelist and will ALWAYS be overriden)
+Example:
+
+images/testImg.png
+gui.png
+phrases.txt
+
+
+
+The cliesnt will verify file versions by keeping track in the 'localResourceVersions.json' file. It saves the name and version of synced files
+On load, if a resources version is older than the one in the repo (by cross referencing 'liveResources.json'), it will download the new version.
+If the file is in 'localwhitelist.txt' it will not download any newer version (unless a file hash is present and different)
+Example:
+
+{
+  "images/testImg.png" : 2,
+  "gui.png" : 1
+}
