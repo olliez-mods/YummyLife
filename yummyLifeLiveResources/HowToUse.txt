@@ -17,7 +17,6 @@ It has the following format:
       "firstSupV" : "v430.9", // The first client release version that supports this file (older clients won't download it)
       "lastSupV: : "v430.10", // The last supported release version (newer clients won't download this)
       "deprecated" : false, // If depricated it won't be downloaded anymore, but clients can still use it (remains in local)
-      "required" : false, // If required, client will crash if failed to download or verify,
       "hash" : "7s6789gf..." // If present client will verify that the hash of the local file matches repo file (redownload if not)
     },
     "test2.tga" : {}
