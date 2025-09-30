@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <fstream>
 #include <string>
+using std::string;
 
 #include <CPP-HTTPLib/httplib.h>
 
@@ -39,7 +40,7 @@ time_t YummyLife::AFK::startAfkTime = 0;
 doublePair YummyLife::AFK::startAfkPos = {0, 0};
 int YummyLife::AFK::timesEaten = 0;
 
-std::vector<std::string> galleryFileNames;
+std::vector<string> galleryFileNames;
 int galleryImageIndex = -1;
 int gallerySize = 0;
 
@@ -80,13 +81,13 @@ File** getDirectoryFiles(const char* directoryName, int* inNumResults){
 }
 
 // Does a given fileName or path end in '.tga'
-bool isTgaFileName(std::string fileName) {
+bool isTgaFileName(string fileName) {
     // Check if the filename is at least 4 characters long
     if (fileName.size() < 4)
         return false;
 
     // Get the last 4 characters of the filename
-    std::string extension = fileName.substr(fileName.size() - 4);
+    string extension = fileName.substr(fileName.size() - 4);
 
     // Compare the extracted part with ".tga"
     return extension == ".tga";
@@ -222,7 +223,7 @@ void YummyLife::readLastYumsFile() {
         return;
     }
 
-    std::string firstLine;
+    string firstLine;
     if(!std::getline(lyFile, firstLine)) {
         printf("No first line in '%s', deleting...\n", LAST_YUMS_FILE);
         lyFile.close();
@@ -230,7 +231,7 @@ void YummyLife::readLastYumsFile() {
         return;
     }
 
-    const std::string firstLinePrefix = "lifeid:";
+    const string firstLinePrefix = "lifeid:";
     if(firstLine.rfind(firstLinePrefix, 0) != 0) {
         printf("First line in '%s' is wrong format ('%s'), deleting...\n", LAST_YUMS_FILE, firstLine.c_str());
         lyFile.close();
@@ -252,7 +253,7 @@ void YummyLife::readLastYumsFile() {
     lastYumsLifeID = readLifeID;
 
     lastYums.clear();
-    std::string line;
+    string line;
     while(std::getline(lyFile, line)) {
         try {
             int val = std::stoi(line);
@@ -386,7 +387,7 @@ void YummyLife::Gallery::loadGalleryIndex(int inIndex) {
 
     galleryImageIndex = inIndex;
 
-    const std::string fileName = galleryFileNames[galleryImageIndex];
+    const string fileName = galleryFileNames[galleryImageIndex];
 
     if (isTgaFileName(fileName))
         galleryImageSprite = loadSpriteBase(fileName.c_str()); // Try to load .tga file
@@ -472,30 +473,30 @@ YummyLife::Gallery::~Gallery() {
 }
 
 const char* YummyLife::API::getValueFromJSON(const char* json, const char* key){
-    std::string jsonStr(json);
-    std::string keyStr(key);
-    std::string keyStrQuoted = "\"" + keyStr + "\"";
+    string jsonStr(json);
+    string keyStr(key);
+    string keyStrQuoted = "\"" + keyStr + "\"";
 
     size_t keyPos = jsonStr.find(keyStrQuoted);
-    if(keyPos == std::string::npos) return nullptr;
+    if(keyPos == string::npos) return nullptr;
 
     size_t valuePos = jsonStr.find(":", keyPos);
-    if(valuePos == std::string::npos) return nullptr;
+    if(valuePos == string::npos) return nullptr;
 
     size_t valueStartPos = jsonStr.find_first_of("\"", valuePos);
-    if(valueStartPos == std::string::npos) return nullptr;
+    if(valueStartPos == string::npos) return nullptr;
 
     size_t valueEndPos = jsonStr.find_first_of("\"", valueStartPos + 1);
-    if(valueEndPos == std::string::npos) return nullptr;
+    if(valueEndPos == string::npos) return nullptr;
 
-    std::string value = jsonStr.substr(valueStartPos + 1, valueEndPos - valueStartPos - 1);
+    string value = jsonStr.substr(valueStartPos + 1, valueEndPos - valueStartPos - 1);
     return strdup(value.c_str());
 }
 
 const char* YummyLife::API::getLatestVersionTag(const char* repoTag) {
     httplib::Client cli("https://api.github.com");
     cli.set_connection_timeout(3);
-    const std::string url = "/repos/" + std::string(repoTag) + "/releases/latest";
+    const string url = "/repos/" + string(repoTag) + "/releases/latest";
     auto res = cli.Get(url);
 
     if (res && res->status == 200)
