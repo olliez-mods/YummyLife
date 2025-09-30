@@ -6,6 +6,8 @@
 using std::string;
 
 #include <CPP-HTTPLib/httplib.h>
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 
 #include "minorGems/io/file/File.h"
 
@@ -616,4 +618,347 @@ void YummyLife::AFK::setEnabled(bool enable, const char* msg){
     is_enabled = enable;
     statusMessage = msg;
     if(msg) std::cout << msg << "\n";
+}
+
+const char* YummyLife::LiveResources::getGitHubLiveResourcesPath(){
+    return "olliez-mods/YummyLife/master/yummyLifeLiveResources/";
+}
+
+bool YummyLife::LiveResources::downloadLiveResourceFile(const char* resourceName, const char* localPath){
+    string fullPath = string(getGitHubLiveResourcesPath()) + resourceName;
+
+    // Ensure path starts with a '/'
+    if (fullPath[0] != '/') {
+        string fixedPath = "/";
+        fixedPath += fullPath;
+        fullPath = fixedPath;
+    }
+
+    const char* host = "https://raw.githubusercontent.com";
+    httplib::Client cli(host);
+    cli.set_connection_timeout(5); // 5 second timeout
+
+    std::cout << "Downloading resource from '" << host << fullPath << "' to '" << localPath << "'\n";
+    auto res = cli.Get(fullPath.c_str());
+
+    if (!res || res->status != 200) {
+        std::cout << "Failed to download " << fullPath << " (status " 
+                  << (res ? res->status : -1) << ")\n";
+        return false;
+    }
+
+    std::ofstream outFile(localPath, std::ios::binary);
+    if (!outFile) {
+        std::cout << "Error creating file: " << localPath << "\n";
+        return false;
+    }
+    outFile.write(res->body.c_str(), res->body.size());
+    outFile.close();
+    return true;
+}
+
+json fetchLiveResourcesConfig() {
+    httplib::Client cli("https://raw.githubusercontent.com");
+    cli.set_connection_timeout(5); // 5 second timeout
+
+    string f_path = string(YummyLife::LiveResources::getGitHubLiveResourcesPath()) + "liveResources.json";
+    auto res = cli.Get(f_path.c_str());
+
+    if (!res || res->status != 200) {
+        std::cout << "Failed to fetch live resources config (status " 
+                  << (res ? res->status : -1) << ")\n";
+        return json();
+    }
+
+    try {
+        return json::parse(res->body);
+    } catch (const json::parse_error& e) {
+        std::cout << "JSON parse error: " << e.what() << "\n";
+        return json();
+    }
+}
+
+json readLocalResourceVersions() {
+    std::ifstream versionsFile("YummyLiveResources/localResourceVersions.json");
+    if (!versionsFile) {
+        std::cout << "Failed to open 'YummyLiveResources/localResourceVersions.json' for reading\n";
+        return json();
+    }
+
+    try {
+        json localVersions;
+        versionsFile >> localVersions;
+        versionsFile.close();
+        return localVersions;
+    } catch (const json::parse_error& e) {
+        std::cout << "JSON parse error in local resource versions: " << e.what() << "\n";
+        versionsFile.close();
+        return json();
+    }
+}
+
+bool writeLocalResourceVersions(const json& versions) {
+    std::ofstream versionsFile("YummyLiveResources/localResourceVersions.json");
+    if (!versionsFile) {
+        std::cout << "Failed to open 'YummyLiveResources/localResourceVersions.json' for writing\n";
+        return false;
+    }
+
+    try {
+        if (versions.is_null()) {
+            versionsFile << "{}";
+        } else {
+            versionsFile << versions.dump(2);
+        }
+        versionsFile.close();
+        return true;
+    } catch (const json::exception& e) {
+        std::cout << "JSON write error: " << e.what() << "\n";
+        versionsFile.close();
+        return false;
+    }
+}
+
+std::vector<std::string> readLocalWhitelist() {
+    std::vector<std::string> whitelist;
+    std::ifstream whitelistFile("YummyLiveResources/localWhitelist.txt");
+    if (!whitelistFile) {
+        std::cout << "Failed to open 'YummyLiveResources/localWhitelist.txt' for reading\n";
+        return whitelist;
+    }
+
+    std::string line;
+    while (std::getline(whitelistFile, line)) {
+        // Trim whitespace
+        line.erase(0, line.find_first_not_of(" \t\r\n"));
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+        // Skip comments and empty lines
+        if (line.empty() || line[0] == '#') continue;
+        whitelist.push_back(line);
+    }
+    whitelistFile.close();
+    return whitelist;
+}
+
+bool verifyBaseResourceFolderExists() {
+    // Make sure we are in the right folder by checking a couple files exist
+    // We expect "sprites/" and "settings/"
+    if (!File(NULL, "sprites").exists() || !File(NULL, "sprites").isDirectory()) {
+        std::cout << "Can't verify we are in the OHOL folder for liveResource downloads\n";
+        std::cout << "Missing 'sprites' directory\n";
+        return false;
+    }
+    if (!File(NULL, "settings").exists() || !File(NULL, "settings").isDirectory()) {
+        std::cout << "Can't verify we are in the OHOL folder for liveResource downloads\n";
+        std::cout << "Missing 'settings' directory'\n";
+        return false;
+    }
+
+    File baseDir(NULL, "YummyLiveResources");
+    // Exists but isn't a directory - Error
+    if (baseDir.exists() && !baseDir.isDirectory()) {
+        std::cout << "'YummyLiveResources' exists but is not a directory\n";
+        return false;
+    }
+    // Attempted to create the directory, but can't - Error
+    if (!baseDir.exists() && !baseDir.makeDirectory()) {
+        std::cout << "Failed to create 'YummyLiveResources' directory\n";
+        return false;
+    }
+
+    // Only create supporting files if they do not exist
+    File whitelistFileObj(NULL, "YummyLiveResources/localWhitelist.txt");
+    if (!whitelistFileObj.exists()) {
+        std::ofstream whitelistFile("YummyLiveResources/localWhitelist.txt");
+        if (!whitelistFile) {
+            std::cout << "Failed to create 'YummyLiveResources/localWhitelist.txt'\n";
+            return false;
+        }
+        whitelistFile << "# List of local resources that are whitelisted against the live versions\n";
+        whitelistFile << "# Add one resource name per line (e.g. images/testImg.png)\n";
+        whitelistFile << "# Expected '/' for directories\n";
+        whitelistFile.close();
+        std::cout << "Created 'YummyLiveResources/localWhitelist.txt'\n";
+    }
+
+    File versionsFileObj(NULL, "YummyLiveResources/localResourceVersions.json");
+    if (!versionsFileObj.exists()) {
+        std::ofstream versionsFile("YummyLiveResources/localResourceVersions.json");
+        if (!versionsFile) {
+            std::cout << "Failed to create 'YummyLiveResources/localResourceVersions.json'\n";
+            return false;
+        }
+        versionsFile << "{}";
+        versionsFile.close();
+        std::cout << "Created 'YummyLiveResources/localResourceVersions.json'\n";
+    }
+
+    return true;
+}
+
+
+int compareVersionTags(const string a, const string b, bool throwOnError = false) {
+    if(a.empty() || b.empty()) {
+        if(throwOnError) throw std::invalid_argument("One or both version tags are empty");
+        return 0; // Consider equal if one is empty
+    }
+
+    int aMajor = -1, aMinor = -1;
+    int bMajor = -1, bMinor = -1;
+
+    YummyLife::API::parseVersionTag(a.c_str(), &aMajor, &aMinor);
+    YummyLife::API::parseVersionTag(b.c_str(), &bMajor, &bMinor);
+
+    if (aMajor == -1 || bMajor == -1) {
+        if (throwOnError) throw std::invalid_argument("Failed to parse version tags for comparison : '" + a + "' or '" + b + "'");
+        return 0; // Consider equal if parsing fails
+    }
+
+    if (aMajor != bMajor)
+        return (aMajor < bMajor) ? -1 : 1;
+    if (aMinor != bMinor)
+        return (aMinor < bMinor) ? -1 : 1;
+    return 0; // Equal
+}
+
+std::string calcFileHash(const std::string& filepath) {
+    std::ifstream file(filepath, std::ios::binary);
+    if (!file) {
+        std::cout << "File not found: " << filepath << "\n";
+        return "";
+    }
+
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+
+    std::vector<char> buffer(4096);
+    while (file.good()) {
+        file.read(buffer.data(), buffer.size());
+        std::streamsize bytesRead = file.gcount();
+        if (bytesRead > 0) {
+            SHA256_Update(&sha256, buffer.data(), bytesRead);
+        }
+    }
+
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_Final(hash, &sha256);
+
+    std::ostringstream result;
+    for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
+        result << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
+    }
+    return result.str();
+}
+
+void YummyLife::LiveResources::initLiveResources(const char* clientVersionTag) {
+    std::cout << "Initializing live resources...\n";
+
+    bool resourceEnvOk = verifyBaseResourceFolderExists();
+    if (!resourceEnvOk) {
+        std::cout << "Live resource environment not setup correctly, skipping live resource download\n";
+        return;
+    }
+    json liveResourcesConfig = fetchLiveResourcesConfig();
+    if (liveResourcesConfig.is_null()) {
+        std::cout << "Failed to fetch or parse live resources config (or empty), skipping live resource download\n";
+        return;
+    }
+    if (!liveResourcesConfig.contains("resources") || !liveResourcesConfig["resources"].is_object()) {
+        std::cout << "Live resources config missing 'resources' object, skipping live resource download\n";
+        return;
+    }
+
+    json liveResources = liveResourcesConfig["resources"];
+    json localResourceVersions = readLocalResourceVersions();
+    std::vector<std::string> localWhitelist = readLocalWhitelist();
+
+    json newLocalResourceVersions;
+
+    // Iterate through each resource in the live resources config and check against local versions
+    // download or update if necessary
+    for (auto it = liveResources.items().begin(); it != liveResources.items().end(); ++it) {
+        const string& resourceName = it.key();
+        json& resourceInfo = it.value();
+
+        string localPath = "YummyLiveResources/" + resourceName;
+        bool fileExists = File(NULL, localPath.c_str()).exists();
+
+        int resourceVersion = resourceInfo.value("version", 1); // 1 is default if not specified
+        string fSupV = resourceInfo.value("firstSupV", "");
+        string lSupV = resourceInfo.value("lastSupV", "");
+        bool deprecated = resourceInfo.value("deprecated", false);
+        string resourceHash = resourceInfo.value("hash", "");
+
+        // Step 0: Check if the resource is whitelisted by the user, skip if so
+        bool whitelisted = (std::find(localWhitelist.begin(), localWhitelist.end(), resourceName) != localWhitelist.end());
+
+        // Step 1: Check if we have a version recorded in localResourceVersions
+        auto localIt = localResourceVersions.find(resourceName);
+        bool hasLocalVersion = (localIt != localResourceVersions.end());
+        int localVersion = (hasLocalVersion && fileExists) ? localIt.value().get<int>() : 0;
+
+        bool needsDownload = false;
+        bool needsDelete   = false; // Delete if present locally
+
+        // hash check (forces replace)
+        // If the hash is provided, we should check it, if hashes are different, we need to replace (even if whitelisted)
+        if (!resourceHash.empty()) {
+            if (fileExists) {
+                std::string localFileHash = calcFileHash(localPath);
+                if(localFileHash.empty()) {
+                    needsDownload = true; // Failed to calculate hash, try to re-download
+                    std::cout << "Failed to calculate hash for " << resourceName << ", will re-download\n";
+                } else if (localFileHash != resourceHash) {
+                    needsDownload = true;
+                    std::cout << "Hash mismatch for " << resourceName << ", will re-download\n";
+                }
+            }
+        }
+        // If the resource isn't whitelisted, download/update if we don't have a local version
+        // or if the local version is older than the remote version
+        if (!whitelisted) {
+            if (!hasLocalVersion || resourceVersion > localVersion) {
+                needsDownload = true;
+            }
+        }
+        // deprecation - never download if deprecated
+        if (deprecated) {
+            needsDownload = false;
+        }
+        // supported versions check
+        int cmpFirst = compareVersionTags(clientVersionTag, fSupV);
+        int cmpLast  = compareVersionTags(clientVersionTag, lSupV);
+
+        // If not whitelisted and outside the supported version range, we need to delete it
+        if (!whitelisted && ((!fSupV.empty() && cmpFirst < 0) || (!lSupV.empty() && cmpLast > 0))) {
+            needsDownload = false;
+            needsDelete = true; // Delete if present locally
+        }
+
+        if (needsDelete) {
+            if (fileExists) {
+                if (std::remove(localPath.c_str()) == 0) {
+                    std::cout << "Deleted local resource: " << localPath << "\n";
+                } else {
+                    std::cout << "Failed to delete local resource: " << localPath << "\n";
+                }
+            }
+            continue; // Skip to next resource
+        }
+
+        if (needsDownload) {
+            bool success = downloadLiveResourceFile(resourceName.c_str(), localPath.c_str());
+            if (success) {
+                newLocalResourceVersions[resourceName] = resourceVersion;
+                std::cout << "Downloaded live resource: " << resourceName << " to " << localPath << "\n";
+            } else {
+                std::cout << "Failed to download live resource: " << resourceName << "\n";
+            }
+        } else if(hasLocalVersion && fileExists) {
+            newLocalResourceVersions[resourceName] = localVersion;
+        }
+    }
+
+    writeLocalResourceVersions(newLocalResourceVersions);
+    std::cout << "Live resources initialization complete.\n";
 }

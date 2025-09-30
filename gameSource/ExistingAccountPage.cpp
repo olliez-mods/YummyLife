@@ -298,7 +298,13 @@ ExistingAccountPage::ExistingAccountPage()
     
     // YummyLife: Initilize the gallery
     YummyLife::Gallery::initGallery("screenShots");
-    
+
+    // YummyLife: Initilize live resources (for gallery)
+    if(HetuwMod::bAllowLiveResources) {
+        string clientVersionTag = "v" + std::to_string(versionNumber) + string(yumSubVersion);
+        YummyLife::LiveResources::initLiveResources(clientVersionTag.c_str());
+    }
+
     // Couldn't load gallery, or no screenshots taken
     if(YummyLife::Gallery::getGallerySize() <= 0) {
         mNextImageButton.setVisible(false);

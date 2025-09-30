@@ -36,7 +36,7 @@ class YummyLife {
             public:
                 static const char* getLatestVersionTag(const char* repoTag); // Calls a web API - Expect delays
                 static void parseVersionTag(const char* versionTag, int* major, int* minor);
-                static const char* getGitHubRepoURL();
+                static const char* getGitHubRepoURL(); // Unused
         };
 
         class AFK{
@@ -71,6 +71,14 @@ class YummyLife {
                 static bool isAFK(){return is_afk;}
                 static bool isWaiting(){return bIsWaiting;}
                 static int getTimesEaten(){return timesEaten;}
+        };
+
+        // Handles the downloading of live resources (e.g. images) from the GitHub repo
+        class LiveResources {
+            public:
+                static const char* getGitHubLiveResourcesPath();
+                static bool downloadLiveResourceFile(const char* path, const char* localPath);
+                static void initLiveResources(const char* clientVersionTag); // Downloads/updates all live resources
         };
 
         static void cleanUp();
