@@ -335,6 +335,7 @@ public:
 	static bool bRequestLifeProfiles;
 	static bool bIdentifyMyself;
 	static bool bAllowPhexMessageSending;
+	static bool bAllowLiveResources;
 	// <-
 
 	static int iDrawNames;
