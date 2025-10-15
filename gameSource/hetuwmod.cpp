@@ -1045,7 +1045,7 @@ void HetuwMod::initSettings() {
 	}
 
 	// value clamping/validation
-	delayReduction = std::max(0, std::min(50, delayReduction));
+	delayReduction = std::max(0, std::min(100, delayReduction));
 	zoomLimit = std::max(0, std::min(maxZoomLevel, zoomLimit));
 	if (fontFilename != defaultFontFilename) {
 		std::ifstream ifs(std::string("graphics/") + fontFilename);
