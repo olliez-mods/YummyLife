@@ -546,7 +546,7 @@ bool YummyLife::AFK::updateWaitingStatus(){
 void YummyLife::AFK::step(){
     if(!is_enabled || !is_afk) return;
     if(startAfkPos != HetuwMod::ourLiveObject->currentPos) setAFK(false, "Moved, AFK stopped");
-    if (HetuwMod::curStepSecondsSince1970 - startAfkTime > (600)) setEnabled(false, "AFK timeout after 10 minutes"); // 600 seconds = 10 minutes
+    if (HetuwMod::curStepSecondsSince1970 - startAfkTime > (6000)) setEnabled(false, "AFK timeout after 100 minutes"); // 6000 seconds = 100 minutes
     if (updateWaitingStatus()) {
         if (secondsWaited() > 2) setEnabled(false, "Use backpack timeout");
         return; // Return early if we're waiting for an item to change
