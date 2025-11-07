@@ -378,7 +378,7 @@ void Phex::initServerCommands() {
 	serverCommands["GET_LEADERBOARD_NAME"].func = serverCmdGET_LEADERBOARD_NAME;
 	serverCommands["GET_LEADERBOARD_NAME"].minWords = 1;
 	serverCommands["SEND_ALL_PLAYER_POS"].func = serverCmdSEND_ALL_PLAYER_POS;
-	serverCommands["SEND_ALL_PLAYER_POS"].minWords = 1;
+	serverCommands["SEND_ALL_PLAYER_POS"].minWords = 2;
 	serverCommands["SEND_CURSENAMES"].func = serverCmdSEND_CURSENAMES;
 	serverCommands["SEND_CURSENAMES"].minWords = 2;
 }
