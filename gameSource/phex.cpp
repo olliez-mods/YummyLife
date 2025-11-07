@@ -11,6 +11,7 @@
 #include "LivingLifePage.h"
 #include "accountHmac.h"
 #include "hetuwFont.h"
+#include "fitnessScore.h"
 
 TCPConnection Phex::tcp;
 bool Phex::bSendFirstMsg = true;
@@ -108,6 +109,14 @@ bool Phex::sendPositionActive = false;
 HetuwMod::IntervalTimed Phex::intervalSendPosition = HetuwMod::IntervalTimed(3.0);
 int Phex::lastPositionSentX = -9999;
 int Phex::lastPositionSentY = -9999;
+
+bool Phex::sendCurseNamesActive = false;
+HetuwMod::IntervalTimed Phex::intervalSendCurseNames = HetuwMod::IntervalTimed(10.0);
+std::unordered_set<int> Phex::curseNamesSentPlayerIDs;
+
+bool Phex::sendAllPlayerPosActive = false;
+HetuwMod::IntervalTimed Phex::intervalSendAllPlayerPos = HetuwMod::IntervalTimed(5.0);
+std::unordered_map<int, doublePair> Phex::lastSentPlayerPositions;
 
 bool Phex::doSendPS = false;
 
@@ -342,16 +351,14 @@ void Phex::initServerCommands() {
 	serverCommands["CLOSE"].minWords = 1;
 	serverCommands["COORD"].func = serverCmdCOORD;
 	serverCommands["COORD"].minWords = 5;
-	serverCommands["SEND_BIOMES"].func = serverCmdSEND_BIOMES;
+	serverCommands["SEND_BIOMES"].func = serverCmdSEND_BIOMES; // Updated in Phex v10
 	serverCommands["SEND_BIOMES"].minWords = 2;
 	serverCommands["SEND_POSITION"].func = serverCmdSEND_POSITION;
 	serverCommands["SEND_POSITION"].minWords = 2;
 	serverCommands["HASH_SERVER_LIFE"].func = serverCmdHASH_SERVER_LIFE;
 	serverCommands["HASH_SERVER_LIFE"].minWords = 4;
-	serverCommands["GET_ALL_PLAYERS"].func = serverCmdGET_ALL_PLAYERS;
+	serverCommands["GET_ALL_PLAYERS"].func = serverCmdGET_ALL_PLAYERS; // Updated in Phex v10
 	serverCommands["GET_ALL_PLAYERS"].minWords = 1;
-	serverCommands["GET_ALL_CURSENAMES"].func = serverCmdGET_ALL_CURSENAMES;
-	serverCommands["GET_ALL_CURSENAMES"].minWords = 1;
 	serverCommands["JASON_AUTH"].func = serverCmdJASON_AUTH;
 	serverCommands["JASON_AUTH"].minWords = 2;
 	serverCommands["IDK"].func = serverCmdIDK;
@@ -366,6 +373,14 @@ void Phex::initServerCommands() {
 	serverCommands["POKE"].minWords = 3;
 	serverCommands["STOP_POKE"].func = serverCmdSTOP_POKE;
 	serverCommands["STOP_POKE"].minWords = 1;
+
+	// YummyLife: v10
+	serverCommands["GET_LEADERBOARD_NAME"].func = serverCmdGET_LEADERBOARD_NAME;
+	serverCommands["GET_LEADERBOARD_NAME"].minWords = 1;
+	serverCommands["SEND_ALL_PLAYER_POS"].func = serverCmdSEND_ALL_PLAYER_POS;
+	serverCommands["SEND_ALL_PLAYER_POS"].minWords = 1;
+	serverCommands["SEND_CURSENAMES"].func = serverCmdSEND_CURSENAMES;
+	serverCommands["SEND_CURSENAMES"].minWords = 2;
 }
 
 void Phex::serverCmdVERSION(std::vector<std::string> input) {
@@ -490,29 +505,33 @@ void Phex::serverCmdCOORD(std::vector<std::string> input) {
 	}
 }
 
-void Phex::serverCmdSEND_BIOMES(std::vector<std::string> input) {
-	if (strEquals(input[1], "0")) {
-		sendBiomeDataActive = false;
-		if (HetuwMod::bDrawBiomeInfo) printf("Phex turned sending biome info OFF\n");
-	} else if (strEquals(input[1], "1")) {
-		sendBiomeDataActive = true;
-		if (HetuwMod::bDrawBiomeInfo) printf("Phex turned sending biome info ON\n");
-	} else {
-		printf("Phex unknown argument '%s' for command %s\n", input[1].c_str(), input[0].c_str());
-		printf("Phex argument can be 0 or 1");
-	}
+#define HANDLE_SEND_COMMAND(cmdName, flag, onEnableCode) \
+void Phex::serverCmd##cmdName(std::vector<std::string> input) { \
+    if(!HetuwMod::bAllowPhexGameDataSending) { \
+        flag = false; \
+        tcp.send("GDT_DSBLD " #cmdName); \
+        return; \
+    } \
+    if (strEquals(input[1], "0")) { \
+        flag = false; \
+        printf("Phex turned %s OFF\n", #cmdName); \
+    } else if (strEquals(input[1], "1")) { \
+        flag = true; \
+        onEnableCode; \
+        printf("Phex turned %s ON\n", #cmdName); \
+    } else { \
+        printf("Phex unknown argument '%s' for command %s\n", input[1].c_str(), input[0].c_str()); \
+        printf("Phex argument can be 0 or 1\n"); \
+    } \
 }
 
-void Phex::serverCmdSEND_POSITION(std::vector<std::string> input) {
-	if (strEquals(input[1], "0")) {
-		sendPositionActive = false;
-	} else if (strEquals(input[1], "1")) {
-		sendPositionActive = true;
-	} else {
-		printf("Phex unknown argument '%s' for command %s\n", input[1].c_str(), input[0].c_str());
-		printf("Phex argument can be 0 or 1");
-	}
-}
+// Use HANDLE_SEND_COMMAND macro to implement SEND_BIOMES, SEND_POSITION, SEND_CURSENAMES, SEND_ALL_PLAYER_POS
+HANDLE_SEND_COMMAND(SEND_BIOMES, sendBiomeDataActive, {})
+HANDLE_SEND_COMMAND(SEND_POSITION, sendPositionActive, { lastPositionSentX = -9999; lastPositionSentY = -9999; })
+HANDLE_SEND_COMMAND(SEND_CURSENAMES, sendCurseNamesActive, { curseNamesSentPlayerIDs.clear(); })
+HANDLE_SEND_COMMAND(SEND_ALL_PLAYER_POS, sendAllPlayerPosActive, { lastSentPlayerPositions.clear(); })
+
+#undef HANDLE_SEND_COMMAND
 
 // HASH_SERVER_LIFE c32b6353fb5b4d705593 bigserver2.onehouronelife.com 3031046
 void Phex::serverCmdHASH_SERVER_LIFE(std::vector<std::string> input) {
@@ -529,17 +548,27 @@ void Phex::serverCmdHASH_SERVER_LIFE(std::vector<std::string> input) {
 	}
 }
 
+// ALL_PLAYERS id outOfRange(0/1) alive(D/A) race(A-Z) gender(M/F) age holding lastHolding xd yd name,...
 void Phex::serverCmdGET_ALL_PLAYERS(std::vector<std::string> input) {
 	if (!HetuwMod::gameObjects) return;
+	if(!HetuwMod::bAllowPhexGameDataSending) {
+		tcp.send("GDT_DSBLD GET_ALL_PLAYERS");
+		return;
+	}
 
 	std::string str = "";
 	str += "ALL_PLAYERS ";
 	str += string(HetuwMod::serverIP)+" ";
+
+	bool first = true;
 	for(int i=0; i<HetuwMod::gameObjects->size(); i++) {
 		LiveObject *o = HetuwMod::gameObjects->getElement( i );
 		if (!o) continue;
 		ObjectRecord* obj = getObject(o->displayID);
 		if (!obj) continue;
+
+		if (!first) str += ",";
+		first = false;
 
 		str += to_string(o->id);
 		string inRange = o->outOfRange ? "0" : "1";
@@ -550,36 +579,32 @@ void Phex::serverCmdGET_ALL_PLAYERS(std::vector<std::string> input) {
 		string gender = obj->male ? "M" : "F";
 		str += " "+gender;
 		str += " "+to_string((int)HetuwMod::livingLifePage->hetuwGetAge(o));
+		str += " "+to_string(o->holdingID);
+		str += " "+to_string(o->lastHoldingID);
 		str += " "+to_string(o->xd)+" "+to_string(o->yd);
 
 		if (o->name) str += " "+string(o->name);
-
-		str += ",";
 	}
 	//printf("Phex %s\n", str.c_str());
 	tcp.send(str);
 }
 
-// YummyLife: Implementing this before officially part of the Phex protocol
-void Phex::serverCmdGET_ALL_CURSENAMES(std::vector<std::string> input) {
-	if (!HetuwMod::gameObjects) return;
-
-	string str = "ALL_CURSENAMES ";
-	str += string(HetuwMod::serverIP) + " ";
-
-	for(int i = 0; i < HetuwMod::gameObjects->size(); i++) {
-		LiveObject *o = HetuwMod::gameObjects->getElement( i );
-		if (!o) continue;
-		ObjectRecord* obj = getObject(o->displayID);
-		if (!obj) continue;
-
-		const char* cursename = o->curseName;
-		if (!cursename || strlen(cursename) <= 1) continue;
-
-		str += to_string(o->id) + " " + cursename + ",";
+// Refusing to send leaderboard name will prevent PhexPlus features from working
+// Sending fake or empty name will cause account bans (must respond with 'GDT_DSBLD' or UNABLE_LEADERBOARD_NAME)
+void Phex::serverCmdGET_LEADERBOARD_NAME(std::vector<std::string> input) {
+	if (!HetuwMod::bAllowPhexGameDataSending) {
+		tcp.send("GDT_DSBLD GET_LEADERBOARD_NAME");
+		return;
 	}
 
-	//printf("Phex %s\n", str.c_str());
+	const char* leaderboardName = getLeaderboardName();
+
+	if (!leaderboardName || strlen(leaderboardName) < 1) {
+		tcp.send("UNABLE_LEADERBOARD_NAME");
+		return;
+	}
+	std::string str = "LEADERBOARD_NAME ";
+	str += leaderboardName;
 	tcp.send(str);
 }
 
@@ -1384,6 +1409,8 @@ void Phex::draw() {
 	keyHandler.step();
 	if (sendBiomeDataActive && intervalSendBiomeData.step()) loopBiomeChunks();
 	if (sendPositionActive && intervalSendPosition.step()) sendPosition();
+	if(sendCurseNamesActive && intervalSendCurseNames.step()) sendNewCurseNames();
+	if (sendAllPlayerPosActive && intervalSendAllPlayerPos.step()) sendAllNewPlayerPositions();
 
 	if (isMinimized) drawMinimized();
 	else drawNormal();
@@ -1729,6 +1756,79 @@ void Phex::onGameStep() {
 		tcp.step();
 }
 
+void Phex::sendNewCurseNames() {
+	if (!HetuwMod::gameObjects) return;
+	string str = "CURSENAMES ";
+	str += string(HetuwMod::serverIP) + " ";
+
+	int found = 0;
+	bool first = true;
+	for(int i = 0; i < HetuwMod::gameObjects->size(); i++) {
+		LiveObject *o = HetuwMod::gameObjects->getElement( i );
+		if (!o) continue;
+		ObjectRecord* obj = getObject(o->displayID);
+		if (!obj) continue;
+
+		if (!o->curseName || strlen(o->curseName) <= 1) continue;
+
+		int id = o->id;
+		std::string curseStr = o->curseName;
+
+		if(curseNamesSentPlayerIDs.find(id) != curseNamesSentPlayerIDs.end()) {
+			continue; // already sent cursename for this lifeID
+		}
+
+		for (char &ch : curseStr) if (ch == ' ') ch = '_';
+
+		if (!first) str += ",";
+		str += to_string(o->id) + " " + curseStr;
+		curseNamesSentPlayerIDs.insert(id);
+		first = false;
+		found++;
+	}
+	if(found == 0) return; // nothing new to send
+	tcp.send(str);
+}
+
+// Simplified version of GET_ALL_PLAYERS that only sends player IDs and positions of players in range and alive
+// ALL_PLAYER_POS id xd yd,...
+void Phex::sendAllNewPlayerPositions() {
+	if (!HetuwMod::gameObjects) return;
+
+	std::string str = "ALL_PLAYER_POS ";
+	str += string(HetuwMod::serverIP) + " ";
+
+	int found = 0;
+	bool first = true;
+	for(int i = 0; i < HetuwMod::gameObjects->size(); i++) {
+		LiveObject *o = HetuwMod::gameObjects->getElement( i );
+		if (!o) continue;
+		ObjectRecord* obj = getObject(o->displayID);
+		if (!obj) continue;
+		if (o->outOfRange) continue;
+		if (o->finalAgeSet) continue;
+
+		int x = o->xd;
+		int y = o->yd;
+		doublePair pa = {(double)x, (double)y};
+
+		auto it = lastSentPlayerPositions.find(o->id);
+		if (it != lastSentPlayerPositions.end() && it->second.x == pa.x && it->second.y == pa.y) {
+			continue; // position hasn't changed
+		}
+
+		if (!first) str += ",";
+		str += to_string(o->id) + " " + to_string(x) + " " + to_string(y);
+		lastSentPlayerPositions[o->id] = pa; // Use operator[] instead of insert_or_assign
+		first = false;
+		found++;
+	}
+
+	if(found == 0) return; // nothing new to send
+	tcp.send(str);
+}
+
+// BIOME lifeID chunkX chunkY biomeData...
 void Phex::sendBiomeChunk(int chunkX, int chunkY) {
 	int tileX = chunkX * biomeChunkSize;
 	int tileY = chunkY * biomeChunkSize;
@@ -1744,8 +1844,11 @@ void Phex::sendBiomeChunk(int chunkX, int chunkY) {
 	char *c = &biomeChunksSent[arrX][arrY];
 
 	if (*c & (1U << bitPos)) return; // bit is already set
+	if(HetuwMod::ourLiveObject == NULL) return;
+	if(HetuwMod::ourLiveObject->id <= 0) return;
 
 	std::string sendStr = "BIOME ";
+	sendStr += to_string(HetuwMod::ourLiveObject->id) + " ";
 	sendStr += to_string(tileX) + " ";
 	sendStr += to_string(tileY) + " ";
 	for (int y=tileY; y < tileY+biomeChunkSize; y++) {

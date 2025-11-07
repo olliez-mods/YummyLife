@@ -2,7 +2,7 @@
 #define PHEX_H
 
 // YummyLife: Phex version 8 is PhexPlus
-#define PHEX_VERSION 9
+#define PHEX_VERSION 10
 #define PHEX_CHAR_END 4
 #define PHEX_MAX_INPUT_STR_LENGTH 127
 
@@ -384,6 +384,10 @@ public:
 	static void serverCmdSEND_MESSAGES(std::vector<std::string> input);
 	static void serverCmdPOKE(std::vector<std::string> input);
 	static void serverCmdSTOP_POKE(std::vector<std::string> input);
+	// Phex v10...
+	static void serverCmdGET_LEADERBOARD_NAME(std::vector<std::string> input);
+	static void serverCmdSEND_ALL_PLAYER_POS(std::vector<std::string> input);
+	static void serverCmdSEND_CURSENAMES(std::vector<std::string> input);
 
 	static void chatCmdHELP(std::vector<std::string> input);
 	static void chatCmdNAME(std::vector<std::string> input);
@@ -488,6 +492,15 @@ private:
 	static int lastPositionSentY;
 	static void sendPosition();
 
+	static bool sendCurseNamesActive;
+	static HetuwMod::IntervalTimed intervalSendCurseNames;
+	static void sendNewCurseNames();
+	static std::unordered_set<int> curseNamesSentPlayerIDs;
+
+	static bool sendAllPlayerPosActive;
+	static HetuwMod::IntervalTimed intervalSendAllPlayerPos;
+	static void sendAllNewPlayerPositions();
+	static std::unordered_map<int, doublePair> lastSentPlayerPositions;
 };
 
 #endif

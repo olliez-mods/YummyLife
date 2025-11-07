@@ -160,6 +160,7 @@ int HetuwMod::iAfkHungerThreshold;
 bool HetuwMod::bRequestLifeProfiles;
 bool HetuwMod::bIdentifyMyself;
 bool HetuwMod::bAllowPhexMessageSending;
+bool HetuwMod::bAllowPhexGameDataSending;
 bool HetuwMod::bAllowLiveResources;
 
 int HetuwMod::iDrawNames;
@@ -416,6 +417,7 @@ void HetuwMod::init() {
 	bRequestLifeProfiles = true;
 	bIdentifyMyself = false;
 	bAllowPhexMessageSending = true;
+	bAllowPhexGameDataSending = true;
 	bAllowLiveResources = true;
 
 	iDrawNames = 1;
@@ -914,6 +916,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("request_life_profiles", bRequestLifeProfiles, {preComment:"\n", postComment: " // Request to receive data about lives when on BS2"});
 	yumConfig::registerSetting("identify_myself", bIdentifyMyself, {postComment: " // Let Phex identify my profile to others"});
 	yumConfig::registerSetting("allow_phex_message_sending", bAllowPhexMessageSending, {postComment: " // Let Phex decide how to handle messages (disabling may prevent Phex from working)"});
+	yumConfig::registerSetting("allow_phex_gamedata_sending", bAllowPhexGameDataSending, {postComment: " // Let Phex handle game data (such as position), this is required for PhesPlus features"});
 	yumConfig::registerSetting("allow_live_resources", bAllowLiveResources, {postComment: " // Allow live resources to be downloaded from the repo (such as custom menu backgrounds, fonts, etc)"});
 	// ... to here
 
