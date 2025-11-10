@@ -526,7 +526,10 @@ void Phex::serverCmd##cmdName(std::vector<std::string> input) { \
 }
 
 // Use HANDLE_SEND_COMMAND macro to implement SEND_BIOMES, SEND_POSITION, SEND_CURSENAMES, SEND_ALL_PLAYER_POS
-HANDLE_SEND_COMMAND(SEND_BIOMES, sendBiomeDataActive, {})
+HANDLE_SEND_COMMAND(SEND_BIOMES, sendBiomeDataActive, {
+		memset(biomeChunksSent, 0, sizeof(biomeChunksSent)); 
+		biomeChunksDrawRecs.clear(); 
+})
 HANDLE_SEND_COMMAND(SEND_POSITION, sendPositionActive, { lastPositionSentX = -9999; lastPositionSentY = -9999; })
 HANDLE_SEND_COMMAND(SEND_CURSENAMES, sendCurseNamesActive, { curseNamesSentPlayerIDs.clear(); })
 HANDLE_SEND_COMMAND(SEND_ALL_PLAYER_POS, sendAllPlayerPosActive, { lastSentPlayerPositions.clear(); })
