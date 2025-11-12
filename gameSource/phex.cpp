@@ -499,6 +499,7 @@ void Phex::serverCmdCOORD(std::vector<std::string> input) {
 		strToUpper(coord->text);
 		coord->type = HetuwMod::hpt_phex;
 		HetuwMod::addHomeLocation(coord);
+		HetuwMod::bDrawHomeCords = true; // YummyLife: always enable drawing when receiving new coord
 	} catch(std::exception const & ex) {
 		printf("Phex EXCEPTION when receiving COORD command\n");
 		printf("Phex command: %s\n", joinStr(input, " ", 0).c_str());

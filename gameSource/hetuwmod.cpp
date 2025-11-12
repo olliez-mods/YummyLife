@@ -828,7 +828,7 @@ static void validateFilteredIDs(std::vector<std::string>& ids) {
 }
 
 void HetuwMod::initSettings() {
-	const int cfgVersionLatest = 7;
+	const int cfgVersionLatest = 8;
 	static int cfgVersionActive = cfgVersionLatest;
 
 	yumConfig::registerSetting("cfg_version", cfgVersionActive, {preComment: "// this file will be created whenever you start the mod\n// if you want to reset this file, just delete it\n\n"});
@@ -1042,6 +1042,9 @@ void HetuwMod::initSettings() {
 	if (cfgVersionActive < 7) {
 		// Version 7 migrate from chat.onelifeglobal.chat
 		phexIp = yummyPhexIP;
+	}
+	if(cfgVersionActive < 8) {
+		phexSkipTOS = true;
 	}
 	if (compatPhexForceLeft) {
 		phexSide = PHEX_ON_LEFT;

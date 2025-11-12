@@ -736,7 +736,10 @@ private:
 
 	static bool objIdReverseAction( int objId );
 
+// YummyLife: Make this public
+public:
 	static bool bDrawHomeCords;
+private:
 	static void drawHomeCords();
 	static void setDrawColorToCoordType(homePosType type);
 	static bool bNextCharForHome;
