@@ -259,6 +259,7 @@ ExistingAccountPage::ExistingAccountPage()
     mRetryButton.setVisible( false );
     mRedetectButton.setVisible( false );
     mDisableCustomServerButton.setVisible( false );
+    mTutorialButton.setVisible( false );
     mTutOneButton.setVisible( false );
     mTutTwoButton.setVisible( false );
     mUpdateYummyLifeButton.setVisible( false );
@@ -378,9 +379,6 @@ void ExistingAccountPage::makeActive( char inFresh ) {
         // tutorial forced anyway (don't need to show button for it)
         mTutorialButton.setVisible( false );
         }
-    
-    // YummyLife: Make tut always active
-    mTutorialButton.setVisible( true );
 
     mFramesCounted = 0;
     mPageActiveStartTime = game_getCurrentTime();    
@@ -391,6 +389,7 @@ void ExistingAccountPage::makeActive( char inFresh ) {
     //mFPSMeasureDone = false;
     
     mLoginButton.setVisible( false );
+    mTutorialButton.setVisible( false );
     mFriendsButton.setVisible( false );
     mGenesButton.setVisible( false );
     
@@ -406,6 +405,7 @@ void ExistingAccountPage::makeActive( char inFresh ) {
         // skipping measure OR we are returning to this page later
         // and not measuring again
         mLoginButton.setVisible( true );
+        mTutorialButton.setVisible( true );
         mFriendsButton.setVisible( true );
         triggerLifeTokenUpdate();
         triggerFitnessScoreUpdate();
@@ -813,6 +813,7 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
 
             if( !fpsFailed ) {
                 mLoginButton.setVisible( true );
+                mTutorialButton.setVisible( true );
                 
                 int pastSuccess = 
                     SettingsManager::getIntSetting( "loginSuccess", 0 );
