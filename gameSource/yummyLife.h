@@ -10,6 +10,7 @@ const char* translateWithDefault(const char* inTranslationKey, const char* inDef
 
 class YummyLife {
     public:
+        static void gameStep();
         static void drawLeaderboardName(doublePair pos);
 
         static void livingLifeStep();

@@ -221,7 +221,7 @@ static void shortenLongString( char *inString ) {
             
 
 
-static void stepActiveRequest() {
+void stepActiveRequest() {
     if( webRequest == -1 ) {
         return;
         }

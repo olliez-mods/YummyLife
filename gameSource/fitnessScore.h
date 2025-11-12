@@ -16,6 +16,8 @@ char isFitnessScoreReady();
 // NULL if not ready
 const char * getLeaderboardName();
 
+// YummyLife: Call from outside to step the request when not drawing fitness score
+void stepActiveRequest();
 
 // These draw nothing if latest data (after last trigger) not ready yet
 

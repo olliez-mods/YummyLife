@@ -95,8 +95,15 @@ bool isTgaFileName(string fileName) {
     return extension == ".tga";
 }
 
+// Called every game step
+void YummyLife::gameStep() {
+
+}
+
+// Called every frame during living life
 void YummyLife::livingLifeStep(){
     AFK::step();
+    stepActiveRequest();
 }
 
 void YummyLife::livingLifeDraw(){

@@ -1449,6 +1449,7 @@ void startTutorial(int tutNumber, char clearTwinCode = 1) {
 void drawFrame( char inUpdate ) {    
 
 	HetuwMod::gameStep();
+    YummyLife::gameStep();
 
     if( !inUpdate ) {
         
