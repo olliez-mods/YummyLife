@@ -13,6 +13,8 @@
 #include "hetuwFont.h"
 #include "fitnessScore.h"
 
+#define ALWAYS_RECONNECT_PHEX_ON_BIRTH true
+
 TCPConnection Phex::tcp;
 bool Phex::bSendFirstMsg = true;
 bool Phex::lifeStarted = false;
@@ -1724,6 +1726,12 @@ void Phex::onRingApoc(int x, int y) {
 
 void Phex::onBirth() {
 	if (!HetuwMod::phexIsEnabled) return;
+
+	if (ALWAYS_RECONNECT_PHEX_ON_BIRTH) {
+		tcp.reconnect();
+		HetuwMod::writeLineToLogs("phex_status", "reconnecting on birth");
+		return;
+	}
 
 	if (tcp.status == TCPConnection::ONLINE) {
 		std::string expectedChannel;
