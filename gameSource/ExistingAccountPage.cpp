@@ -78,6 +78,7 @@ int getModdedClientUpdateStatus(){
     latestMinorClientVersion = latestMinorVersion;
 
     if(latestMajorVersion > currMajorVersion) return 2;
+    if(latestMajorVersion < currMajorVersion) return 0;
     if(latestMinorVersion > currentMinorVersion) return 1;
     return 0;
 }
