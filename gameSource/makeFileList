@@ -89,6 +89,7 @@ settingsToggle.cpp \
 rocketAnimation.cpp \
 AHAPResultPage.cpp \
 AHAPSettingsPage.cpp \
+GridPos.cpp \
 
 
 

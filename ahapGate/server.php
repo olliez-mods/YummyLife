@@ -1520,7 +1520,7 @@ function ag_getContentLeader() {
     global $tableNamePrefix;
 
     // will die on failure
-    $email = ag_checkTicketServerSeqHash();
+    $email = ag_checkTicketServerSeqHash( "" );
 
     
     ag_updateContentLeader();
@@ -1812,6 +1812,19 @@ function ag_getUserIDForGithubUsername( $inGithub ) {
 function ag_updateContentLeader() {
 
     global $tableNamePrefix;
+
+    $query = "SELECT content_leader_github ".
+        "FROM $tableNamePrefix"."server_globals;";
+    
+    $result = ag_queryDatabase( $query );
+    $numRows = mysqli_num_rows( $result );
+
+    $prevLeader = "";
+
+    if( $numRows > 0 ) {
+        $prevLeader = ag_mysqli_result( $result, 0, 0 );
+        }
+    
     
     $query =
         "SELECT COUNT(*), content_leader_github_vote ".
@@ -1839,6 +1852,7 @@ function ag_updateContentLeader() {
         if( $leader_github != "" ) {
             if( $votes >= $bestVotes ) {
                 $bestLeaders[] = $leader_github;
+                $bestVotes = $votes;
                 }
             else {
                 // gotten down to where votes are less that top
@@ -1856,17 +1870,24 @@ function ag_updateContentLeader() {
     else {
         // tie for multiple leaders
 
-        // pick one with lowest ID
+        if( $prevLeader != "" ) {
+            // previous leader wins, stays in office
+            $bestLeader = $prevLeader;
+            }
+        else {
+            // no previous leader 
+            // pick one with lowest ID
 
-        $lowestID = 999999999;
-        $bestLeader = "";
+            $lowestID = 999999999;
+            $bestLeader = "";
 
-        foreach( $bestLeader as $l ) {
-            $id = ag_getUserIDForGithubUsername( $l );
+            foreach( $bestLeaders as $l ) {
+                $id = ag_getUserIDForGithubUsername( $l );
 
-            if( $id < $lowestID ) {
-                $bestLeader = $l;
-                $lowestID = $id;
+                if( $id < $lowestID ) {
+                    $bestLeader = $l;
+                    $lowestID = $id;
+                    }
                 }
             }
         }
