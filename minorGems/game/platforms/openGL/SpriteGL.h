@@ -57,6 +57,16 @@ class SpriteGL{
 
         ~SpriteGL();
         
+        
+        // defaults to full color drawing
+        // note that if sprite is drawn with grayscale toggle on
+        // a separate grayscale texture is loaded into GPU ram
+        //
+        // See documentation in toggleGrayscaleDrawing in gameGraphics.h
+        // for inGrayTextureWhiteThreshold
+        void toggleGrayscaleDrawing( char inGrayscale,
+                                     int inGrayTextureWhiteThreshold = -1 );
+        
 
         void draw( int inFrame,
                    Vector3D *inPosition,
@@ -181,9 +191,16 @@ class SpriteGL{
         static char sWrapSet;
 
         static char sStateSet;
-        
 
+        char mAlphaOnly;
+
+        char mGrayscaleDrawingToggle;
+        int mGrayTextureWhiteThreshold;
+        
         SingleTextureGL *mTexture;
+
+        // NULL if never drawn in grayscale
+        SingleTextureGL *mGrayscaleTexture;
         
         int mNumFrames;
         int mNumPages;
@@ -230,6 +247,8 @@ class SpriteGL{
                           char inComputeCornerPos = true );
         
 
+        void enableGrayscaleTexture();
+        
 
 
         void findColoredRadii( Image *inImage );

@@ -14,6 +14,9 @@ static float lastR, lastG, lastB, lastA;
 
 static char additiveTextureColorMode = false;
 
+static char grayscaleOn = false;
+static float forceGrayColorValue = -1.0f;
+static int grayTextureWhiteThreshold = -1;
 
 
 typedef struct GlobalFade {
@@ -105,6 +108,18 @@ void setDrawColor( float inR, float inG, float inB, float inA ) {
     else {
         inA *= globalFadeTotal;
         }
+
+    if( grayscaleOn ) {
+        float gray = inR * 0.299 + inG * 0.587 + inB * 0.114;
+
+        if( forceGrayColorValue >= 0 ) {
+            gray = forceGrayColorValue;
+            }
+        
+        inR = gray;
+        inG = gray;
+        inB = gray;
+        }
         
     hetuwSetDrawColor( inR, inG, inB, inA );
     }
@@ -158,10 +173,17 @@ FloatColor getFloatColor( const char *inHexString ) {
 
 
 
+static char multiplicativeBlend = false;
+static char additiveBlend = false;
+static char invertedBlend = false;
 
 
 static void setNormalBlend() {
     glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+    
+    multiplicativeBlend = false;
+    additiveBlend = false;
+    invertedBlend = false;
     }
 
 
@@ -169,6 +191,9 @@ static void setNormalBlend() {
 void toggleAdditiveBlend( char inAdditive ) {
     if( inAdditive ) {
         glBlendFunc( GL_SRC_ALPHA, GL_ONE );
+        additiveBlend = true;
+        multiplicativeBlend = false;
+        invertedBlend = false;
         }
     else {
         setNormalBlend();
@@ -180,6 +205,9 @@ void toggleAdditiveBlend( char inAdditive ) {
 void toggleMultiplicativeBlend( char inMultiplicative ) {
     if( inMultiplicative ) {
         glBlendFunc( GL_DST_COLOR, GL_ZERO );
+        additiveBlend = false;
+        multiplicativeBlend = true;
+        invertedBlend = false;
         }
     else {
         setNormalBlend();
@@ -190,11 +218,27 @@ void toggleMultiplicativeBlend( char inMultiplicative ) {
 void toggleInvertedBlend( char inInverted ) {
     if( inInverted ) {
         glBlendFunc( GL_ONE_MINUS_DST_COLOR, GL_ZERO );
+        additiveBlend = false;
+        multiplicativeBlend = false;
+        invertedBlend = true;
         }
     else {
         setNormalBlend();
         }
     }
+
+
+
+
+void toggleGrayscaleDrawing( char inGrayscale, float inForceGrayColorValue,
+                             int inGrayTextureWhiteThreshold ) {
+    grayscaleOn = inGrayscale;
+    forceGrayColorValue = inForceGrayColorValue;
+    grayTextureWhiteThreshold = inGrayTextureWhiteThreshold;
+    }
+
+
+
 
 
 
@@ -747,6 +791,15 @@ void drawSprite( SpriteHandle inSprite, doublePair inCenter,
     spritePos.mX = inCenter.x;
     spritePos.mY = inCenter.y;
     
+    // disable texture threshold for multiplicative-blended sprites
+    // since they have no "white" parts (white is transparent)
+    int threshold = grayTextureWhiteThreshold;
+    if( multiplicativeBlend ) {
+        threshold = -1;
+        }
+
+    sprite->toggleGrayscaleDrawing( grayscaleOn, threshold );
+
     sprite->draw( 0,
                   &spritePos,
                   inZoom,
@@ -766,6 +819,15 @@ void drawSprite( SpriteHandle inSprite, doublePair inCenter,
     spritePos.mX = inCenter.x;
     spritePos.mY = inCenter.y;
 
+    // disable texture threshold for multiplicative-blended sprites
+    // since they have no "white" parts (white is transparent)
+    int threshold = grayTextureWhiteThreshold;
+    if( multiplicativeBlend ) {
+        threshold = -1;
+        }
+
+    sprite->toggleGrayscaleDrawing( grayscaleOn, threshold );
+
     sprite->draw( 0,
                   &spritePos,
                   inCornerColors,
@@ -781,6 +843,15 @@ void drawSprite( SpriteHandle inSprite, doublePair inCenter,
 void drawSprite( SpriteHandle inSprite, doublePair inCornerPos[4], 
                  FloatColor inCornerColors[4] ) {
     SpriteGL *sprite = (SpriteGL *)inSprite;
+    
+    // disable texture threshold for multiplicative-blended sprites
+    // since they have no "white" parts (white is transparent)
+    int threshold = grayTextureWhiteThreshold;
+    if( multiplicativeBlend ) {
+        threshold = -1;
+        }
+
+    sprite->toggleGrayscaleDrawing( grayscaleOn, threshold );
     
     sprite->draw( 0,
                   inCornerPos,

@@ -13,7 +13,11 @@
 
 
 // let SDL override our main function with SDLMain
+#ifdef __mac__
+#include <SDL_main.h>
+#else
 #include <SDL/SDL_main.h>
+#endif
 
 
 // must do this before SDL include to prevent WinMain linker errors on win32
@@ -24,8 +28,11 @@ int main( int inArgCount, char **inArgs ) {
     }
 
 
+#ifdef __mac__
+#include <SDL.h>
+#else
 #include <SDL/SDL.h>
-
+#endif
 
 
 #include "minorGems/graphics/openGL/ScreenGL.h"
@@ -1867,7 +1874,7 @@ int mainFunction( int inNumArgs, char **inArgs ) {
 
         
 
-    AppLog::setLog( new FileLog( "log.txt" ) );
+    AppLog::setLog( new FileLog( "gameLog.txt" ) );
     AppLog::setLoggingLevel( Log::DETAIL_LEVEL );
     
     AppLog::info( "New game starting up" );
@@ -3982,10 +3989,6 @@ void GameSceneHandler::keyPressed(
     // reset to become responsive while paused
     mPausedSleepTime = 0;
     
-    // YummyLife: Allow user to quickly quit by doing Shift+Esc
-    if (isShiftKeyDown() && inKey == 27) {
-        exit(0);
-    }
 
     if( mPaused && inKey == hetuwGetConfirmExitKey() && ! mBlockQuitting ) {
         // % to quit from pause
