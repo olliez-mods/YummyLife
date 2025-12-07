@@ -894,7 +894,16 @@ void YummyLife::LiveResources::initLiveResources(const char* clientVersionTag) {
         string fSupV = resourceInfo.value("firstSupV", "");
         string lSupV = resourceInfo.value("lastSupV", "");
         bool deprecated = resourceInfo.value("deprecated", false);
+        bool shouldRemoved = resourceInfo.value("removed", false);
+        bool isTestResource = resourceInfo.value("isTestResource", false);
         string resourceHash = resourceInfo.value("hash", "");
+
+        // Skip test resources if not a test build
+        if (isTestResource) {
+        #ifndef TEST_BUILD
+            continue;
+        #endif
+        }
 
         // Step 0: Check if the resource is whitelisted by the user, skip if so
         bool whitelisted = (std::find(localWhitelist.begin(), localWhitelist.end(), resourceName) != localWhitelist.end());
@@ -931,6 +940,10 @@ void YummyLife::LiveResources::initLiveResources(const char* clientVersionTag) {
         // deprecation - never download if deprecated
         if (deprecated) {
             needsDownload = false;
+        }
+        // Removal - always delete if marked for removal (and not whitelisted)
+        if (shouldRemoved && !whitelisted) {
+            needsDelete = true; // Delete the file
         }
         // supported versions check
         int cmpFirst = compareVersionTags(clientVersionTag, fSupV);
