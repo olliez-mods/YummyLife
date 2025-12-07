@@ -4,6 +4,12 @@ project(YummyLife)
 
 set(CMAKE_CXX_STANDARD 14)
 
+option(TEST_BUILD "Enable test build features" OFF)
+
+if (TEST_BUILD)
+    add_compile_definitions(TEST_BUILD=1)
+endif()
+
 set(MINORGEMS_COMMON_SOURCE_FILES
     minorGems/graphics/openGL/ScreenGL_SDL.cpp
     minorGems/graphics/openGL/SingleTextureGL.cpp

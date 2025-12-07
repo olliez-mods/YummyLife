@@ -21,7 +21,7 @@ rm -rf ./devbuild/YummyLife_*
 if [ "$build_windows" = true ]; then
   echo ----- Windows -----
   mkdir -p devbuild/windows
-  cmake -DCMAKE_TOOLCHAIN_FILE=mingw-cross-toolchain.cmake -B devbuild/windows -S .
+  cmake -DCMAKE_TOOLCHAIN_FILE=mingw-cross-toolchain.cmake -B devbuild/windows -S . -DTEST_BUILD=ON
   cmake --build devbuild/windows -j
   mv devbuild/windows/YummyLife_windows.exe devbuild/YummyLife_dev_windows.exe
 fi
@@ -29,7 +29,7 @@ fi
 if [ "$build_linux" = true ]; then
   echo ----- Linux -----
   mkdir -p devbuild/linux
-  cmake -B devbuild/linux -S .
+  cmake -B devbuild/linux -S . -DTEST_BUILD=ON
   cmake --build devbuild/linux -j
   mv devbuild/linux/YummyLife_linux devbuild/YummyLife_dev_linux
 fi
