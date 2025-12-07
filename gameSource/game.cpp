@@ -299,6 +299,11 @@ const char *getWindowTitle() {
 	if (windowTitle == NULL) {
 		char title[256] = "";
 		snprintf(title, sizeof(title), "YummyLife v%d%s - Oliver", binVersionNumber, yumSubVersion);
+
+        #ifdef TEST_BUILD
+        strcat(title, " (TEST BUILD)");
+        #endif
+
 		windowTitle = strdup(title);
 	}
     return windowTitle;
