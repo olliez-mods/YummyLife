@@ -13,6 +13,8 @@
 #include "objectBank.h"
 #include "animationBank.h"
 
+#define YUMMYLIFE_MODS_DIR_NAME "YummyLiveResources/mods"
+
 
 
 static SimpleVector<File*> loadFileList;
@@ -137,8 +139,24 @@ static int totalNumLoadBlocksScannedSoFar;
 
 
 
+// Add any YummyLife resource mods if present
+void addYummyLifeModsIfPresent() {
+    File yummyModDir( NULL, YUMMYLIFE_MODS_DIR_NAME );
 
+    if (!yummyModDir.exists()) return;
+    if (yummyModDir.isDirectory()) {
+        int numLoads;
+        File **loads = yummyModDir.getChildFiles(&numLoads);
 
+        for (int i = 0; i < numLoads; i++) {
+            loadFileList.push_back(loads[i]);
+        }
+        printf("Added %d YummyLife resource mods\n", numLoads);
+        delete[] loads;
+    } else {
+        printf("YummyLife mods path exists but is not a directory: %s\n", YUMMYLIFE_MODS_DIR_NAME);
+    }
+}
 
 static int initLoaderStartInternal( const char *inDirName ) {
 
@@ -158,6 +176,8 @@ static int initLoaderStartInternal( const char *inDirName ) {
         delete [] loads;
         }
     
+    addYummyLifeModsIfPresent();
+
     currentLoadFileIndex = 0;
     
     currentLoadScanned = false;
