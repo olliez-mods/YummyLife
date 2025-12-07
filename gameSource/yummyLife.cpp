@@ -631,6 +631,40 @@ const char* YummyLife::LiveResources::getGitHubLiveResourcesPath(){
     return "olliez-mods/YummyLife/master/yummyLifeLiveResources/";
 }
 
+bool YummyLife::LiveResources::ensureDirectoriesExistForFile(const char* filepath){
+    if (filepath == nullptr || filepath[0] == '\0') return true;
+
+    std::string path = filepath;
+    std::replace(path.begin(), path.end(), '\\', '/'); // normalize
+    size_t pos = path.find_last_of('/');
+    if (pos == std::string::npos) return true; // no dirs to create
+
+    std::string dirPath = path.substr(0, pos);
+    size_t start = 0;
+    while (start < dirPath.size()) {
+        size_t slash = dirPath.find('/', start);
+        std::string sub = (slash == std::string::npos) ? dirPath : dirPath.substr(0, slash);
+        if (sub.empty()) { start = (slash == std::string::npos) ? dirPath.size() : slash + 1; continue; }
+
+        File dir(NULL, sub.c_str());
+        if (!dir.exists()) {
+            if (!dir.makeDirectory()) {
+                std::cout << "Failed to create directory: " << sub << "\n";
+                return false;
+            } else {
+                std::cout << "Created directory: " << sub << "\n";
+            }
+        } else if (!dir.isDirectory()) {
+            std::cout << "Path exists but is not a directory: " << sub << "\n";
+            return false;
+        }
+
+        if (slash == std::string::npos) break;
+        start = slash + 1;
+    }
+    return true;
+}
+
 bool YummyLife::LiveResources::downloadLiveResourceFile(const char* resourceName, const char* localPath){
     string fullPath = string(getGitHubLiveResourcesPath()) + resourceName;
 
@@ -651,6 +685,11 @@ bool YummyLife::LiveResources::downloadLiveResourceFile(const char* resourceName
     if (!res || res->status != 200) {
         std::cout << "Failed to download " << fullPath << " (status " 
                   << (res ? res->status : -1) << ")\n";
+        return false;
+    }
+
+    if(!ensureDirectoriesExistForFile(localPath)) {
+        std::cout << "Failed to ensure directories exist for file: " << localPath << "\n";
         return false;
     }
 

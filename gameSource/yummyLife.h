@@ -78,6 +78,7 @@ class YummyLife {
         class LiveResources {
             public:
                 static const char* getGitHubLiveResourcesPath();
+                static bool ensureDirectoriesExistForFile(const char* filepath);
                 static bool downloadLiveResourceFile(const char* path, const char* localPath);
                 static void initLiveResources(const char* clientVersionTag); // Downloads/updates all live resources
         };
