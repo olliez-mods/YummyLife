@@ -162,6 +162,7 @@ bool HetuwMod::bIdentifyMyself;
 bool HetuwMod::bAllowPhexMessageSending;
 bool HetuwMod::bAllowPhexGameDataSending;
 bool HetuwMod::bAllowLiveResources;
+bool HetuwMod::bDisplayGhostsAsSeparateFamily;
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -419,6 +420,7 @@ void HetuwMod::init() {
 	bAllowPhexMessageSending = true;
 	bAllowPhexGameDataSending = true;
 	bAllowLiveResources = true;
+	bDisplayGhostsAsSeparateFamily = true;
 
 	iDrawNames = 1;
 	bDrawCords = true;
@@ -918,6 +920,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("allow_phex_message_sending", bAllowPhexMessageSending, {postComment: " // Let Phex decide how to handle messages (disabling may prevent Phex from working)"});
 	yumConfig::registerSetting("allow_phex_gamedata_sending", bAllowPhexGameDataSending, {postComment: " // Let Phex handle game data (such as position), this is required for PhesPlus features"});
 	yumConfig::registerSetting("allow_live_resources", bAllowLiveResources, {postComment: " // Allow live resources to be downloaded from the repo (such as custom menu backgrounds, fonts, etc)"});
+	yumConfig::registerSetting("display_ghosts_as_separate_family", bDisplayGhostsAsSeparateFamily, {postComment: " // Display ghosts as a separate family in the family list"});
 	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {
@@ -4381,6 +4384,16 @@ void HetuwMod::updatePlayersInRangePanel() {
 
 	familiesInRange.clear();
 
+	// Ghosts Always go in their own family
+	FamilyInRange ghostFam;
+	ghostFam.name = "GHOSTS";
+	ghostFam.count = 0;
+	ghostFam.youngWomenCount = 0;
+	ghostFam.cursedCount = 0;
+	ghostFam.generation = 0;
+	ghostFam.eveID = 0;
+	ghostFam.race = 0;
+
 	for(int i=0; i<gameObjects->size(); i++) {
 		LiveObject *o = gameObjects->getElement( i );
 		
@@ -4406,6 +4419,13 @@ void HetuwMod::updatePlayersInRangePanel() {
 		bool youngWoman = (!obj->male && livingLifePage->hetuwGetAge( o ) < 40);
 
 		string lastName = getLastName(o->name);
+
+		if (o->isGhost && bDisplayGhostsAsSeparateFamily) {
+			ghostFam.count++;
+			if (youngWoman) ghostFam.youngWomenCount++;
+			if (o->curseLevel > 0) ghostFam.cursedCount++;
+			continue;
+		}
 
 		bool found = false;
 		for (size_t j = 0; j < familiesInRange.size(); j++) {
@@ -4527,6 +4547,10 @@ void HetuwMod::updatePlayersInRangePanel() {
 
 	if (donkeyFam.count != 0) {
 		familiesInRange.push_back(donkeyFam);
+	}
+
+	if (ghostFam.count != 0) {
+		familiesInRange.push_back(ghostFam);
 	}
 }
 

@@ -337,6 +337,7 @@ public:
 	static bool bAllowPhexMessageSending;
 	static bool bAllowPhexGameDataSending;
 	static bool bAllowLiveResources;
+	static bool bDisplayGhostsAsSeparateFamily;
 	// <-
 
 	static int iDrawNames;
