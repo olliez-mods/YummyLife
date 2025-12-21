@@ -4272,7 +4272,8 @@ static raceInfo oholRaces[] = {
 	{ 'A', "DESERT", { 0.8f, 0.8f, 0.0f } },
 	{ 'C', "JUNGLE", { 0.0f, 0.8f, 0.0f } },
 	{ 'D', "LANGUAGE", { 0.0f, 0.4f, 0.8f } },
-	{ 'F', "ARCTIC", { 0.8f, 0.8f, 0.8f } }
+	{ 'F', "ARCTIC", { 0.8f, 0.8f, 0.8f } },
+	{ 'G', "GHOST", { 0.7f, 0.5f, 0.9f } }
 };
 
 static void getRaceColor(char raceLetter, float rgba[4]) {
@@ -4392,7 +4393,7 @@ void HetuwMod::updatePlayersInRangePanel() {
 	ghostFam.cursedCount = 0;
 	ghostFam.generation = 0;
 	ghostFam.eveID = 0;
-	ghostFam.race = 0;
+	ghostFam.race = 'G';
 
 	for(int i=0; i<gameObjects->size(); i++) {
 		LiveObject *o = gameObjects->getElement( i );
