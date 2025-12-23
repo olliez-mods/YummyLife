@@ -23,7 +23,7 @@ YummyLife (by OliverZ) was originally forked from YumLife (By Selb) to reintrodu
 
 # Usage
 
-Press `H` in-game to see everything the mod can do. A `yumlife.cfg` file is
+Press `H` in-game to see everything the mod can do. A `yummylife.cfg` file is
 generated in the OHOL/AHAP install folder and can be tweaked to your liking.
 
 # Troubleshooting

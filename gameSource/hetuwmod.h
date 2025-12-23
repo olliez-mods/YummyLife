@@ -3,6 +3,8 @@
 
 #define hetuwWaitingText "press %c in game for help"
 #define hetuwSettingsFileName "yumlife.cfg"
+#define yummylifeSettingsFileName "yummylife.cfg"
+#define defaultSettingsFileName "default.cfg"
 #define hetuwLogFileName "yumlog.txt"
 #define hetuwLogSeperator " | " // needs to be 3 char long
 #define hetuwFakeCoord 1977

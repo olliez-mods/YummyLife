@@ -1026,7 +1026,16 @@ void HetuwMod::initSettings() {
 	// replaced by draw_mushroom_effect
 	yumConfig::registerSetting("remap_start_enabled", bRemapStart, {savePredicate: []() { return false; }});
 
-	yumConfig::loadSettings(hetuwSettingsFileName);
+	bool hasYummySettings = yumConfig::checkSettingsFileExists(yummylifeSettingsFileName);
+	bool hasDefaultSettings = yumConfig::checkSettingsFileExists(defaultSettingsFileName);
+
+	// This is to migrate old settings to the new yummy settings file
+	if(hasYummySettings) yumConfig::loadSettings(yummylifeSettingsFileName);
+	else if (hasDefaultSettings) yumConfig::loadSettings(defaultSettingsFileName);
+	else {
+		// load old hetuw settings if yummy or default settings dont exist
+		yumConfig::loadSettings(hetuwSettingsFileName);
+	}
 
 	// version migrations
 	if (cfgVersionActive < 2) {
@@ -1078,7 +1087,7 @@ void HetuwMod::initSettings() {
 	filterSprites = bFilterSprites;
 
 	cfgVersionActive = cfgVersionLatest;
-	yumConfig::saveSettings(hetuwSettingsFileName);
+	yumConfig::saveSettings(yummylifeSettingsFileName);
 }
 
 void HetuwMod::onGotServerAddress(char inUsingCustomServer, char *inServerIP, int inServerPort) {
@@ -5208,7 +5217,7 @@ void HetuwMod::drawHelp() {
 	drawPos.y -= lineHeight;
 
 	drawPos.y -= lineHeight;
-	snprintf(str, sizeof(str), "YOU CAN CHANGE KEYS AND SETTINGS BY MODIFYING THE YUMLIFE.CFG FILE");
+	snprintf(str, sizeof(str), "YOU CAN CHANGE KEYS AND SETTINGS BY MODIFYING THE YUMMYLIFE.CFG FILE");
 	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
 	drawPos.y -= lineHeight;
 

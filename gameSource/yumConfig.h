@@ -24,6 +24,7 @@ namespace yumConfig {
     void registerMappedSetting(const char *name, int &value, const std::map<std::string, int> &mapping, yumConfig::Options options = {});
     void registerScaledSetting(const char *name, float &value, int scale, yumConfig::Options options = {});
 
+    bool checkSettingsFileExists(const char *filename);
     void loadSettings(const char *filename);
     void saveSettings(const char *filename);
 }

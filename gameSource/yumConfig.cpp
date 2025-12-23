@@ -319,6 +319,12 @@ static bool getSettingsFileLine(std::string& name, std::string& value, const std
     return true;
 }
 
+// Checks ionly if it exists or not
+bool yumConfig::checkSettingsFileExists(const char *filename) {
+    std::ifstream file(filename);
+    return file.is_open();
+}
+
 void yumConfig::loadSettings(const char *filename) {
     std::ifstream file(filename);
     if (!file.good()) {

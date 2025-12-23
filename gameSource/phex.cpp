@@ -631,7 +631,7 @@ void Phex::serverCmdJASON_AUTH(std::vector<std::string> input) {
 	// opt in to sending this personal detail to the Phex server.
 	if (strstr(userEmail, "@steamgames.com") == NULL) {
 		if (temporaryJasonAuthOptIn) {
-			addCmdMessageToChatWindow("To permanently opt in to sending your email to the Phex server, set phex_send_email in " hetuwSettingsFileName ".", CMD_MSG_ERROR);
+			addCmdMessageToChatWindow("To permanently opt in to sending your email to the Phex server, set phex_send_email in " yummylifeSettingsFileName ".", CMD_MSG_ERROR);
 		} else if (!HetuwMod::phexSendEmail) {
 			addCmdMessageToChatWindow("This Phex server requires your email address for account verification.", CMD_MSG_ERROR);
 			addCmdMessageToChatWindow("To opt in, say: .OPTIN", CMD_MSG_ERROR);
@@ -850,7 +850,7 @@ void Phex::chatCmdOPTIN(std::vector<std::string> input) {
 	temporaryJasonAuthOptIn = true;
 	tcp.reconnect();
 
-	addCmdMessageToChatWindow("Opted in. Set phex_send_email in " hetuwSettingsFileName " to opt in permanently.");
+	addCmdMessageToChatWindow("Opted in. Set phex_send_email in " yummylifeSettingsFileName " to opt in permanently.");
 	addCmdMessageToChatWindow("Reconnecting...");
 }
 
