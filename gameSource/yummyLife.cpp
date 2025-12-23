@@ -6,13 +6,13 @@
 using std::string;
 
 #include <CPP-HTTPLib/httplib.h>
+#include <openssl/sha.h>
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
 #include "minorGems/io/file/File.h"
 
 #include "hetuwmod.h"
-#include "LivingLifePage.h"
 
 #include "minorGems/game/gameGraphics.h"
 
