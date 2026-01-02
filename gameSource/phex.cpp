@@ -130,6 +130,14 @@ extern doublePair lastScreenViewCenter;
 extern char *userEmail;
 extern int versionNumber;
 
+// Used to detect if we need to request leaderboard name again (e.g. after email or key change)
+std::string Phex::lastLBNemail = "";
+std::string Phex::lastLBNkey = "";
+std::string Phex::lastLBN = "";
+bool Phex::LBNRequestInProgress;
+double Phex::LBNRequestStartTime = 0.0f;
+#define LBN_REQUEST_TIMEOUT 8.0f
+
 static bool temporaryJasonAuthOptIn = false;
 
 // Initialize starting values for variables that should be reset on Phex reconnect
@@ -158,6 +166,8 @@ void Phex::initVariables() {
 	doSendPS = false;
 
 	lifeStarted = false;
+
+	LBNRequestInProgress = false;
 }
 
 void Phex::init() {
@@ -631,15 +641,22 @@ void Phex::serverCmdGET_LEADERBOARD_NAME(std::vector<std::string> input) {
 		return;
 	}
 
-	const char* leaderboardName = getLeaderboardName();
-
-	if (!leaderboardName || strlen(leaderboardName) < 1) {
-		tcp.send("UNABLE_LEADERBOARD_NAME");
+	// If credentials haven't changed since last request, no need to request again
+	if(lastLBN.size() > 0 && lastLBNemail == string(userEmail) && lastLBNkey == string(getPureAccountKey())) {
+		printf("Phex Sending cached leaderboard name to server: %s\n", lastLBN.c_str());
+		std::string str = "LEADERBOARD_NAME ";
+		str += lastLBN;
+		tcp.send(str);
 		return;
 	}
-	std::string str = "LEADERBOARD_NAME ";
-	str += leaderboardName;
-	tcp.send(str);
+
+	// Start leaderboardname request
+	printf("Phex requesting leaderboard name from server\n");
+	LBNRequestStartTime = HetuwMod::curStepTime;
+	LBNRequestInProgress = true;
+	freeFitnessScore(); // Reset LBN
+	initFitnessScore();
+	triggerFitnessScoreUpdate();
 }
 
 void Phex::serverCmdJASON_AUTH(std::vector<std::string> input) {
@@ -1798,6 +1815,29 @@ void Phex::onGameStep() {
 	// lifecycle assumptions.
 	if (lifeStarted)
 		tcp.step();
+
+	if(LBNRequestInProgress) {
+		const char* leaderboardName = getLeaderboardName();
+
+		if (!leaderboardName || strlen(leaderboardName) < 1) {
+			if(HetuwMod::curStepTime > LBNRequestStartTime + LBN_REQUEST_TIMEOUT) {
+				printf("Phex timeout getting leaderboard name\n");
+				tcp.send("UNABLE_LEADERBOARD_NAME");
+				LBNRequestInProgress = false;
+			}
+		}
+		// Got the leaderboard name - record and send it
+		else {
+			printf("Phex got leaderboard name: %s\n", leaderboardName);
+			lastLBNemail = string(userEmail);
+			lastLBNkey = getPureAccountKey();
+			lastLBN = string(leaderboardName);
+			std::string str = "LEADERBOARD_NAME ";
+			str += lastLBN;
+			tcp.send(str);
+			LBNRequestInProgress = false;
+		}
+	}
 }
 
 void Phex::sendNewCurseNames() {

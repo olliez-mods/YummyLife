@@ -503,6 +503,12 @@ private:
 	static HetuwMod::IntervalTimed intervalSendAllPlayerPos;
 	static void sendAllNewPlayerPositions();
 	static std::unordered_map<int, doublePair> lastSentPlayerPositions;
+
+	static std::string lastLBNemail;
+	static std::string lastLBNkey;
+	static std::string lastLBN;
+	static bool LBNRequestInProgress;
+	static double LBNRequestStartTime;
 };
 
 #endif
