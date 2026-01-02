@@ -471,6 +471,8 @@ public:
 
 private:
 
+	static void initVariables();
+
 	static void fontSetMaxX();
 	static void initButtons();
 

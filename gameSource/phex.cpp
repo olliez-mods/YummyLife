@@ -99,24 +99,24 @@ std::string Phex::forceChannel = "";
 
 bool Phex::bSendFakeLife = false;
 
-bool Phex::beenPoked = false;
-std::string Phex::lastPokeHash = "";
+bool Phex::beenPoked;
+std::string Phex::lastPokeHash;
 
-bool Phex::sendBiomeDataActive = false;
+bool Phex::sendBiomeDataActive;
 char Phex::biomeChunksSent[biomeChunksSentSize][biomeChunksSentSize];
 HetuwMod::IntervalTimed Phex::intervalSendBiomeData = HetuwMod::IntervalTimed(1.0);
 std::vector<float*> Phex::biomeChunksDrawRecs;
 
-bool Phex::sendPositionActive = false;
+bool Phex::sendPositionActive;
 HetuwMod::IntervalTimed Phex::intervalSendPosition = HetuwMod::IntervalTimed(3.0);
-int Phex::lastPositionSentX = -9999;
-int Phex::lastPositionSentY = -9999;
+int Phex::lastPositionSentX;
+int Phex::lastPositionSentY;
 
-bool Phex::sendCurseNamesActive = false;
+bool Phex::sendCurseNamesActive;
 HetuwMod::IntervalTimed Phex::intervalSendCurseNames = HetuwMod::IntervalTimed(10.0);
 std::unordered_set<int> Phex::curseNamesSentPlayerIDs;
 
-bool Phex::sendAllPlayerPosActive = false;
+bool Phex::sendAllPlayerPosActive;
 HetuwMod::IntervalTimed Phex::intervalSendAllPlayerPos = HetuwMod::IntervalTimed(5.0);
 std::unordered_map<int, doublePair> Phex::lastSentPlayerPositions;
 
@@ -131,6 +131,34 @@ extern char *userEmail;
 extern int versionNumber;
 
 static bool temporaryJasonAuthOptIn = false;
+
+// Initialize starting values for variables that should be reset on Phex reconnect
+// This will be called when onConnectionStatusChanged switches to CONNECTING
+// Don't put variables that must persist across reconnects in here or ones that affect connection/status
+void Phex::initVariables() {
+	beenPoked = false;
+	lastPokeHash = "";
+
+	sendBiomeDataActive = false;
+	memset(biomeChunksSent, 0, sizeof(biomeChunksSent));
+
+	for (float* rect : biomeChunksDrawRecs) delete[] rect;
+	biomeChunksDrawRecs.clear();
+
+	sendPositionActive = false;
+	lastPositionSentX = -9999;
+	lastPositionSentY = -9999;
+
+	sendCurseNamesActive = false;
+	curseNamesSentPlayerIDs.clear();
+
+	sendAllPlayerPosActive = false;
+	lastSentPlayerPositions.clear();
+
+	doSendPS = false;
+
+	lifeStarted = false;
+}
 
 void Phex::init() {
 	if (!HetuwMod::phexIsEnabled) return;
@@ -1571,6 +1599,7 @@ void Phex::onConnectionStatusChanged(TCPConnection::statusType status) {
 			HetuwMod::writeLineToLogs("phex_status", "connecting");
 			titleText.setToConnecting();
 			setArray(butPhex.colorBckgr, colorButPhexConnecting, 4);
+			initVariables(); // Reset variables on Connecting
 			bSendFirstMsg = true;
 			break;
 		case TCPConnection::ONLINE:
@@ -1732,7 +1761,9 @@ void Phex::onBirth() {
 	if (ALWAYS_RECONNECT_PHEX_ON_BIRTH && tcp.status != TCPConnection::OFFLINE) {
 		HetuwMod::writeLineToLogs("phex_status", "reconnecting on birth");
 		tcp.disconnect();
-		init();
+		tcp.step(); // Process disconnect immediately, and handle any lingering events
+		initVariables(); // Reset variables
+		if (!HetuwMod::phexStartOffline) tcp.connect();
 	}
 
 	if (tcp.status == TCPConnection::ONLINE) {
