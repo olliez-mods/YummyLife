@@ -26,6 +26,9 @@ const char *clientTag = "client_yummylife";
 // in a way that breaks old clients.
 int accountHmacVersionNumber = 0;
 
+// Version number is dynamically set at runtime, based on data version, use this for checking software version
+int softwareVersionNumber = versionNumber;
+
 
 char isAHAP = false;
 

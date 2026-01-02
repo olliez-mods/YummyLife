@@ -48,6 +48,7 @@ extern char loginEditOverride;
 
 // YummyLife: Used for version checking
 extern int versionNumber;
+extern int softwareVersionNumber;
 extern const char *yumSubVersion;
 
 // These are only set when getModdedClientUpdateStatus() is called, and is successful
@@ -56,7 +57,7 @@ int latestMinorClientVersion = -1;
 // Returns -1 for fail, 0 for up-to-date, 1 for minor update, 2 for major update
 int getModdedClientUpdateStatus(){
     // First get current version
-    int currMajorVersion = versionNumber;
+    int currMajorVersion = softwareVersionNumber;
     int currentMinorVersion = 0;
     sscanf(yumSubVersion, ".%d", &currentMinorVersion);
 
