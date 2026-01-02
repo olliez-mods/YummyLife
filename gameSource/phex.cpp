@@ -1728,10 +1728,11 @@ void Phex::onRingApoc(int x, int y) {
 void Phex::onBirth() {
 	if (!HetuwMod::phexIsEnabled) return;
 
-	if (ALWAYS_RECONNECT_PHEX_ON_BIRTH) {
-		tcp.reconnect();
+	// Re-initialize Phex on birth when socket is online to ensure a clean state
+	if (ALWAYS_RECONNECT_PHEX_ON_BIRTH && tcp.status != TCPConnection::OFFLINE) {
 		HetuwMod::writeLineToLogs("phex_status", "reconnecting on birth");
-		return;
+		tcp.disconnect();
+		init();
 	}
 
 	if (tcp.status == TCPConnection::ONLINE) {
