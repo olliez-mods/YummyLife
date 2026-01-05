@@ -15384,6 +15384,7 @@ void LivingLifePage::step() {
             
             if( numRead == 2 && foodID != -1 ) {
                 setNewCraving( foodID, bonus );
+                HetuwMod::onCravingReport(foodID);
                 }
             }
         else if( type == GHOST ) {

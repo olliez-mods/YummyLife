@@ -300,6 +300,8 @@ int HetuwMod::delayReduction = 0;
 
 int HetuwMod::zoomLimit = 10;
 
+int HetuwMod::currentCravingFoodID = -1;
+
 std::vector<HetuwMod::HttpRequest*> HetuwMod::httpRequests;
 
 bool HetuwMod::connectedToMainServer = false;
@@ -2145,6 +2147,8 @@ bool HetuwMod::isYummy(int objID) {
 	int objectID = becomesFoodID[objID];
 	if( objectID < 0 ) return false;
 
+	if(currentCravingFoodID > 0 && objectID == currentCravingFoodID) return true;
+
 	for( int i=0; i<yummyFoodChain.size(); i++ ) {
 		if( objectID == yummyFoodChain.getElementDirect(i) ) return false;
 	}
@@ -2157,6 +2161,11 @@ void HetuwMod::foodIsMeh(ObjectRecord *obj) {
 	if (!isYummy(objID)) return;
 	yummyFoodChain.push_back(objID);
 	YummyLife::yumEaten( objID, ourLiveObject->id );
+}
+
+// YummyLife: We want to know what our craving is
+void HetuwMod::onCravingReport(int foodID) {
+	currentCravingFoodID = foodID;
 }
 
 // YummyLife: Edited to fit in YummyLife::yumEaten();

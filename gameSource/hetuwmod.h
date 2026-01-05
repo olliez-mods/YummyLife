@@ -576,6 +576,8 @@ public:
 	static int delayReduction;
 	static int zoomLimit;
 
+	static int currentCravingFoodID;
+
 	static std::vector<FamilyInRange> familiesInRange;
 
 	static bool charArrContainsCharArr(const char* arr1, const char* arr2);
@@ -605,6 +607,7 @@ public:
 	static SimpleVector<int> yummyFoodChain;
 	static bool isYummy(int objID);
 	static void foodIsMeh(ObjectRecord *obj);
+	static void onCravingReport(int foodID);
 	static void onJustAteFood(ObjectRecord *food);
 	static bool bDrawYum;
 	static void setYumObjectsColor();
