@@ -66,6 +66,7 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         TextButton mGenesButton;
         TextButton mFamilyTreesButton;
         TextButton mClearAccountButton;
+        TextButton mChangeAccountButton;
         TextButton mCancelButton;
 
         TextButton mSettingsButton;
@@ -89,6 +90,23 @@ class ExistingAccountPage : public GamePage, public ActionListener {
 
         TextButton mUpdateYummyLifeButton;
 
+        // Account management buttons
+        TextButton mAcntPrevButton;
+        TextButton mAcntNextButton;
+        TextButton mAcntSelectButton;
+        TextButton mAcntEditButton;
+        TextButton mAcntDeleteButton;
+        TextButton mAcntDeleteConfirmButton;
+        TextButton mAcntNewButton;
+        TextButton mAcntCloseButton;
+
+        TextButton mAcntConfirmButton;
+        TextButton mAcntCancelButton;
+        TextField mAcntEmailField;
+        TextField mAcntKeyField;
+        TextField mAcntNotesField;
+        KeyEquivalentTextButton mAcntPasteButton;
+
         yumRebirthComponent mYumRebirth;
         
 
@@ -96,7 +114,31 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         int mFramesCounted;
         char mFPSMeasureDone;
 
+        char showChangeAccountWindow = false;
+        char showEditAccountWindow = false;
+        int editAccountIndex; // -1 to add new account
+
+        int selectedAccountIndex = -1;
+        int hoveredAccountIndex = -1;
+
+        char inSaveAccountProcess = false; // Are we currently trying to save an account?
+        double accountSaveStartTime = 0.0; // For request timeout
+
+        char shouldAcntPasteButtonBeVisable;
+        char confirmDeleteAccount = false;
+
         char mHideAccount;
+
+        void hideLeftScreenItems(bool hide);
+        void setChangeAccountWindow(bool open, int hoveredAccountIndexOverride = -1);
+        void setEditAccountWindow(bool open, int accountIndex = -1); // -1 to add new account
+
+        void onAccountDeleteConfirmed();
+        void onAccountDeleteCancelled();
+        void onAccountDeleteStarted();
+
+        void selectAccountAtIndex(int index);
+        void updateLoginInfo(const char* inEmail, const char* inKey, bool saveToSettings = false);
 
         void switchFields();
         

@@ -24,6 +24,7 @@ using json = nlohmann::json;
 
 #include <iostream>
 
+#define SAVED_ACCOUNTS_FILE "accounts.txt"
 #define LAST_YUMS_FILE "lastYums.txt"
 #define ONLY_ADD_UNIQUE_YUMS true
 
@@ -55,6 +56,8 @@ SoundSpriteHandle YummyLife::screenshotSound;
 
 std::vector<int> YummyLife::lastYums;
 int YummyLife::lastYumsLifeID = -1; // Life ID's can't be below 0 (or 1 maybe)
+
+std::vector<YummyLife::AccountManager::Account> YummyLife::AccountManager::accounts;
 
 const char* translateWithDefault(const char* inTranslationKey, const char* inDefault){
     const char* tResult = translate(inTranslationKey);
@@ -1021,3 +1024,127 @@ void YummyLife::LiveResources::initLiveResources(const char* clientVersionTag) {
     writeLocalResourceVersions(newLocalResourceVersions);
     std::cout << "Live resources initialization complete.\n";
 }
+
+void YummyLife::AccountManager::loadSavedAccounts() {
+    accounts.clear();
+
+    std::ifstream accountsFile(SAVED_ACCOUNTS_FILE);
+    if (!accountsFile) {
+        std::cout << "No saved accounts file found\n";
+        return;
+    }
+
+    // local;leaderboardName;notes;ohol_email;ohol_key
+    // shared;leaderboardName;notes;accessToken;ownerToken - ownerToken is optional
+    std::string line;
+    int lineNumber = 0;
+    while (std::getline(accountsFile, line)) {
+        lineNumber++;
+        std::istringstream lineStream(line);
+        std::vector<std::string> parts;
+        std::string token;
+        while (std::getline(lineStream, token, ';')) {
+            parts.push_back(token);
+        }
+
+        if (parts.size() < 4) {
+            std::cout << "Malformed line in saved accounts file at line " << lineNumber << "\n";
+            continue;
+        }
+
+        std::string type = parts[0];
+        std::string leaderboardName = parts[1];
+        std::string notes = parts[2];
+        std::string field4 = parts[3];
+        std::string field5 = (parts.size() > 4) ? parts[4] : std::string();
+
+        if (type.empty() || field4.empty() || field5.empty()) {
+            std::cout << "Malformed line in saved accounts file at line " << lineNumber << "\n";
+            continue;
+        }
+
+        Account account;
+        account.leaderboardName = leaderboardName;
+        account.notes = notes;
+        if (type == "local") {
+            account.type = Account::Type::LOCAL;
+            account.email = field4;
+            account.key = field5;
+        } else if (type == "shared") { // NOT IMPLEMENTED YET
+            continue;
+            account.type = Account::Type::SHARED;
+            account.leaderboardName = leaderboardName.empty() ? std::string() : leaderboardName;
+            account.notes = notes;
+            account.account_access_token = field4;
+            if(!field5.empty()) {
+                account.isOwner = true;
+                account.owner_access_token = field5;
+            }
+        } else {
+            std::cout << "Unknown account type in saved accounts file: " << type << "\n";
+            continue;
+        }
+        accounts.push_back(account);
+    }
+    accountsFile.close();
+    std::cout << "Loaded " << accounts.size() << " saved accounts\n";
+}
+
+void YummyLife::AccountManager::saveAccounts() {
+    std::ofstream accountsFile(SAVED_ACCOUNTS_FILE, std::ios::trunc);
+    if (!accountsFile) {
+        std::cout << "Failed to open saved accounts file for writing\n";
+        return;
+    }
+
+    for (const Account& account : accounts) {
+        if (account.type == Account::Type::LOCAL) {
+            accountsFile << "local;" << account.leaderboardName << ";" << account.notes << ";" << account.email << ";" << account.key;
+        } else if (account.type == Account::Type::SHARED) {
+            // NOT IMPLEMENTED YET
+        }
+        accountsFile << "\n";
+    }
+    accountsFile.close();
+    std::cout << "Saved " << accounts.size() << " accounts to file\n";
+}
+
+int YummyLife::AccountManager::addAccountLocal(const char* email, const char* key, const char* notes, const char* leaderboardName) {
+    if(!email || !key || !notes) return -1;
+
+    Account account;
+    account.type = Account::Type::LOCAL;
+    account.email = email;
+    account.key = key;
+    if (leaderboardName) account.leaderboardName = leaderboardName;
+    if (notes) account.notes = notes;
+
+    accounts.push_back(account);
+    return static_cast<int>(accounts.size() - 1);
+}
+
+int YummyLife::AccountManager::findAccountByIndex(int index, Account* outAccount) {
+    if (index < 0 || static_cast<size_t>(index) >= accounts.size()) return -1;
+    if (outAccount) *outAccount = accounts[index];
+    return index;
+}
+
+int YummyLife::AccountManager::findMatchingLocalAccount(const char* email, const char* key, Account* outAccount) {
+    for (size_t i = 0; i < accounts.size(); i++) {
+        const Account& account = accounts[i];
+        if (account.type == Account::Type::LOCAL &&
+            account.email == email &&
+            account.key == key) {
+            if (outAccount) *outAccount = account;
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
+bool YummyLife::AccountManager::deleteAccountAtIndex(int index) {
+    if (index < 0 || static_cast<size_t>(index) >= accounts.size()) return false;
+    accounts.erase(accounts.begin() + index);
+    return true;
+}
+

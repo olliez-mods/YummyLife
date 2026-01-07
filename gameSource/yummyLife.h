@@ -2,6 +2,7 @@
 #define YUMMY_LIFE_INCLUDED
 
 #include <vector>
+#include <string>
 
 #include "minorGems/game/game.h"
 
@@ -35,6 +36,7 @@ class YummyLife {
         class API{
             static const char* getValueFromJSON(const char* json, const char* key);
             public:
+                // Github version functions
                 static const char* getLatestVersionTag(const char* repoTag); // Calls a web API - Expect delays
                 static void parseVersionTag(const char* versionTag, int* major, int* minor);
                 static const char* getGitHubRepoURL(); // Unused
@@ -81,6 +83,43 @@ class YummyLife {
                 static bool ensureDirectoriesExistForFile(const char* filepath);
                 static bool downloadLiveResourceFile(const char* path, const char* localPath);
                 static void initLiveResources(const char* clientVersionTag); // Downloads/updates all live resources
+        };
+
+        // Handles local and shared account data
+        class AccountManager {
+            public:
+                struct Account {
+                    enum Type {
+                        LOCAL,
+                        SHARED
+                    };
+                    public:
+                        Type type;
+
+                        std::string leaderboardName;
+                        std::string notes; // May be empty
+
+                        // Local accounts have these fields
+                        std::string email;
+                        std::string key;
+
+                        // Shared accounts have these fields
+                        bool isOwner = false;
+                        std::string email_decrypt_key; // Decrypted on fetch
+                        std::string account_access_token;
+                        std::string owner_access_token; // May be empty
+                        // Fetched from OHOLcurse server - get account info
+                        // Fetched from OHOLCurse server - login process
+
+                };
+                static void loadSavedAccounts(); // Reads accounts from disk
+                static void saveAccounts(); // Saves accounts to disk
+                static int addAccountLocal(const char* email, const char* key, const char* notes, const char* leaderboardName = nullptr);
+                static bool deleteAccountAtIndex(int index); // Returns true on success
+                static int findAccountByIndex(int index, Account* outAccount);
+                static int findMatchingLocalAccount(const char* email, const char* key, Account* outAccount = nullptr);
+                static void addAccountShared(const char* account_access_token, const char* owner_access_token); // leaderboardName and notes are fetched from server
+                static std::vector<Account> accounts;
         };
 
         static void cleanUp();
