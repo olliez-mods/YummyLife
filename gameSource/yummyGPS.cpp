@@ -106,8 +106,8 @@ void GPS::setGlobalBirth(int x, int y){
         int relX = globalCoord.x - globalBirthX;
         int relY = globalCoord.y - globalBirthY;
         HetuwMod::addHomeLocation(relX, relY, HetuwMod::hpt_custom, globalCoord.name);
+        onHomeLocationChange(HetuwMod::hpt_custom);
     }
-    saveCoordsFromHomePosStack();
 
     Phex::onGlobalBirthSet(x, y);
 }
@@ -404,20 +404,8 @@ void GPS::loadSavedCoords(){
     }
     printf("GPS Loaded %d custom coords from file\n", num);
 }
-// Loop through HetuwMod homePosStack and save any custom coords
-void GPS::writeSavedCoords(){
-    int num = 0;
-    std::ofstream outFile(SAVED_COORDS_FILENAME);
-    if (outFile.is_open()) {
-        for (const SavedCoord& sc : savedCoords) {
-            outFile << sc.name << " " << sc.x << " " << sc.y << "\n";
-            num++;
-        }
-        outFile.close();
-    }
-    printf("GPS Saved %d custom coords to file\n", num);
-}
-void GPS::onHomeLocationChange(int x, int y, int type, char name){
+
+void GPS::onHomeLocationChange(int type){
     if(type != HetuwMod::hpt_custom) return;
     if(!enabled || !foundGlobalBirth) return;
     triggerSaveProcess = true; // Trigger save process on next step lined up with save check
@@ -430,6 +418,10 @@ void GPS::saveCoordsFromHomePosStack() {
     // Now save updated list as global (since homPos list can have items added before we find GPS)
     savedCoords.clear();
     for(auto homePos : HetuwMod::homePosStack) {
+        if(!homePos) {
+            printf("GPS Warning: Null homePos in homePosStack during save\n");
+            continue;
+        }
         if(homePos->type != HetuwMod::hpt_custom) continue;
         int globalX = homePos->x + globalBirthX;
         int globalY = homePos->y + globalBirthY;
@@ -440,6 +432,23 @@ void GPS::saveCoordsFromHomePosStack() {
         savedCoords.push_back(sc);
     }
     writeSavedCoords();
+}
+void GPS::writeSavedCoords(){
+    try {
+        int num = 0;
+        std::ofstream outFile(SAVED_COORDS_FILENAME);
+        if (outFile.is_open()) {
+            for (const SavedCoord& sc : savedCoords) {
+                outFile << sc.name << " " << sc.x << " " << sc.y << "\n";
+                num++;
+            }
+            outFile.close();
+        }
+        printf("GPS Saved %d custom coords to file\n", num);
+    } catch (...) {
+        printf("GPS Failed to save coords to file... trying again\n");
+        triggerSaveProcess = true; // Try again
+    }
 }
 
 std::string GPS::getStatusString() {

@@ -1981,7 +1981,7 @@ void HetuwMod::addHomeLocation( int x, int y, homePosType type, char c, int pers
 			if (homePosStack[i]->personID == personID && homePosStack[i]->type == type) {
 				homePosStack[i]->x = x;
 				homePosStack[i]->y = y;
-				GPS::onHomeLocationChange(x, y, type, c);
+				GPS::onHomeLocationChange(type);
 				return;
 			}
 		}
@@ -2003,7 +2003,7 @@ void HetuwMod::addHomeLocation( int x, int y, homePosType type, char c, int pers
 			homePosStack[id]->x = x;
 			homePosStack[id]->y = y;
 			logHomeLocation(homePosStack[id]);
-			GPS::onHomeLocationChange(x, y, type, c);
+			GPS::onHomeLocationChange(type);
 			return;
 		}
 	}
@@ -2024,7 +2024,7 @@ void HetuwMod::addHomeLocation( int x, int y, homePosType type, char c, int pers
 	p->personID = personID;
 	homePosStack.push_back(p);
 	logHomeLocation(p);
-	GPS::onHomeLocationChange(x, y, type, c);
+	GPS::onHomeLocationChange(type);
 
 	if (type == hpt_bell) Phex::onRingBell(x, y);
 	if (type == hpt_apoc) Phex::onRingApoc(x, y);
@@ -4001,9 +4001,7 @@ bool HetuwMod::livingLifePageMouseDown( float mX, float mY ) {
 				if (mY >= homePosStack[i]->drawStartPos.y && mY <= homePosStack[i]->drawEndPos.y) {
 					if (isCommandKeyDown()) {
 						homePosStack.erase(homePosStack.begin()+i);
-						HomePos* hp = homePosStack[i];
-						GPS::onHomeLocationChange(0, 0, hpt_custom, 'c');
-						delete hp;
+						GPS::onHomeLocationChange(homePosStack[i]->type);
 					} else {
 						cordOffset.x = -homePosStack[i]->x;
 						cordOffset.y = -homePosStack[i]->y;

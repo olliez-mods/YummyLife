@@ -66,7 +66,7 @@ public:
     // Coord system
     static void loadSavedCoords();
     static void writeSavedCoords();
-    static void onHomeLocationChange(int x, int y, int type, char name);
+    static void onHomeLocationChange(int type);
 
 private:
     enum BiomeType {
