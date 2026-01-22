@@ -25,7 +25,7 @@
 #include "hetuwFont.h"
 
 using namespace std;
-                            
+
 class HetuwMod
 {
 
@@ -214,7 +214,7 @@ public:
 	};
 
 	enum homePosType {
-		hpt_custom, hpt_birth, hpt_home, hpt_bell, hpt_apoc, hpt_tarr, hpt_map, hpt_baby, hpt_babyboy, hpt_babygirl, hpt_expert, hpt_phex, hpt_rocket, hpt_plane
+		hpt_custom, hpt_birth, hpt_home, hpt_bell, hpt_apoc, hpt_tarr, hpt_map, hpt_baby, hpt_babyboy, hpt_babygirl, hpt_expert, hpt_phex, hpt_rocket, hpt_plane, hpt_gps
 	};
 
 	struct HomePos {
@@ -301,6 +301,7 @@ public:
 	static unsigned char charKey_HidePlayers;
 	static unsigned char charKey_ShowGrid;
 	static unsigned char charKey_MakePhoto;
+	static unsigned char charKey_ShowGPSStatus;
 
 	static unsigned char charKey_Minitech;
 	static unsigned char charKey_Phex;
@@ -340,6 +341,7 @@ public:
 	static bool bAllowPhexGameDataSending;
 	static bool bAllowLiveResources;
 	static bool bDisplayGhostsAsSeparateFamily;
+	static bool bGPSEnabled;
 	// <-
 
 	static int iDrawNames;
@@ -417,6 +419,7 @@ public:
 	static void initHelpText();
 	static void initOnBirth();
 	static void initOnServerJoin();
+	static void onDonkeyTown();
 
 	static void setLivingLifePage(LivingLifePage *inLivingLifePage, SimpleVector<LiveObject> *inGameObjects,
 							SimpleVector<int> *inmMapContainedStacks, SimpleVector<SimpleVector<int>> *inmMapSubContainedStacks,
@@ -532,6 +535,7 @@ public:
 	static void onPlayerUpdate( LiveObject* o, const char* line );
 	static void onNameUpdate(LiveObject* o);
 	static void onCurseUpdate(LiveObject* o);
+	static void onStatueResponse(int birthRelX, int birthRelY, int displayID, const char* name, const char* clothing, const char* finalWords);
 	static void removeLastName(char *newName, const char* name );
 	static string getLastName(const char* name);
 	static void setLastNameColor( const char* lastName, float alpha );
@@ -610,6 +614,7 @@ public:
 	static void onCravingReport(int foodID);
 	static void onJustAteFood(ObjectRecord *food);
 	static bool bDrawYum;
+	static bool bDrawGPSStatus;
 	static void setYumObjectsColor();
 	static void resetObjectsColor();
 

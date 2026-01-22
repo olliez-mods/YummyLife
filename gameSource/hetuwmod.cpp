@@ -26,6 +26,12 @@
 #include "yumRebirthComponent.h"
 
 #include "yummyLife.h"
+#include "yummyGPS.h"
+
+// Funky syntax bug, VSCode marks M_PI as undefined
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 using namespace std;
 
@@ -108,6 +114,7 @@ unsigned char HetuwMod::charKey_FindYum = 'y';
 unsigned char HetuwMod::charKey_HidePlayers = 254;
 unsigned char HetuwMod::charKey_ShowGrid = 'k';
 unsigned char HetuwMod::charKey_MakePhoto = 254;
+unsigned char HetuwMod::charKey_ShowGPSStatus = '\\';
 unsigned char HetuwMod::charKey_Phex = '#';
 
 unsigned char HetuwMod::charKey_CreateHome = 'r';
@@ -163,6 +170,7 @@ bool HetuwMod::bAllowPhexMessageSending;
 bool HetuwMod::bAllowPhexGameDataSending;
 bool HetuwMod::bAllowLiveResources;
 bool HetuwMod::bDisplayGhostsAsSeparateFamily;
+bool HetuwMod::bGPSEnabled;
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -267,6 +275,7 @@ float HetuwMod::sayDelay = 2.1;
 int *HetuwMod::becomesFoodID;
 SimpleVector<int> HetuwMod::yummyFoodChain;
 bool HetuwMod::bDrawYum = false;
+bool HetuwMod::bDrawGPSStatus = false;
 
 double *HetuwMod::objectDrawScale = NULL;
 float HetuwMod::colorRainbowFast[3];
@@ -423,6 +432,7 @@ void HetuwMod::init() {
 	bAllowPhexGameDataSending = true;
 	bAllowLiveResources = true;
 	bDisplayGhostsAsSeparateFamily = true;
+	bGPSEnabled = true;
 
 	iDrawNames = 1;
 	bDrawCords = true;
@@ -445,6 +455,7 @@ void HetuwMod::init() {
 
 	cordOffset = { 0, 0 };
 	addHomeLocation( 0, 0, hpt_birth ); // add birth location
+	addHomeLocation( 0, 0, hpt_gps ); // add GPS 0,0 location (placeholder for - -)
 
 	initClosedDoorIDs();
 
@@ -879,6 +890,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("key_findyum", charKey_FindYum);
 	yumConfig::registerSetting("key_hideplayers", charKey_HidePlayers);
 	yumConfig::registerSetting("key_showgrid", charKey_ShowGrid);
+	yumConfig::registerSetting("key_show_gps_status", charKey_ShowGPSStatus);
 
 	yumConfig::registerSetting("key_confirmexit", charKey_ConfirmExit, {preComment: "\n"});
 
@@ -923,6 +935,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("allow_phex_gamedata_sending", bAllowPhexGameDataSending, {postComment: " // Let Phex handle game data (such as position), this is required for PhesPlus features"});
 	yumConfig::registerSetting("allow_live_resources", bAllowLiveResources, {postComment: " // Allow live resources to be downloaded from the repo (such as custom menu backgrounds, fonts, etc)"});
 	yumConfig::registerSetting("display_ghosts_as_separate_family", bDisplayGhostsAsSeparateFamily, {postComment: " // Display ghosts as a separate family in the family list"});
+	yumConfig::registerSetting("enable_gps", bGPSEnabled, {postComment: " // Enable GPS functionality if available on your server"});
 	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {
@@ -1116,6 +1129,15 @@ static void shuffle(vector<T> &vec) {
 
 void HetuwMod::initOnBirth() { // will be called from LivingLifePage.cpp
 	ourLiveObject = livingLifePage->getOurLiveObject();
+
+	GPS::onBirth(livingLifePage);
+	GPS::enabled = true;
+	if(livingLifePage->getTutorialNumber() > 0 || !connectedToMainServer) {
+		GPS::enabled = false; // disable gps if not on main server or in tutorial
+	}
+
+	if(GPS::enabled) bDrawGPSStatus = true; // Enable gps status display on birth if gps is enabled
+
 	if (ourLiveObject->id == lastLoggedId) return;
 
 	currentEmote = -1;
@@ -1146,7 +1168,7 @@ void HetuwMod::initOnBirth() { // will be called from LivingLifePage.cpp
 	sayBuffer.clear();
 	sayBuffer.shrink_to_fit();
 
-    yummyFoodChain.deleteAll();
+  yummyFoodChain.deleteAll();
 
 	// YummyLife: Read in lastYums.txt data
 	std::vector<int> lastYums = YummyLife::getLastYums(ourLiveObject->id);
@@ -1168,6 +1190,10 @@ void HetuwMod::initOnBirth() { // will be called from LivingLifePage.cpp
 	}
 	autoFemaleNameIndex = 0;
 	autoMaleNameIndex = 0;
+}
+
+void HetuwMod::onDonkeyTown() {
+	GPS::enabled = false;
 }
 
 void HetuwMod::initOnServerJoin() { // will be called from LivingLifePage.cpp and hetuwmod.cpp
@@ -1579,6 +1605,8 @@ void HetuwMod::livingLifeStep() {
 
 	colorRainbow->step();
 
+	GPS::step();
+
 	if (stepCount % 50 == 0) {
 		updateMap();
 	}
@@ -1914,6 +1942,9 @@ void HetuwMod::logHomeLocation(HomePos* hp) {
 		case hpt_plane:
 			typeName = "plane";
 			break;
+		case hpt_gps:
+			typeName = "gps";
+			break;
 		default:
 			typeName = "unknowntype";
 	}
@@ -1950,6 +1981,7 @@ void HetuwMod::addHomeLocation( int x, int y, homePosType type, char c, int pers
 			if (homePosStack[i]->personID == personID && homePosStack[i]->type == type) {
 				homePosStack[i]->x = x;
 				homePosStack[i]->y = y;
+				GPS::onHomeLocationChange(x, y, type, c);
 				return;
 			}
 		}
@@ -1971,6 +2003,7 @@ void HetuwMod::addHomeLocation( int x, int y, homePosType type, char c, int pers
 			homePosStack[id]->x = x;
 			homePosStack[id]->y = y;
 			logHomeLocation(homePosStack[id]);
+			GPS::onHomeLocationChange(x, y, type, c);
 			return;
 		}
 	}
@@ -1991,6 +2024,7 @@ void HetuwMod::addHomeLocation( int x, int y, homePosType type, char c, int pers
 	p->personID = personID;
 	homePosStack.push_back(p);
 	logHomeLocation(p);
+	GPS::onHomeLocationChange(x, y, type, c);
 
 	if (type == hpt_bell) Phex::onRingBell(x, y);
 	if (type == hpt_apoc) Phex::onRingApoc(x, y);
@@ -2762,6 +2796,16 @@ void HetuwMod::createCordsDrawStr() {
 				snprintf( sBufA, sizeof(sBufA), "PLANE %c %d %d%s", (char)(flightCount+65), homePosStack[i]->x+cordOffset.x, homePosStack[i]->y+cordOffset.y, eta.c_str() );
 				flightCount++;
 				break;
+			case hpt_gps: {
+				int absX, absY;
+				bool hasGPS = GPS::getGlobalBirth(absX, absY);
+				if(!hasGPS) {
+					snprintf( sBufA, sizeof(sBufA), "GPS - -");
+					break;
+				}
+				snprintf( sBufA, sizeof(sBufA), "GPS %d %d%s", absX, absY, eta.c_str() );
+				break;
+			}
 		}
 		homePosStack[i]->drawStr = string(sBufA);
 
@@ -2808,6 +2852,9 @@ void HetuwMod::setDrawColorToCoordType(homePosType type) {
 		case hpt_rocket:
 		case hpt_plane:
 			setDrawColor( 1.0, 0.8, 0.2, 1.0 );
+		case hpt_gps:
+			setDrawColor( 1.0, 0.5, 0.0, 1.0 );
+			break;
 	}
 }
 
@@ -2816,7 +2863,7 @@ void HetuwMod::drawHomeCords() {
 
 	int mouseX, mouseY;
 	livingLifePage->hetuwGetMouseXY( mouseX, mouseY );
-	
+
 	createCordsDrawStr();
 
 	doublePair drawPosA = lastScreenViewCenter;
@@ -2850,6 +2897,14 @@ void HetuwMod::drawHomeCords() {
 			}
 		}
 	}
+
+	if(bDrawGPSStatus) {
+		std::string status = GPS::getStatusString();
+		drawPosA.y -= 12*guiScale;
+		setDrawColor( 0.1, 0.1, 0.7, 1 );
+		livingLifePage->hetuwDrawScaledHandwritingFont( status.c_str(), drawPosA, guiScale );
+	}
+
 }
 
 bool HetuwMod::isRelated( LiveObject* player ) {
@@ -3637,6 +3692,10 @@ bool HetuwMod::livingLifeKeyDown(unsigned char inASCII) {
 		else bDrawGrid = !bDrawGrid;
 		return true;
 	}
+	if(!commandKey && isCharKey(inASCII, charKey_ShowGPSStatus)) {
+		bDrawGPSStatus = !bDrawGPSStatus;
+		return true;
+	}
 	if (!commandKey && isCharKey(inASCII, charKey_MakePhoto)) {
 		if (bDrawPhotoRec) {
 			bDrawPhotoRec = false;
@@ -3942,6 +4001,9 @@ bool HetuwMod::livingLifePageMouseDown( float mX, float mY ) {
 				if (mY >= homePosStack[i]->drawStartPos.y && mY <= homePosStack[i]->drawEndPos.y) {
 					if (isCommandKeyDown()) {
 						homePosStack.erase(homePosStack.begin()+i);
+						HomePos* hp = homePosStack[i];
+						GPS::onHomeLocationChange(0, 0, hpt_custom, 'c');
+						delete hp;
 					} else {
 						cordOffset.x = -homePosStack[i]->x;
 						cordOffset.y = -homePosStack[i]->y;
@@ -4734,6 +4796,10 @@ void HetuwMod::onCurseUpdate(LiveObject* o) {
     	data += hetuwLogSeperator + string(o->curseName);
 	}
 	HetuwMod::writeLineToLogs(type, data);
+}
+
+void HetuwMod::onStatueResponse(int birthRelX, int birthRelY, int displayID, const char* name, const char* clothing, const char* finalWords) {
+	GPS::onStatueReceived(birthRelX, birthRelY, displayID, name, clothing, finalWords);
 }
 
 void HetuwMod::drawDeathMessages() {

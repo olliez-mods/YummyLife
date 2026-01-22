@@ -68,10 +68,12 @@
 #include "minitech.h"
 #include "yumRebirthComponent.h"
 #include "yummyLife.h"
+#include "yummyGPS.h"
 
 static ObjectPickable objectPickable;
 
-
+// YummyLife
+#define HIDE_STATUE_LOGS true
 
 #define MAP_D 64
 #define MAP_NUM_CELLS 4096
@@ -1433,7 +1435,10 @@ static double timeLastMessageSent = 0;
 void LivingLifePage::sendToServerSocket( char *inMessage ) {
     timeLastMessageSent = game_getCurrentTime();
     
-    printf( "Sending message to server: %s\n", inMessage );
+    // GPS sends thousands of STATUE messages per minute, don't spam log with them
+    if (!HIDE_STATUE_LOGS || strncmp(inMessage, "STATUE", 6) != 0) {
+        printf( "Sending message to server: %s\n", inMessage );
+    }
 
     if( mServerSocket == -1 ) {
         printf( "Server socket already closed, skipping sending message: %s\n",
@@ -15150,6 +15155,7 @@ void LivingLifePage::step() {
                 if( numLines > 1 ) {
                     if (NULL != strstr(lines[1], "WELCOME_TO_DONKEYTOWN")) {
                         yumGotDonkeyTownMessage = true;
+                        HetuwMod::onDonkeyTown();
                     }
                     displayGlobalMessage( lines[1] );
                     HetuwMod::writeLineToLogs("globalMessage", string(lines[1]));
@@ -16124,6 +16130,8 @@ void LivingLifePage::step() {
                 applyReceiveOffset( &posX, &posY );
 
                 GridPos thisPos = { posX, posY };
+
+                HetuwMod::onStatueResponse(posX, posY, displayID, nameBuffer, clothingBuffer, finalWordsBuffer);
 
                 
                 int nameLen = strlen( nameBuffer );
@@ -27864,6 +27872,9 @@ void LivingLifePage::keyDown( unsigned char inASCII ) {
                                 sendToServerSocket( killMessage );
                                 delete [] killMessage;
                                 }
+                            else if (commandTyped( typedText, "/GPS" ) ) {
+                                GPS::createGPSHomeMarker(); // recreate marker if deleted
+                            }
                             else {
                                 // filter hints
                                 char *filterString = 

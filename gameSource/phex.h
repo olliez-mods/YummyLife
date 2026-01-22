@@ -388,6 +388,9 @@ public:
 	static void serverCmdGET_LEADERBOARD_NAME(std::vector<std::string> input);
 	static void serverCmdSEND_ALL_PLAYER_POS(std::vector<std::string> input);
 	static void serverCmdSEND_CURSENAMES(std::vector<std::string> input);
+	// Phex v11...
+	static void serverCmdGPS_WELLS(std::vector<std::string> input);
+	static void serverCmdSEND_FOUND_WELLS(std::vector<std::string> input);
 
 	static void chatCmdHELP(std::vector<std::string> input);
 	static void chatCmdNAME(std::vector<std::string> input);
@@ -468,6 +471,7 @@ public:
 	static void onRingBell(int x, int y);
 	static void onRingApoc(int x, int y);
 	static void onGameStep();
+	static void onGlobalBirthSet(int globalX, int globalY);
 
 private:
 
@@ -498,6 +502,11 @@ private:
 	static HetuwMod::IntervalTimed intervalSendCurseNames;
 	static void sendNewCurseNames();
 	static std::unordered_set<int> curseNamesSentPlayerIDs;
+
+	static bool sendFoundWellsActive;
+	static HetuwMod::IntervalTimed intervalSendFoundWells;
+	static void sendFoundWells();
+	// GPS keeps track of a flag for sent wells
 
 	static bool sendAllPlayerPosActive;
 	static HetuwMod::IntervalTimed intervalSendAllPlayerPos;
