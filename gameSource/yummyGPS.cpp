@@ -474,15 +474,14 @@ std::string GPS::getStatusString() {
     std::ostringstream ss;
     if(numTilesScanned >= 1000000) {
         double milTiles = numTilesScanned / 1000000.0;
-        std::ostringstream ss;
         ss.precision(2);
         ss << std::fixed << milTiles << "M";
-    }
-    if(numTilesScanned >= 1000) {
+    } else if(numTilesScanned >= 1000) {
         double kTiles = numTilesScanned / 1000.0;
-        std::ostringstream ss;
         ss.precision(1);
         ss << std::fixed << kTiles << "K";
+    } else {
+        ss << numTilesScanned;
     }
 
     // Hardcoded max 1MIL for now
