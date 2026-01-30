@@ -1896,7 +1896,9 @@ void drawFrame( char inUpdate ) {
                         }
                     
                     if( progress == 1.0 ) {
+                        // YummyLife: Init Phexessories after all objects are loaded (This keeps use objects in correct place - server-wise)
                         initObjectBankFinish();
+                        initYummyPhexessories("YummyLiveResources/Phexessories");
                         printf( "Finished loading object bank in %f sec\n",
                                 Time::getCurrentTime() - 
                                 loadingPhaseStartTime );

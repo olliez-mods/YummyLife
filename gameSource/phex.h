@@ -224,12 +224,27 @@ public:
 
 	// YummyLife: Explains data about a specific life
 	struct LifeProfile {
+		struct ClothingSet {
+			int hat = -1;
+			int tunic = -1;
+			int front_shoe = -1;
+			int back_shoe = -1;
+			int bottom = -1;
+			int backpack = -1;
+		};
+
 		int lifeID = -1;
 		std::string channel = "";
 		std::string title = "";
 		int opinion = 0; // -2 = bad, -1 = suspicious, 0 = neutral, 1 = good
 		float tagColor[4] = {0, 0, 0, 0}; // Overwrites opinion if not 0
 		int specialID = -1; // Certain individuals have special things
+
+		float speechColor[4] = {0, 0, 0, 0};
+		// Hat, tunic, front_shoe, back_shoe, bottom, backpack
+
+		ClothingSet clothingSetOverride;
+		std::unordered_map<int, int> heldItemOverrides; // itemID, overrideID
 
 		std::string cursename = "";
 		std::string leaderboardname = "";
@@ -391,6 +406,7 @@ public:
 	// Phex v11...
 	static void serverCmdGPS_WELLS(std::vector<std::string> input);
 	static void serverCmdSEND_FOUND_WELLS(std::vector<std::string> input);
+	static void serverCmdURL_OPEN(std::vector<std::string> input);
 
 	static void chatCmdHELP(std::vector<std::string> input);
 	static void chatCmdNAME(std::vector<std::string> input);
@@ -472,6 +488,8 @@ public:
 	static void onRingApoc(int x, int y);
 	static void onGameStep();
 	static void onGlobalBirthSet(int globalX, int globalY);
+
+	static LifeProfile* getLifeProfile(int lifeID);
 
 private:
 

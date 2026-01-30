@@ -298,6 +298,12 @@ void Phex::fontSetMaxX() {
 	mainFont->hetuwMaxX = round(mainFont->hetuwMaxX); 
 }
 
+Phex::LifeProfile* Phex::getLifeProfile(int lifeID) {
+	auto it = lifeIdToProfiles.find(lifeID);
+	if (it != lifeIdToProfiles.end()) return &it->second;
+	return nullptr;
+}
+
 void Phex::setMainFontScale() {
 	if (!mainFont) return;
 	//mainFont->hetuwSetScaleFactor(mainFontScaleFactor * HetuwMod::guiScale * textScale);
@@ -433,6 +439,8 @@ void Phex::initServerCommands() {
 	serverCommands["GPS_WELLS"].minWords = 2;
 	serverCommands["SEND_FOUND_WELLS"].func = serverCmdSEND_FOUND_WELLS;
 	serverCommands["SEND_FOUND_WELLS"].minWords = 2;
+	serverCommands["URL_OPEN"].func = serverCmdURL_OPEN;
+	serverCommands["URL_OPEN"].minWords = 2;
 }
 
 void Phex::serverCmdVERSION(std::vector<std::string> input) {
@@ -693,6 +701,19 @@ void Phex::serverCmdGPS_WELLS(std::vector<std::string> input) {
 	}
 }
 
+// URL_OPEN <url> [promptText]
+void Phex::serverCmdURL_OPEN(std::vector<std::string> input) {
+	std::string url = input[1];
+	bool usePrompt = false;
+	std::string promptText = "";
+	if (input.size() >= 3) {
+		promptText = input[2];
+		usePrompt = true;
+	}
+	std::string url_copy = url;
+	launchURL(&url_copy[0]);
+}
+
 void Phex::serverCmdJASON_AUTH(std::vector<std::string> input) {
 	std::string const &challenge = input[1];
 
@@ -730,7 +751,17 @@ void Phex::serverCmdJASON_AUTH(std::vector<std::string> input) {
 	delete [] keyHash;
 }
 
-// LIFE_PROFILE <life_id> <delete> <channel> [ti=title] [op=opinion] [tc=r,g,b,a] [si=speacialId] [cn=cursename] [ln=leaderboardName] [li=leaderboardId]
+// LIFE_PROFILE <life_id> <delete> <channel> 
+// [ti=title]
+// [op=opinion]
+// [tc=r,g,b,a]
+// [si=speacialId]
+// [cn=cursename]
+// [ln=leaderboardName]
+// [li=leaderboardId]
+// [sc=speechColor]
+// [cs=clothingSet]
+// [ho=heldItemOverride]
 void Phex::serverCmdLIFE_PROFILE(std::vector<std::string> input) {
 	printf("Packet: %s\n", joinStr(input).c_str());
 	int life_id = stoi(input[1]);
@@ -751,22 +782,36 @@ void Phex::serverCmdLIFE_PROFILE(std::vector<std::string> input) {
 		std::string param = input[i];
 
 		// Make sure the parameter is in the form "key=value"
-        size_t pos = param.find('=');
-        if (pos == std::string::npos) {
-            continue; // Invalid parameter format
-        }
+		size_t pos = param.find('=');
+		if (pos == std::string::npos) {
+				continue; // Invalid parameter format
+		}
 
-        std::string key = param.substr(0, pos);
-        std::string value = param.substr(pos + 1);
+		std::string key = param.substr(0, pos);
+		std::string value = param.substr(pos + 1);
 
-        if (key == "ti") profile.title = value;
-        else if (key == "op") profile.opinion = std::stoi(value);
-        else if (key == "tc")
-			sscanf(value.c_str(), "%f,%f,%f,%f", &profile.tagColor[0], &profile.tagColor[1], &profile.tagColor[2], &profile.tagColor[3]);
-        else if (key == "si") profile.specialID = std::stoi(value);
-        else if (key == "cn") profile.cursename = value;
-        else if (key == "ln") profile.leaderboardname = value;
-        else if (key == "li") profile.leaderboardID = value;
+		if (key == "ti") profile.title = value;
+		else if (key == "op") profile.opinion = std::stoi(value);
+		else if (key == "tc")
+		sscanf(value.c_str(), "%f,%f,%f,%f", &profile.tagColor[0], &profile.tagColor[1], &profile.tagColor[2], &profile.tagColor[3]);
+		else if (key == "si") profile.specialID = std::stoi(value);
+		else if (key == "cn") profile.cursename = value;
+		else if (key == "ln") profile.leaderboardname = value;
+		else if (key == "li") profile.leaderboardID = value;
+		else if (key == "sc")
+		sscanf(value.c_str(), "%f,%f,%f,%f", &profile.speechColor[0], &profile.speechColor[1], &profile.speechColor[2], &profile.speechColor[3]);
+		else if (key == "cs")
+		sscanf(value.c_str(), "%d,%d,%d,%d,%d,%d", &profile.clothingSetOverride.hat, &profile.clothingSetOverride.tunic, &profile.clothingSetOverride.front_shoe, &profile.clothingSetOverride.back_shoe,
+			&profile.clothingSetOverride.bottom, &profile.clothingSetOverride.backpack);
+		else if (key == "ho") {
+			int itemID, overrideID;
+			int numParsed = sscanf(value.c_str(), "%d:%d", &itemID, &overrideID);
+			if (numParsed != 2) {
+				printf("Phex LIFE_PROFILE invalid held item override: %s\n", value.c_str());
+				continue;
+			}
+			profile.heldItemOverrides[itemID] = overrideID;
+		}
 	}
 }
 

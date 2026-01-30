@@ -1097,6 +1097,12 @@ void freeObjectRecord( ObjectRecord *inObject );
 // Same changes are applied to any use- or variable-dummies of inTargetID
 void copyObjectAppearance( int inTargetID, ObjectRecord *inSourceObject );
 
+ObjectRecord *getYummyObject( int inYummyID, char inNoDefault = false );
+int yummyIdToObjectId( int inYummyID );
+int getYummyObjectsBeginID();
+int yummyAddObject( const char *inObjectText );
+void initYummyPhexessories(const char* inResourceFolder);
+
 
 
 #endif

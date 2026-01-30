@@ -5619,10 +5619,34 @@ ObjectAnimPack LivingLifePage::drawLiveObject(
     int hideClosestArm = 0;
     char hideAllLimbs = false;
 
+    Phex::LifeProfile *profile = Phex::getLifeProfile( inObj->id );
+
+    ClothingSet clothingOrig = inObj->clothing;
+    int holdingIDOrig = inObj->holdingID;
+
+    if( profile != NULL ) {
+        if(inObj->clothing.hat != NULL && profile->clothingSetOverride.hat != -1) inObj->clothing.hat = getYummyObject( profile->clothingSetOverride.hat );
+        if(inObj->clothing.tunic != NULL && profile->clothingSetOverride.tunic != -1) inObj->clothing.tunic = getYummyObject( profile->clothingSetOverride.tunic );
+        if(inObj->clothing.frontShoe != NULL && profile->clothingSetOverride.front_shoe != -1) inObj->clothing.frontShoe = getYummyObject( profile->clothingSetOverride.front_shoe );
+        if(inObj->clothing.backShoe != NULL && profile->clothingSetOverride.back_shoe != -1) inObj->clothing.backShoe = getYummyObject( profile->clothingSetOverride.back_shoe );
+        if(inObj->clothing.bottom != NULL && profile->clothingSetOverride.bottom != -1) inObj->clothing.bottom = getYummyObject( profile->clothingSetOverride.bottom );
+        // TODO: How does with work when backpack size differs? Does rendering break
+        if(inObj->clothing.backpack != NULL && profile->clothingSetOverride.backpack != -1) inObj->clothing.backpack = getYummyObject( profile->clothingSetOverride.backpack );
+    }
 
     if( inObj->holdingID != 0 ) { 
         if( inObj->holdingID > 0 ) {
             heldObject = getObject( inObj->holdingID );
+
+            if(heldObject != NULL) {
+                int parentObject = inObj->holdingID;
+                if(heldObject->isUseDummy) parentObject = heldObject->useDummyParent;
+                if( profile != NULL && profile->heldItemOverrides.find( parentObject ) != profile->heldItemOverrides.end() ) {
+                    inObj->holdingID = yummyIdToObjectId( profile->heldItemOverrides[ parentObject ] );
+                    heldObject = getYummyObject( profile->heldItemOverrides[ parentObject ] );
+                    }
+                }
+
             }
         else if( inObj->holdingID < 0 ) {
             // held baby
@@ -6187,6 +6211,10 @@ ObjectAnimPack LivingLifePage::drawLiveObject(
         setClothingHighlightFades( NULL );
         }
     
+    // restore clothing after possible render override
+    inObj->clothing = clothingOrig;
+    inObj->holdingID = holdingIDOrig;
+
     return returnPack;
     }
 
@@ -9275,10 +9303,24 @@ void LivingLifePage::draw( doublePair inViewCenter,
         
         speechPos.x -= width / 2;
 
+        FloatColor *speechColor = NULL;
+        if(HetuwMod::phexIsEnabled) {
+            if(Phex::lifeIdToProfiles.find(o->id) != Phex::lifeIdToProfiles.end()) {
+                Phex::LifeProfile lp = Phex::lifeIdToProfiles[o->id];
+                if(lp.speechColor[3] > 0) { // Alpha > 0
+                    speechColor = new FloatColor();
+                    speechColor->r = lp.speechColor[0];
+                    speechColor->g = lp.speechColor[1];
+                    speechColor->b = lp.speechColor[2];
+                    speechColor->a = lp.speechColor[3];
+                }
+            }
+        }
+
         
         drawChalkBackgroundString( speechPos, o->currentSpeech, 
                                    o->speechFade, widthLimit,
-                                   o );
+                                   o, -1, NULL, speechColor );
         }
 
 

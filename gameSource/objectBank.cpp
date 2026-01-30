@@ -29,6 +29,8 @@
 
 #include "authorship.h"
 
+#include "objectMetadata.h"
+
 
 // supplied by animation bank
 extern void checkDrawPos( int inObjectID, doublePair inPos );
@@ -40,6 +42,9 @@ static int mapSize;
 // maps IDs to records
 // sparse, so some entries are NULL
 static ObjectRecord **idMap;
+
+static int yummyItemsBeginID = -1;
+
 
 
 // what object to return
@@ -1874,10 +1879,56 @@ ObjectRecord *scanObjectRecordFromString( const char *inString ) {
     return r;
     }
 
+ObjectRecord *getYummyObject( int inYummyID, char inNoDefault ) {
+    if (yummyItemsBeginID == -1) return NULL;
+    return getObject( yummyItemsBeginID + inYummyID, inNoDefault );
+}
+int yummyIdToObjectId( int inYummyID ) {
+    if (yummyItemsBeginID == -1) return 0;
+    return yummyItemsBeginID + inYummyID;
+}
+int getYummyObjectsBeginID() {
+    return yummyItemsBeginID;
+}
+int yummyAddObject( const char *inObjectText ) {
+    ObjectRecord *r = scanObjectRecordFromString( inObjectText );
+    if( r == NULL ) {
+        printf( "Phexessories - Failed to scan object from text.\n" );
+        return 0;
+    }
 
-
-
-
+    if(yummyItemsBeginID == -1) { // We've started adding yummy objects
+        yummyItemsBeginID = maxID + 1;
+        printf( "Phexessories - Yummy object ID start offset set to %d\n", yummyItemsBeginID );
+    } 
+    return reAddObject(r, r->description, true, yummyItemsBeginID + r->id);
+}
+// Attempt to load accessories form Live resource folder (THIS MUST BE CALLED AFTER MAIN OBJECT LOADING)
+void initYummyPhexessories(const char* inResourceFolder) {
+    if (inResourceFolder == NULL) return;
+    File *resourceDir = new File(NULL, inResourceFolder);
+    if (!resourceDir->exists() || !resourceDir->isDirectory()) {
+        printf("Phexessories - Resource folder '%s' does not exist or is not a directory.\n", inResourceFolder);
+    } else {
+        int numFiles = 0;
+        File **files = resourceDir->getChildFiles(&numFiles);
+        for (int i = 0; i < numFiles; i++) {
+            const char* fileName = files[i]->getFileName();
+            // Only .txt files that start with 'pa_'
+            if (strstr(fileName, ".txt") != NULL && strstr(fileName, "pa_") == fileName) {
+                char* objectText = files[i]->readFileContents();
+                if (objectText != NULL) {
+                    int objID = yummyAddObject(objectText);
+                    printf("Phexessories - Added accessory object ID %d from file: %s\n", objID, fileName);
+                }
+                delete[] objectText;
+            }
+            delete files[i];
+        }
+        delete [] files;
+    }
+    delete resourceDir;
+}
 
 
 float initObjectBankStep() {
@@ -3406,7 +3457,6 @@ void resaveAll() {
 
 
 
-#include "objectMetadata.h"
 
 
 ObjectRecord *getObject( int inID, char inNoDefault ) {

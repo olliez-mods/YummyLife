@@ -20,6 +20,7 @@ using json = nlohmann::json;
 
 #include "fitnessScore.h"
 #include "soundBank.h"
+#include "objectBank.h"
 #include "message.h"
 
 #include <iostream>
@@ -339,6 +340,7 @@ void YummyLife::Gallery::setGalleryMaxDimensions(int maxWidth, int maxHeight){
 
 // Initilize the gallery's files and length, start at index 0
 void YummyLife::Gallery::initGallery(const char* galleryDirPath){
+    //initYummyPhexessories("YummyLiveResources/Phexessories");
     // If the Gallery is disabled, we will return instantly
     if(!HetuwMod::bGalleryEnabled) return;
 
