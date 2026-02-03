@@ -241,6 +241,7 @@ public:
 		int specialID = -1; // Certain individuals have special things
 
 		float speechColor[4] = {0, 0, 0, 0};
+		float speechBubbleColor[4] = {0, 0, 0, 0};
 		// Hat, tunic, front_shoe, back_shoe, bottom, backpack
 
 		ClothingSet clothingSetOverride;

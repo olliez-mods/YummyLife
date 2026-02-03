@@ -760,6 +760,7 @@ void Phex::serverCmdJASON_AUTH(std::vector<std::string> input) {
 // [ln=leaderboardName]
 // [li=leaderboardId]
 // [sc=speechColor]
+// [bc=speechBubbleColor]
 // [cs=clothingSet]
 // [ho=heldItemOverrides]
 void Phex::serverCmdLIFE_PROFILE(std::vector<std::string> input) {
@@ -792,17 +793,16 @@ void Phex::serverCmdLIFE_PROFILE(std::vector<std::string> input) {
 
 		if (key == "ti") profile.title = value;
 		else if (key == "op") profile.opinion = std::stoi(value);
-		else if (key == "tc")
-		sscanf(value.c_str(), "%f,%f,%f,%f", &profile.tagColor[0], &profile.tagColor[1], &profile.tagColor[2], &profile.tagColor[3]);
+		else if (key == "tc") sscanf(value.c_str(), "%f,%f,%f,%f", &profile.tagColor[0], &profile.tagColor[1], &profile.tagColor[2], &profile.tagColor[3]);
 		else if (key == "si") profile.specialID = std::stoi(value);
 		else if (key == "cn") profile.cursename = value;
 		else if (key == "ln") profile.leaderboardname = value;
 		else if (key == "li") profile.leaderboardID = value;
-		else if (key == "sc")
-		sscanf(value.c_str(), "%f,%f,%f,%f", &profile.speechColor[0], &profile.speechColor[1], &profile.speechColor[2], &profile.speechColor[3]);
+		else if (key == "sc") sscanf(value.c_str(), "%f,%f,%f,%f", &profile.speechColor[0], &profile.speechColor[1], &profile.speechColor[2], &profile.speechColor[3]);
+		else if (key == "bc") sscanf(value.c_str(), "%f,%f,%f,%f", &profile.speechBubbleColor[0], &profile.speechBubbleColor[1], &profile.speechBubbleColor[2], &profile.speechBubbleColor[3]);
 		else if (key == "cs")
 		sscanf(value.c_str(), "%d,%d,%d,%d,%d,%d", &profile.clothingSetOverride.hat, &profile.clothingSetOverride.tunic, &profile.clothingSetOverride.front_shoe, &profile.clothingSetOverride.back_shoe,
-			&profile.clothingSetOverride.bottom, &profile.clothingSetOverride.backpack);
+					 &profile.clothingSetOverride.bottom, &profile.clothingSetOverride.backpack);
 		else if (key == "ho") {
 			int itemID, overrideID;
 			profile.heldItemOverrides.clear();
