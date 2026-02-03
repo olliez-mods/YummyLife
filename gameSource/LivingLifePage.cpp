@@ -9305,22 +9305,23 @@ void LivingLifePage::draw( doublePair inViewCenter,
 
         FloatColor *speechColor = NULL;
         if(HetuwMod::phexIsEnabled) {
-            if(Phex::lifeIdToProfiles.find(o->id) != Phex::lifeIdToProfiles.end()) {
-                Phex::LifeProfile lp = Phex::lifeIdToProfiles[o->id];
-                if(lp.speechColor[3] > 0) { // Alpha > 0
+            Phex::LifeProfile *lp = Phex::getLifeProfile(o->id);
+            if(lp != NULL) {
+                if(lp->speechColor[3] > 0) { // Alpha > 0
                     speechColor = new FloatColor();
-                    speechColor->r = lp.speechColor[0];
-                    speechColor->g = lp.speechColor[1];
-                    speechColor->b = lp.speechColor[2];
-                    speechColor->a = lp.speechColor[3];
+                    speechColor->r = lp->speechColor[0];
+                    speechColor->g = lp->speechColor[1];
+                    speechColor->b = lp->speechColor[2];
+                    speechColor->a = lp->speechColor[3];
                 }
             }
         }
 
-        
+
         drawChalkBackgroundString( speechPos, o->currentSpeech, 
                                    o->speechFade, widthLimit,
                                    o, -1, NULL, speechColor );
+        if(speechColor != NULL) delete speechColor;
         }
 
 
