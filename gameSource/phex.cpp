@@ -761,7 +761,7 @@ void Phex::serverCmdJASON_AUTH(std::vector<std::string> input) {
 // [li=leaderboardId]
 // [sc=speechColor]
 // [cs=clothingSet]
-// [ho=heldItemOverride]
+// [ho=heldItemOverrides]
 void Phex::serverCmdLIFE_PROFILE(std::vector<std::string> input) {
 	printf("Packet: %s\n", joinStr(input).c_str());
 	int life_id = stoi(input[1]);
@@ -805,12 +805,22 @@ void Phex::serverCmdLIFE_PROFILE(std::vector<std::string> input) {
 			&profile.clothingSetOverride.bottom, &profile.clothingSetOverride.backpack);
 		else if (key == "ho") {
 			int itemID, overrideID;
-			int numParsed = sscanf(value.c_str(), "%d:%d", &itemID, &overrideID);
-			if (numParsed != 2) {
-				printf("Phex LIFE_PROFILE invalid held item override: %s\n", value.c_str());
-				continue;
+			profile.heldItemOverrides.clear();
+			std::stringstream ss( value );
+			std::string overrideStr;
+			while ( std::getline( ss, overrideStr, ',' ) ) {
+				if ( overrideStr.empty() ) continue;
+				size_t start = overrideStr.find_first_not_of( " \t" );
+				size_t end = overrideStr.find_last_not_of( " \t" );
+				if ( start == std::string::npos ) continue;
+				overrideStr = overrideStr.substr( start, end - start + 1 );
+				int numParsed = sscanf( overrideStr.c_str(), "%d:%d", &itemID, &overrideID );
+				if ( numParsed != 2 ) {
+					printf( "Phex LIFE_PROFILE invalid held item override: %s\n", overrideStr.c_str() );
+					continue;
+				}
+				profile.heldItemOverrides[itemID] = overrideID;
 			}
-			profile.heldItemOverrides[itemID] = overrideID;
 		}
 	}
 }
