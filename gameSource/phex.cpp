@@ -126,6 +126,8 @@ HetuwMod::IntervalTimed Phex::intervalSendFoundWells = HetuwMod::IntervalTimed(1
 
 bool Phex::doSendPS = false;
 
+std::string Phex::lastSayString = "";
+
 static bool mouseOverBckgr = false;
 
 constexpr char Phex::hexDigits[];
@@ -441,6 +443,8 @@ void Phex::initServerCommands() {
 	serverCommands["SEND_FOUND_WELLS"].minWords = 2;
 	serverCommands["URL_OPEN"].func = serverCmdURL_OPEN;
 	serverCommands["URL_OPEN"].minWords = 2;
+	serverCommands["SAY_INGME"].func = serverCmdSAY_INGME;
+	serverCommands["SAY_INGME"].minWords = 3;
 }
 
 void Phex::serverCmdVERSION(std::vector<std::string> input) {
@@ -712,6 +716,23 @@ void Phex::serverCmdURL_OPEN(std::vector<std::string> input) {
 	}
 	std::string url_copy = url;
 	launchURL(&url_copy[0]);
+}
+
+// SAY_INGME <text> <display self>
+void Phex::serverCmdSAY_INGME(std::vector<std::string> input) {
+	std::string text = input[1];
+	if(text == "") {
+		lastSayString = "";
+		return;
+	}
+	bool displaySelf = strEquals(input[2], "1");
+	for (char &ch : text) {
+		if (ch == '_') ch = ' ';
+		else ch = toupper(ch);
+	}
+	lastSayString = "";
+	if (!displaySelf) lastSayString = text;
+	HetuwMod::Say(text.c_str());
 }
 
 void Phex::serverCmdJASON_AUTH(std::vector<std::string> input) {

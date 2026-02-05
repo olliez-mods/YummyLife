@@ -9290,6 +9290,7 @@ void LivingLifePage::draw( doublePair inViewCenter,
     if( ! takingPhoto )
     for( int i=0; i<speakers.size(); i++ ) {
         LiveObject *o = speakers.getElementDirect( i );
+        if(o->id == ourID && Phex::lastSayString != "" && strcmp( o->currentSpeech, Phex::lastSayString.c_str() ) == 0) continue;
         
         doublePair pos = speakersPos.getElementDirect( i );
         
@@ -28008,6 +28009,7 @@ void LivingLifePage::keyDown( unsigned char inASCII ) {
                         // send text to server
 
 						if (!vogMode) { // hetuw mod 
+                            if (strcmp( typedText, Phex::lastSayString.c_str() ) == 0 ) Phex::lastSayString = "";
 							HetuwMod::Say(typedText);
 						} else {
 						// jasons code

@@ -365,6 +365,8 @@ public:
 	static bool beenPoked;
 	static std::string lastPokeHash;
 
+	static std::string lastSayString;
+
 	static constexpr char hexDigits[16] = { '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f' };
 
 	static void init();
@@ -408,6 +410,7 @@ public:
 	static void serverCmdGPS_WELLS(std::vector<std::string> input);
 	static void serverCmdSEND_FOUND_WELLS(std::vector<std::string> input);
 	static void serverCmdURL_OPEN(std::vector<std::string> input);
+	static void serverCmdSAY_INGME(std::vector<std::string> input);
 
 	static void chatCmdHELP(std::vector<std::string> input);
 	static void chatCmdNAME(std::vector<std::string> input);
