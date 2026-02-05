@@ -4,9 +4,13 @@
       "isTestResource": true,
       "removed": true
     },
-    "Phexessories/pa_11.txt" : {},
-    "Phexessories/pa_2.txt" : {},
-    "Phexessories/pa_6.txt" : {},
-    "Phexessories/pa_10.txt" : {}
+    "Phexessories/pa_reward_truck.txt" : {},
+    "Phexessories/pa_rabbit_slipper.txt" : {},
+    "Phexessories/pa_pink_tophat_n.txt" : {},
+    "Phexessories/pa_pink_hat.txt" : {},
+    "Phexessories/pa_11.txt" : {"removed" : true},
+    "Phexessories/pa_2.txt" : {"removed" : true},
+    "Phexessories/pa_6.txt" : {"removed" : true},
+    "Phexessories/pa_10.txt" :{"removed" : true}
   }
 }
