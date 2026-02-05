@@ -5625,11 +5625,11 @@ ObjectAnimPack LivingLifePage::drawLiveObject(
     int holdingIDOrig = inObj->holdingID;
 
     if( profile != NULL ) {
-        if(inObj->clothing.hat != NULL && profile->clothingSetOverride.hat != -1) inObj->clothing.hat = getYummyObject( profile->clothingSetOverride.hat );
-        if(inObj->clothing.tunic != NULL && profile->clothingSetOverride.tunic != -1) inObj->clothing.tunic = getYummyObject( profile->clothingSetOverride.tunic );
-        if(inObj->clothing.frontShoe != NULL && profile->clothingSetOverride.front_shoe != -1) inObj->clothing.frontShoe = getYummyObject( profile->clothingSetOverride.front_shoe );
-        if(inObj->clothing.backShoe != NULL && profile->clothingSetOverride.back_shoe != -1) inObj->clothing.backShoe = getYummyObject( profile->clothingSetOverride.back_shoe );
-        if(inObj->clothing.bottom != NULL && profile->clothingSetOverride.bottom != -1) inObj->clothing.bottom = getYummyObject( profile->clothingSetOverride.bottom );
+        if(inObj->clothing.hat != NULL && profile->clothingSetOverride.hat != -1 && yummyObjectExists( profile->clothingSetOverride.hat ) ) inObj->clothing.hat = getYummyObject( profile->clothingSetOverride.hat );
+        if(inObj->clothing.tunic != NULL && profile->clothingSetOverride.tunic != -1 && yummyObjectExists( profile->clothingSetOverride.tunic ) ) inObj->clothing.tunic = getYummyObject( profile->clothingSetOverride.tunic );
+        if(inObj->clothing.frontShoe != NULL && profile->clothingSetOverride.front_shoe != -1 && yummyObjectExists( profile->clothingSetOverride.front_shoe ) ) inObj->clothing.frontShoe = getYummyObject( profile->clothingSetOverride.front_shoe );
+        if(inObj->clothing.backShoe != NULL && profile->clothingSetOverride.back_shoe != -1 && yummyObjectExists( profile->clothingSetOverride.back_shoe ) ) inObj->clothing.backShoe = getYummyObject( profile->clothingSetOverride.back_shoe );
+        if(inObj->clothing.bottom != NULL && profile->clothingSetOverride.bottom != -1 && yummyObjectExists( profile->clothingSetOverride.bottom ) ) inObj->clothing.bottom = getYummyObject( profile->clothingSetOverride.bottom );
         // TODO: How does with work when backpack size differs? Does rendering break
         if(inObj->clothing.backpack != NULL && profile->clothingSetOverride.backpack != -1) inObj->clothing.backpack = getYummyObject( profile->clothingSetOverride.backpack );
     }
@@ -5642,8 +5642,11 @@ ObjectAnimPack LivingLifePage::drawLiveObject(
                 int parentObject = inObj->holdingID;
                 if(heldObject->isUseDummy) parentObject = heldObject->useDummyParent;
                 if( profile != NULL && profile->heldItemOverrides.find( parentObject ) != profile->heldItemOverrides.end() ) {
-                    inObj->holdingID = yummyIdToObjectId( profile->heldItemOverrides[ parentObject ] );
-                    heldObject = getYummyObject( profile->heldItemOverrides[ parentObject ] );
+                    int yummyId = profile->heldItemOverrides[ parentObject ];
+                    if( yummyObjectExists( yummyId ) ) {
+                        inObj->holdingID = yummyIdToObjectId( yummyId );
+                        heldObject = getYummyObject( yummyId );
+                        }
                     }
                 }
 
