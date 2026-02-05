@@ -5619,7 +5619,9 @@ ObjectAnimPack LivingLifePage::drawLiveObject(
     int hideClosestArm = 0;
     char hideAllLimbs = false;
 
-    Phex::LifeProfile *profile = Phex::getLifeProfile( inObj->id );
+    // If enabled and found, apply Phex profile overrides
+    Phex::LifeProfile *profile = NULL;
+    if(HetuwMod::bAllowPhexAccessories) profile = Phex::getLifeProfile( inObj->id );
 
     ClothingSet clothingOrig = inObj->clothing;
     int holdingIDOrig = inObj->holdingID;

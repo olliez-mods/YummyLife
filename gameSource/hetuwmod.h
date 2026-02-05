@@ -342,6 +342,7 @@ public:
 	static bool bAllowLiveResources;
 	static bool bDisplayGhostsAsSeparateFamily;
 	static bool bGPSEnabled;
+	static bool bAllowPhexAccessories;
 	// <-
 
 	static int iDrawNames;

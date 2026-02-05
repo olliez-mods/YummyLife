@@ -171,6 +171,7 @@ bool HetuwMod::bAllowPhexGameDataSending;
 bool HetuwMod::bAllowLiveResources;
 bool HetuwMod::bDisplayGhostsAsSeparateFamily;
 bool HetuwMod::bGPSEnabled;
+bool HetuwMod::bAllowPhexAccessories;
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -433,6 +434,7 @@ void HetuwMod::init() {
 	bAllowLiveResources = true;
 	bDisplayGhostsAsSeparateFamily = true;
 	bGPSEnabled = true;
+	bAllowPhexAccessories = true;
 
 	iDrawNames = 1;
 	bDrawCords = true;
@@ -936,6 +938,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("allow_live_resources", bAllowLiveResources, {postComment: " // Allow live resources to be downloaded from the repo (such as custom menu backgrounds, fonts, etc)"});
 	yumConfig::registerSetting("display_ghosts_as_separate_family", bDisplayGhostsAsSeparateFamily, {postComment: " // Display ghosts as a separate family in the family list"});
 	yumConfig::registerSetting("enable_gps", bGPSEnabled, {postComment: " // Enable GPS functionality if available on your server"});
+	yumConfig::registerSetting("allow_phex_accessories", bAllowPhexAccessories, {postComment: " // Allow Phex to load and show accessories on players and yourself"});
 	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {

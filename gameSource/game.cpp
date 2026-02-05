@@ -1896,7 +1896,6 @@ void drawFrame( char inUpdate ) {
                         }
                     
                     if( progress == 1.0 ) {
-                        // YummyLife: Init Phexessories after all objects are loaded (This keeps use objects in correct place - server-wise)
                         initObjectBankFinish();
                         printf( "Finished loading object bank in %f sec\n",
                                 Time::getCurrentTime() - 
@@ -1919,8 +1918,13 @@ void drawFrame( char inUpdate ) {
                         }
                     break;
                     }
-                // YummyLife: Phexessories must be loaded after objects and animations are loaded
+                // YummyLife: Phexessories must be loaded after objects and animations are loaded (They are attached to the end and tracked separately)
                 case 4: {
+                    if(!HetuwMod::bAllowPhexAccessories) {
+                        printf( "Skipping loading Phexessories (disabled in config)\n");
+                        loadingPhase ++;
+                        break;
+                    }
                     printf( "Started loading Phexessories\n");
                     initYummyPhexessoriesObjects("YummyLiveResources/Phexessories");
                     initYummyPhexessoriesAnimations("YummyLiveResources/Phexessories", getYummyObjectsBeginID());
