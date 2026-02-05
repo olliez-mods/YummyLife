@@ -1879,6 +1879,11 @@ ObjectRecord *scanObjectRecordFromString( const char *inString ) {
     return r;
     }
 
+
+bool yummyObjectExists( int inYummyID ) {
+    if (yummyItemsBeginID == -1) return false;
+    return (getObject( yummyItemsBeginID + inYummyID, true ) != NULL );
+}
 ObjectRecord *getYummyObject( int inYummyID, char inNoDefault ) {
     if (yummyItemsBeginID == -1) return NULL;
     return getObject( yummyItemsBeginID + inYummyID, inNoDefault );
@@ -1904,29 +1909,61 @@ int yummyAddObject( const char *inObjectText ) {
     return reAddObject(r, r->description, true, yummyItemsBeginID + r->id);
 }
 // Attempt to load accessories form Live resource folder (THIS MUST BE CALLED AFTER MAIN OBJECT LOADING)
-void initYummyPhexessories(const char* inResourceFolder) {
+void initYummyPhexessoriesObjects(const char* inResourceFolder) {
     if (inResourceFolder == NULL) return;
+
     File *resourceDir = new File(NULL, inResourceFolder);
     if (!resourceDir->exists() || !resourceDir->isDirectory()) {
         printf("Phexessories - Resource folder '%s' does not exist or is not a directory.\n", inResourceFolder);
-    } else {
-        int numFiles = 0;
-        File **files = resourceDir->getChildFiles(&numFiles);
-        for (int i = 0; i < numFiles; i++) {
-            const char* fileName = files[i]->getFileName();
-            // Only .txt files that start with 'pa_'
-            if (strstr(fileName, ".txt") != NULL && strstr(fileName, "pa_") == fileName) {
-                char* objectText = files[i]->readFileContents();
-                if (objectText != NULL) {
-                    int objID = yummyAddObject(objectText);
-                    printf("Phexessories - Added accessory object ID %d from file: %s\n", objID, fileName);
-                }
-                delete[] objectText;
-            }
-            delete files[i];
-        }
-        delete [] files;
+        delete resourceDir;
+        return;
     }
+
+    int numFiles = 0;
+    File **files = resourceDir->getChildFiles(&numFiles);
+
+    for (int i = 0; i < numFiles; i++) {
+        const char* fileName = files[i]->getFileName();
+
+        if (strstr(fileName, ".txt") == NULL || strstr(fileName, "pa_") != fileName) {
+            delete files[i];
+            continue;
+        }
+
+        char* objectText = files[i]->readFileContents();
+        delete files[i];
+        
+        if (objectText == NULL) continue;
+
+        // Find 'object' sections and pass to yummyAddObject()
+        int numParts;
+        char **parts = split(objectText, "====================>", &numParts);
+
+        for (int p = 0; p < numParts; p++) {
+            if (parts[p] == NULL || strlen(parts[p]) == 0) continue;
+
+            // Skip leading whitespace
+            const char *typeStart = parts[p];
+            while (*typeStart && (*typeStart == ' ' || *typeStart == '\t' || *typeStart == '\r' || *typeStart == '\n')) {
+                typeStart++;
+            }
+
+            if (strstr(typeStart, "object") != typeStart) continue;
+
+            char *contentStart = strchr(typeStart, '\n');
+            if (contentStart == NULL) continue;
+            contentStart++;
+
+            int objID = yummyAddObject(contentStart);
+            printf("Phexessories - Added accessory object ID %d from file: %s\n", objID, fileName);
+        }
+
+        for (int p = 0; p < numParts; p++) delete [] parts[p];
+        delete [] parts;
+        delete[] objectText;
+    }
+
+    delete [] files;
     delete resourceDir;
 }
 

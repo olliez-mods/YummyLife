@@ -457,6 +457,117 @@ AnimationRecord *scanAnimationRecordFromString( const char *inString ) {
     }
 
 
+int yummyAddAnimation( const char *inAnimationText, int yummyItemsBeginID ) {
+    AnimationRecord *r = scanAnimationRecordFromString( inAnimationText );
+    if( r == NULL ) {
+        printf( "Phexessories - Failed to scan object from text.\n" );
+        return 0;
+    }
+
+    if(yummyItemsBeginID <= 0) {
+        printf( "Phexessories - Yummy items begin ID not set, or invalid. Cannot add animation.\n" );
+        delete r;
+        freeRecord(r);
+        return 0;
+    }
+
+    // Convert from Yummy item ID to object ID
+    int objectID = yummyItemsBeginID + r->objectID;
+
+    // Expand maps if necessary
+    if( objectID >= mapSize) {
+        int oldMapSize = mapSize;
+        mapSize = objectID + 50; // extra space to avoid frequent resizing
+
+        AnimationRecord ***newIDMap = new AnimationRecord**[ mapSize ];
+        SimpleVector<AnimationRecord*> *newIDExtraMap = new SimpleVector<AnimationRecord*>[ mapSize ];
+
+        // Copy old data
+        for( int i=0; i < oldMapSize; i++ ) {
+            newIDMap[i] = idMap[i];
+            newIDExtraMap[i] = idExtraMap[i];
+        }
+        // Initialize new entries to NULL/empty
+        for( int i=oldMapSize; i < mapSize; i++ ) {
+            newIDMap[i] = new AnimationRecord*[ endAnimType ];
+            for( int j=0; j<endAnimType; j++ ) {
+                newIDMap[i][j] = NULL;
+            }
+        }
+
+        delete [] idMap;
+        delete [] idExtraMap;
+
+        idMap = newIDMap;
+        idExtraMap = newIDExtraMap;
+    }
+
+    // Adjust object ID in record
+    r->objectID = objectID;
+    if( r->type < endAnimType )  idMap[ r->objectID ][ r->type ] = r;
+    else idExtraMap[ r->objectID ].push_back( r );
+    return r->objectID;
+}
+
+// Attempt to load animations from Live resources folder (CALLED AFTER YUMMY OBJECTS AND ANIMATION BANK LOADED)
+void initYummyPhexessoriesAnimations(const char* inResourceFolder, int yummyItemsBeginID) {
+    if (inResourceFolder == NULL) return;
+    if (yummyItemsBeginID <= 0) return;
+
+    File *resourceDir = new File(NULL, inResourceFolder);
+    if (!resourceDir->exists() || !resourceDir->isDirectory()) {
+        printf("Phexessories - Resource folder '%s' does not exist or is not a directory.\n", inResourceFolder);
+        delete resourceDir;
+        return;
+    }
+
+    int numFiles = 0;
+    File **files = resourceDir->getChildFiles(&numFiles);
+
+    for (int i = 0; i < numFiles; i++) {
+        const char* fileName = files[i]->getFileName();
+
+        if (strstr(fileName, ".txt") == NULL || strstr(fileName, "pa_") != fileName) {
+            delete files[i];
+            continue;
+        }
+
+        char* objectText = files[i]->readFileContents();
+        delete files[i];
+
+        if (objectText == NULL) continue;
+
+        // Find 'animation' sections and pass to yummyAddAnimation()
+        int numParts;
+        char **parts = split(objectText, "====================>", &numParts);
+        int numAdded = 0;
+        for (int p = 0; p < numParts; p++) {
+            if (parts[p] == NULL || strlen(parts[p]) == 0) continue;
+
+            // Skip leading whitespace
+            const char *typeStart = parts[p];
+            while (*typeStart && (*typeStart == ' ' || *typeStart == '\t' || *typeStart == '\r' || *typeStart == '\n')) {
+                typeStart++;
+            }
+
+            if (strstr(typeStart, "animation") != typeStart) continue;
+            char *contentStart = strchr(typeStart, '\n');
+            if (contentStart == NULL) continue;
+            contentStart++;
+            int objID = yummyAddAnimation(contentStart, yummyItemsBeginID);
+            if (objID != 0) numAdded++;
+        }
+        printf("Phexessories - Loaded %d animations from file '%s'\n", numAdded, fileName);
+
+        for (int p = 0; p < numParts; p++) delete [] parts[p];
+        delete [] parts;
+        delete[] objectText;
+    }
+
+    delete [] files;
+    delete resourceDir;
+}
+
 
 float initAnimationBankStep() {
         

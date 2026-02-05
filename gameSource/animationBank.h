@@ -515,6 +515,9 @@ void ignoreWatchedObjectDraw( char inIgnore );
 
 doublePair getClosestObjectDraw( char *inDrawn, int inIndex );
 
+// YummyLife: Phexessories functions
+int yummyAddAnimation( const char *inAnimationText, int yummyItemsBeginID );
+void initYummyPhexessoriesAnimations(const char* inResourceFolder, int yummyItemsBeginID);
 
 
 #endif

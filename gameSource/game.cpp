@@ -1898,7 +1898,6 @@ void drawFrame( char inUpdate ) {
                     if( progress == 1.0 ) {
                         // YummyLife: Init Phexessories after all objects are loaded (This keeps use objects in correct place - server-wise)
                         initObjectBankFinish();
-                        initYummyPhexessories("YummyLiveResources/Phexessories");
                         printf( "Finished loading object bank in %f sec\n",
                                 Time::getCurrentTime() - 
                                 loadingPhaseStartTime );
@@ -1920,7 +1919,19 @@ void drawFrame( char inUpdate ) {
                         }
                     break;
                     }
+                // YummyLife: Phexessories must be loaded after objects and animations are loaded
                 case 4: {
+                    printf( "Started loading Phexessories\n");
+                    initYummyPhexessoriesObjects("YummyLiveResources/Phexessories");
+                    initYummyPhexessoriesAnimations("YummyLiveResources/Phexessories", getYummyObjectsBeginID());
+                    printf( "Finished loading Phexessories in %f sec\n",
+                            Time::getCurrentTime() -
+                            loadingPhaseStartTime );
+                    loadingPhaseStartTime = Time::getCurrentTime();
+                    loadingPhase ++;
+                    break;
+                    }
+                case 5: {
                     float progress;
                     for( int i=0; i<loadingStepBatchSize; i++ ) {    
                         progress = initModLoaderStep();
@@ -1964,7 +1975,7 @@ void drawFrame( char inUpdate ) {
                         }
                     break;
                     }
-                case 5: {
+                case 6: {
                     float progress;
                     for( int i=0; i<loadingStepBatchSize; i++ ) {    
                         progress = initCategoryBankStep();
@@ -2007,7 +2018,7 @@ void drawFrame( char inUpdate ) {
                         }
                     break;
                     }
-                case 6: {
+                case 7: {
                     float progress;
                     for( int i=0; i<loadingStepBatchSize; i++ ) {    
                         progress = initTransBankStep();
@@ -2036,7 +2047,7 @@ void drawFrame( char inUpdate ) {
                         }
                     break;
                     }
-                case 7: {
+                case 8: {
                     float progress;
                     for( int i=0; i<loadingStepBatchSize; i++ ) {    
                         progress = initGroundSpritesStep();
