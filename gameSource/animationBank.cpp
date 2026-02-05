@@ -551,7 +551,7 @@ void initYummyPhexessoriesAnimations(const char* inResourceFolder, int yummyItem
             }
 
             if (strstr(typeStart, "animation") != typeStart) continue;
-            char *contentStart = strchr(typeStart, '\n');
+            const char *contentStart = strchr(typeStart, '\n');
             if (contentStart == NULL) continue;
             contentStart++;
             int objID = yummyAddAnimation(contentStart, yummyItemsBeginID);

@@ -1950,7 +1950,7 @@ void initYummyPhexessoriesObjects(const char* inResourceFolder) {
 
             if (strstr(typeStart, "object") != typeStart) continue;
 
-            char *contentStart = strchr(typeStart, '\n');
+            const char *contentStart = strchr(typeStart, '\n');
             if (contentStart == NULL) continue;
             contentStart++;
 
