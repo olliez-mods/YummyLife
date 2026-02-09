@@ -134,7 +134,8 @@ constexpr char Phex::hexDigits[];
 
 extern doublePair lastScreenViewCenter;
 extern char *userEmail;
-extern int versionNumber;
+extern int softwareVersionNumber;
+extern const char* yumSubVersion;
 
 // Used to detect if we need to request leaderboard name again (e.g. after email or key change)
 std::string Phex::lastLBNemail = "";
@@ -1529,8 +1530,8 @@ void Phex::sendFirstMessage() {
 	string clientName = "yummylife";
 	string phexVersionNumber = to_string(PHEX_VERSION);
 	string secretHash = getSecretHash();
-	string jasonsOneLifeVersion = to_string(versionNumber);
-	string msg = "FIRST "+clientName+" "+phexVersionNumber+" "+secretHash+" "+jasonsOneLifeVersion;
+	string ClinetVersion = to_string(softwareVersionNumber) + (yumSubVersion);
+	string msg = "FIRST "+clientName+" "+phexVersionNumber+" "+secretHash+" v"+ClinetVersion;
 	tcp.send(msg);
 }
 
