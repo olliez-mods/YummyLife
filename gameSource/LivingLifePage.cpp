@@ -16462,7 +16462,8 @@ void LivingLifePage::step() {
             int numLines;
                 
             char **lines = split( message, "\n", &numLines );
-            
+            bool lowPop = true;
+
             for( int i=1; i<numLines; i++ ) {
                 int index = 0;
                 char name[100];
@@ -16479,8 +16480,10 @@ void LivingLifePage::step() {
                     
                     mBadBiomeIndices.push_back( index );
                     mBadBiomeNames.push_back( stringDuplicate( name ) );
+                    lowPop = false;
                     }
                 }
+                HetuwMod::onLowPopChange(lowPop);
             
             for( int i=0; i<numLines; i++ ) {
                 delete [] lines[i];

@@ -332,6 +332,8 @@ bool HetuwMod::phexStartOffline = false;
 bool HetuwMod::phexSkipTOS = false;
 bool HetuwMod::phexSendEmail = false;
 
+static bool lowPopActive = false;
+
 
 enum {
 	PHEX_AUTO_SIDE,
@@ -4996,6 +4998,17 @@ void HetuwMod::drawMap() {
 	}
 }
 
+// Pulled from YumLife
+static void tooltip(double recStartX, double recStartY, double recEndX, double recEndY, const char *text, float *rgba) {
+	int mouseX, mouseY;
+	HetuwMod::livingLifePage->hetuwGetMouseXY( mouseX, mouseY );
+	if (   mouseX >= recStartX && mouseX <= recEndX
+		&& mouseY >= recStartY && mouseY <= recEndY) {
+		doublePair descDrawPos = { (double)mouseX, (double)mouseY };
+		HetuwMod::drawTextWithBckgr( descDrawPos, text, rgba );
+	}
+}
+
 void HetuwMod::drawPlayersInRangePanel() {
 	int listSize = 0;
 	for (size_t k=0; k < familiesInRange.size(); k++) {
@@ -5021,6 +5034,9 @@ void HetuwMod::drawPlayersInRangePanel() {
 	textPos.y -= 20*guiScale;
 	textPos.x -= 20*guiScale;
 	
+	if(lowPopActive) {
+		setDrawColor( 1, 0.5f, 0.0f, 1 );
+	}
 	if (iDrawPlayersInRangePanel == 1) {
 		if (playersInRangeNum < 10) snprintf(text, sizeof(text), "PLAYERS IN RANGE:   %d", playersInRangeNum);
 		else if (playersInRangeNum < 100) snprintf(text, sizeof(text), "PLAYERS IN RANGE:  %d", playersInRangeNum);
@@ -5049,6 +5065,12 @@ void HetuwMod::drawPlayersInRangePanel() {
 		snprintf( text, sizeof(text), "%s  F:%i  %i", fam.name.c_str(), fam.youngWomenCount, fam.count);
 		livingLifePage->hetuwDrawScaledHandwritingFont( text, textPos, guiScale, alignRight );
 	}
+
+	recStartY = drawPos.y - lineHeight/2;
+	recEndY = drawPos.y + lineHeight/2;
+	float white[4] = {1, 1, 1, 1};
+	tooltip(recStartX, recStartY, recEndX, recEndY, lowPopActive ? "LOW POP" : "HIGH POP", white);
+
 	for (size_t k=0; k < familiesInRange.size(); k++) {
 		const FamilyInRange &fam = familiesInRange[k];
 		if (k != 0 && fam.count <= 0) continue;
@@ -5504,6 +5526,10 @@ void HetuwMod::onHoldingChange(int previous, int current) {
 	 * a past action if there's enough lag; if the server doesn't coalesce
 	 * updates, this could potentially be improved by making this a counter. */
 	pendingDropAcknowledgement = false;
+}
+
+void HetuwMod::onLowPopChange(bool lowPop) {
+	lowPopActive = lowPop;
 }
 
 void HetuwMod::autoNameBB() {

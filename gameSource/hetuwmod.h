@@ -667,6 +667,7 @@ public:
 	static void onNotLiving();
 	static void onDropSent();
 	static void onHoldingChange(int previous, int current);
+	static void onLowPopChange(bool lowPop);
 
 	static bool minitechEnabled;
 	static bool minitechStayMinimized;
