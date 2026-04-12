@@ -5078,15 +5078,11 @@ void HetuwMod::drawPlayersInRangePanel() {
 
 		recStartY = drawPos.y - lineHeight/2;
 		recEndY = drawPos.y + lineHeight/2;
-		if (mouseX >= recStartX && mouseX <= recEndX) {
-			if (mouseY >= recStartY && mouseY <= recEndY) {
-				doublePair descDrawPos = { (double)mouseX, (double)mouseY };
-				snprintf( text, sizeof(text), "%s GEN:%i", getRaceName(fam.race), fam.generation);
-				float rgba[4];
-				getRaceColor(fam.race, rgba);
-				drawTextWithBckgr(descDrawPos, text, rgba);
-			}
-		}
+
+		float rgba[4];
+		getRaceColor(fam.race, rgba);
+		snprintf( text, sizeof(text), "%s GEN:%i", getRaceName(fam.race), fam.generation);
+		tooltip(recStartX, recStartY, recEndX, recEndY, text, rgba);
 	}
 
 }
