@@ -446,17 +446,29 @@ void Phex::initServerCommands() {
 	serverCommands["URL_OPEN"].minWords = 2;
 	serverCommands["SAY_INGME"].func = serverCmdSAY_INGME;
 	serverCommands["SAY_INGME"].minWords = 3;
+
+	// YummyLife: v12
+	serverCommands["TEXT_COPY"].func = serverCmdTEXT_COPY;
+	serverCommands["TEXT_COPY"].minWords = 2;
+	serverCommands["APPLY_EMOTE"].func = serverCmdAPPLY_EMOTE;
+	serverCommands["APPLY_EMOTE"].minWords = 2;
+	serverCommands["SEND_WORLD_BLOB"].func = serverCmdSEND_WORLD_BLOB;
+	serverCommands["SEND_WORLD_BLOB"].minWords = 2;
 }
+
+#define CATCH_SERVER_COMMAND(cmdName) \
+	catch(std::exception const & ex) { \
+		printf("Phex EXCEPTION when receiving " #cmdName " command\n"); \
+		printf("Phex command: %s\n", joinStr(input, " ", 0).c_str()); \
+		printf("Phex EXCEPTION: %s\n", ex.what()); \
+		return; \
+	}
+
 
 void Phex::serverCmdVERSION(std::vector<std::string> input) {
 	try {
 		phexServerVersion = stoi(input[1]);
-	} catch (std::exception const & ex){
-		printf("Phex EXCEPTION when receiving VERSION command\n");
-		printf("Phex command: %s\n", joinStr(input, " ", 0).c_str());
-		printf("Phex EXCEPTION: %s\n", ex.what());
-		return;
-	}
+	} CATCH_SERVER_COMMAND(VERSION)
 }
 
 void Phex::serverCmdHASH(std::vector<std::string> input) {
@@ -563,12 +575,7 @@ void Phex::serverCmdCOORD(std::vector<std::string> input) {
 		coord->type = HetuwMod::hpt_phex;
 		HetuwMod::addHomeLocation(coord);
 		HetuwMod::bDrawHomeCords = true; // YummyLife: always enable drawing when receiving new coord
-	} catch(std::exception const & ex) {
-		printf("Phex EXCEPTION when receiving COORD command\n");
-		printf("Phex command: %s\n", joinStr(input, " ", 0).c_str());
-		printf("Phex EXCEPTION: %s\n", ex.what());
-		return;
-	}
+	} CATCH_SERVER_COMMAND(COORD)
 }
 
 #define HANDLE_SEND_COMMAND(cmdName, flag, onEnableCode) \
@@ -698,12 +705,7 @@ void Phex::serverCmdGPS_WELLS(std::vector<std::string> input) {
 			GPS::Well well(x, y);
 			GPS::globalWells.push_back(well);
 		}
-	} catch(std::exception const & ex) {
-		printf("Phex EXCEPTION when receiving GPS_WELLS command\n");
-		printf("Phex command: %s\n", joinStr(input, " ", 0).c_str());
-		printf("Phex EXCEPTION: %s\n", ex.what());
-		return;
-	}
+	} CATCH_SERVER_COMMAND(GPS_WELLS)
 }
 
 // URL_OPEN <url> [promptText]
@@ -717,6 +719,175 @@ void Phex::serverCmdURL_OPEN(std::vector<std::string> input) {
 	}
 	std::string url_copy = url;
 	launchURL(&url_copy[0]);
+}
+
+// Spaces are handled correctly
+// TEXT_COPY <text>
+void Phex::serverCmdTEXT_COPY(std::vector<std::string> input) {
+	try {
+		setClipboardText(""); // Clear clipboard first to prevent old text from being pasted if copying fails for some reason
+		std::string textToCopy = joinStr(input, " ", 1);
+		setClipboardText(textToCopy.c_str());
+	} CATCH_SERVER_COMMAND(TEXT_COPY)
+}
+
+// Sends an emote command to the server
+// APPLY_EMOTE <emote_id>
+void Phex::serverCmdAPPLY_EMOTE(std::vector<std::string> input) {
+	int index = -1;
+	try {
+		index = stoi(input[1]);
+		HetuwMod::sendEmote(stoi(input[1]));
+	} CATCH_SERVER_COMMAND(APPLY_EMOTE)
+}
+
+
+std::string get_world_blob(int range, bool sendBiomes, bool sendFloors, bool sendObjects, bool sendSubObjects, bool sendPlayers) {
+	if(range < 0) throw std::invalid_argument("Range must be non-negative");
+	if(range > 64) range = 64;
+
+	std::string blob = "";
+
+	LiveObject *ourLiveObject = HetuwMod::ourLiveObject;
+	if(!ourLiveObject) {
+		printf("Phex Error: received SEND_WORLD_BLOB command but ourLiveObject is null\n");
+		throw std::runtime_error("ourLiveObject is null");
+	}
+
+	int ourX = ourLiveObject->xd;
+	int ourY = ourLiveObject->yd;
+
+	int startTileX = (ourX - range);
+	int startTileY = (ourY - range);
+
+	int width_height = range * 2 + 1;
+
+	blob += "ID "+to_string(ourLiveObject->id);
+	blob += " COORDS "+to_string(ourX)+" "+to_string(ourY)+" "+to_string(startTileX)+" "+to_string(startTileY) + " "+to_string(width_height);
+
+	// BIOMES 124e312e1432e13421234e1e324123e4123e412e1432e1241e234e12
+	if(sendBiomes) {
+		blob += " BIOMES";
+		std::string biomesBlob = "";
+
+		bool someSuccess = false;
+		for (int y=startTileY; y < startTileY+width_height; y++) {
+			for (int x=startTileX; x < startTileX+width_height; x++) {
+				int mapI = HetuwMod::livingLifePage->hetuwGetMapI(x, y);
+				int biomeType = -1;
+				if(mapI >= 0) biomeType = HetuwMod::livingLifePage->mMapBiomes[mapI];
+				if(biomeType >= 0 && biomeType < 10) { // Only made to handle 0-9
+					biomesBlob += to_string(biomeType);
+					someSuccess = true;
+				} else {
+					biomesBlob += "e";
+				}
+			}
+		}
+		if(someSuccess) blob += " "+biomesBlob;
+		else blob += " none";
+	}
+
+	// FLOORS 5463 34565 3456 0 3456 e e e e e 4536 0 345
+	if(sendFloors) {
+		blob += " FLOORS";
+		std::string floorsBlob = "";
+
+		bool someSuccess = false;
+		for (int y=startTileY; y < startTileY+width_height; y++) {
+			for (int x=startTileX; x < startTileX+width_height; x++) {
+				int mapI = HetuwMod::livingLifePage->hetuwGetMapI(x, y);
+				int floorObj = -1;
+				if(mapI >= 0) floorObj = HetuwMod::livingLifePage->mMapFloors[mapI];
+				if(floorObj >= 0) { // -1 means unknown, 0 means known empty
+					floorsBlob += " "+to_string(floorObj);
+					someSuccess = true;
+				} else {
+					floorsBlob += " e";
+				}
+			}
+		}
+		if(someSuccess) blob += floorsBlob;
+		else blob += " none";
+	}
+
+	// OBJECTS 5463 34565 3456 0 3456 e e e e e 4536 0 345
+	if(sendObjects) {
+		blob += " OBJECTS";
+		std::string objectsBlob = "";
+
+		bool someSuccess = false;
+		for (int y=startTileY; y < startTileY+width_height; y++) {
+			for (int x=startTileX; x < startTileX+width_height; x++) {
+				int mapI = HetuwMod::livingLifePage->hetuwGetMapI(x, y);
+				int obj = -1;
+				if(mapI >= 0) obj = HetuwMod::livingLifePage->mMap[mapI];
+				if(obj >= 0) { // -1 means unknown, 0 means known empty
+					objectsBlob += " "+to_string(obj);
+					someSuccess = true;
+				} else {
+					objectsBlob += " e";
+				}
+			}
+		}
+		if(someSuccess) blob += objectsBlob;
+		else blob += " none";
+	}
+
+	if(sendSubObjects) {
+		blob += " SUB_OBJECTS none"; // Not implemented
+	}
+
+	// PLAYERS x55y10i1234 x12y34i0
+	if(sendPlayers) {
+		blob += " PLAYERS";
+		std::string playersBlob = "";
+
+		bool someSuccess = false;
+		for(int i = 0; i < HetuwMod::gameObjects->size(); i++) {
+			LiveObject *o = HetuwMod::gameObjects->getElement( i );
+			if (!o) continue;
+			int x = o->xd;
+			int y = o->yd;
+			if (x >= startTileX && x < startTileX+width_height && y >= startTileY && y < startTileY+width_height) {
+				playersBlob += " x"+to_string(x)+"y"+to_string(y)+"i"+to_string(o->id);
+				someSuccess = true;
+			}
+		}
+		if(someSuccess) blob += playersBlob;
+		else blob += " none";
+	}
+	return blob;
+}
+
+// SEND_WORLD_BLOB <range> [blobType1] [blobType2] ...
+// blob types: biomes, floors, objects, sub_objects, players, 
+void Phex::serverCmdSEND_WORLD_BLOB(std::vector<std::string> input) {
+	if (!HetuwMod::bAllowPhexGameDataSending) {
+		tcp.send("GDT_DSBLD SEND_WORLD_BLOB"); // :(
+		return;
+	}
+
+	try {
+		int range = stoi(input[1]);
+
+		bool sendBiomes = false;
+		bool sendFloors = false;
+		bool sendObjects = false;
+		bool sendSubObjects = false;
+		bool sendPlayers = false;
+		for (size_t i = 2; i < input.size(); ++i) {
+			std::string blobType = input[i];
+			if (blobType == "biomes") sendBiomes = true;
+			else if (blobType == "floors") sendFloors = true;
+			else if (blobType == "objects") sendObjects = true;
+			else if (blobType == "sub_objects") sendSubObjects = true;
+			else if (blobType == "players") sendPlayers = true;
+			else printf("Phex unknown blob type '%s' in SEND_WORLD_BLOB command\n", blobType.c_str());
+		}
+
+		tcp.send(get_world_blob(range, sendBiomes, sendFloors, sendObjects, sendSubObjects, sendPlayers));
+	} CATCH_SERVER_COMMAND(SEND_WORLD_BLOB)
 }
 
 // SAY_INGME <text> <display self>
