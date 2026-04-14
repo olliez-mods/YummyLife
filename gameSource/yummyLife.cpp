@@ -44,6 +44,8 @@ time_t YummyLife::AFK::startAfkTime = 0;
 doublePair YummyLife::AFK::startAfkPos = {0, 0};
 int YummyLife::AFK::timesEaten = 0;
 
+int YummyLife::AccountManager::loginSharedAccountIndex = -1;
+
 std::vector<string> galleryFileNames;
 int galleryImageIndex = -1;
 int gallerySize = 0;
@@ -1060,8 +1062,8 @@ void YummyLife::AccountManager::loadSavedAccounts() {
         std::string field4 = parts[3];
         std::string field5 = (parts.size() > 4) ? parts[4] : std::string();
 
-        if (type.empty() || field4.empty() || field5.empty()) {
-            std::cout << "Malformed line in saved accounts file at line " << lineNumber << "\n";
+        if ( field4.empty() || (type == "local" && field5.empty()) ) {
+            std::cout << "Missing required field/s in saved accounts file at line " << lineNumber << "\n";
             continue;
         }
 
@@ -1072,11 +1074,8 @@ void YummyLife::AccountManager::loadSavedAccounts() {
             account.type = Account::Type::LOCAL;
             account.email = field4;
             account.key = field5;
-        } else if (type == "shared") { // NOT IMPLEMENTED YET
-            continue;
+        } else if (type == "shared") {
             account.type = Account::Type::SHARED;
-            account.leaderboardName = leaderboardName.empty() ? std::string() : leaderboardName;
-            account.notes = notes;
             account.account_access_token = field4;
             if(!field5.empty()) {
                 account.isOwner = true;
@@ -1103,7 +1102,10 @@ void YummyLife::AccountManager::saveAccounts() {
         if (account.type == Account::Type::LOCAL) {
             accountsFile << "local;" << account.leaderboardName << ";" << account.notes << ";" << account.email << ";" << account.key;
         } else if (account.type == Account::Type::SHARED) {
-            // NOT IMPLEMENTED YET
+            accountsFile << "shared;" << account.leaderboardName << ";" << account.notes << ";" << account.account_access_token;
+            if(account.isOwner && !account.owner_access_token.empty()) {
+                accountsFile << ";" << account.owner_access_token;
+            }
         }
         accountsFile << "\n";
     }
@@ -1121,6 +1123,22 @@ int YummyLife::AccountManager::addAccountLocal(const char* email, const char* ke
     if (leaderboardName) account.leaderboardName = leaderboardName;
     if (notes) account.notes = notes;
 
+    accounts.push_back(account);
+    return static_cast<int>(accounts.size() - 1);
+}
+
+int YummyLife::AccountManager::addAccountShared(const char* account_access_token, const char* notes, const char* leaderboardName, const char* owner_access_token) {
+    if(!account_access_token || !leaderboardName) return -1;
+
+    Account account;
+    account.type = Account::Type::SHARED;
+    account.account_access_token = account_access_token;
+    account.leaderboardName = leaderboardName;
+    if (notes) account.notes = notes;
+    if (owner_access_token) {
+        account.isOwner = true;
+        account.owner_access_token = owner_access_token;
+    }
     accounts.push_back(account);
     return static_cast<int>(accounts.size() - 1);
 }
@@ -1148,5 +1166,242 @@ bool YummyLife::AccountManager::deleteAccountAtIndex(int index) {
     if (index < 0 || static_cast<size_t>(index) >= accounts.size()) return false;
     accounts.erase(accounts.begin() + index);
     return true;
+}
+
+bool YummyLife::AccountManager::createSharedAccount(const char* email, const char* key, const char* lb_name, int& account_index_out) {
+    // Must have email, key, and leaderboard name to create a shared account
+    if(!email || !key || !lb_name || strlen(email) == 0 || strlen(key) == 0 || strlen(lb_name) == 0) {
+        std::cerr << "Email, key, and leaderboard name are required to create a shared account\n";
+        std::cerr << "Provided email: '" << (email ? email : "") << "', key: '" << (key ? key : "") << "', leaderboard name: '" << (lb_name ? lb_name : "") << "'\n";
+        return false;
+    }
+
+    httplib::Client cli("https://beta.oholcurse.com");
+    cli.set_connection_timeout(5);
+    json body;
+    body["email"] = email;
+    body["key"] = key;
+    body["leaderboard_name"] = lb_name;
+    auto res = cli.Post("/api/v1/shared-account/create", body.dump(), "application/json");
+
+    if(!res || res->status < 200 || res->status >= 300) {
+        std::cerr << "Failed to create shared account (status " << (res ? res->status : -1) << ")\n";
+        return false;
+    }
+
+    try {
+        json response = json::parse(res->body);
+        bool success = response.value("success", false);
+        if (!success) {
+            std::cerr << "Shared account creation failed: " << response.value("message", "No message provided") << "\n";
+            return false;
+        }
+        string accountAccessToken = response.value("account_token", "");
+        string ownerAccessToken = response.value("owner_token", "");
+
+        if(accountAccessToken.empty()) {
+            std::cerr << "Shared account creation response missing account token\n";
+            return false;
+        }
+        if(ownerAccessToken.empty()) {
+            std::cerr << "Shared account creation response missing owner token\n";
+            return false;
+        }
+
+        Account account;
+        account.type = Account::Type::SHARED;
+        account.account_access_token = accountAccessToken;
+        account.isOwner = true;
+        account.owner_access_token = ownerAccessToken;
+        account.leaderboardName = lb_name;
+        account.notes = "Owned shared account";
+        accounts.push_back(account);
+        account_index_out = static_cast<int>(accounts.size() - 1);
+        YummyLife::AccountManager::saveAccounts(); // Instantly save to prevent losing the owner token
+        return true;
+
+    }  catch (const json::exception& e) {
+        std::cerr << "Failed to parse response from shared account creation: " << e.what() << "\n";
+        return false;
+    }
+}
+bool YummyLife::AccountManager::fetchSharedAccountInfo(const char* account_access_token, std::string& out_email, std::string& out_leaderboardName, int& uses_left, double& expiration) {
+    if(!account_access_token || strlen(account_access_token) == 0) {
+        std::cerr << "Account access token is required to fetch shared account info\n";
+        return false;
+    }
+
+    httplib::Client cli("https://beta.oholcurse.com");
+    cli.set_connection_timeout(5);
+
+    httplib::Request req;
+    req.method = "GET";
+    req.path = "/api/v1/shared-account/info";
+    req.set_header("Content-Type", "application/json");
+    httplib::Response resObj;
+    httplib::Error err;
+
+    json body;
+    body["account_token"] = account_access_token;
+    req.body = body.dump();
+
+    bool sent = cli.send(req, resObj, err);
+    auto res = sent ? std::make_shared<httplib::Response>(resObj) : nullptr;
+
+    if(!res || res->status < 200 || res->status >= 300) {
+        std::cerr << "Failed to fetch shared account info (status " << (res ? res->status : -1) << ")\n";
+        return false;
+    }
+
+    try {
+        json response = json::parse(res->body);
+        bool success = response.value("success", false);
+        if (!success) {
+            std::cerr << "Failed to fetch shared account info: " << response.value("message", "No message provided") << "\n";
+            return false;
+        }
+
+        std::string leaderboardName = response.value("leaderboard_name", "");
+        std::string email = response.value("email", "");
+        // Optional fields
+        int usesLeft = (response.contains("uses_left") && !response["uses_left"].is_null()) ? response["uses_left"].get<int>() : -1;
+        double expirationTime = (response.contains("expiration") && !response["expiration"].is_null()) ? response["expiration"].get<double>() : -1.0;
+
+        if (leaderboardName.empty()) {
+            std::cerr << "Shared account info response missing leaderboard name\n";
+            return false;
+        }
+        if (email.empty()) {
+            std::cerr << "Shared account info response missing email\n";
+            return false;
+        }
+        uses_left = usesLeft;
+        expiration = expirationTime;
+        out_leaderboardName = leaderboardName;
+        out_email = email;
+        return true;
+
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to parse response from shared account info fetch: " << e.what() << "\n";
+        return false;
+    }
+}
+bool YummyLife::AccountManager::loginSharedAccount(const char* account_access_token, const char* challenge, std::string& out_hashed_challenge, std::string& out_email) {
+    if(!account_access_token || strlen(account_access_token) == 0) {
+        std::cerr << "Account access token is required to fetch shared account info\n";
+        return false;
+    }
+
+    httplib::Client cli("https://beta.oholcurse.com");
+    cli.set_connection_timeout(5);
+    json body;
+    body["account_token"] = account_access_token;
+    body["challenge"] = challenge;
+    auto res = cli.Post("/api/v1/shared-account/login", body.dump(), "application/json");
+
+    if(!res || res->status < 200 || res->status >= 300) {
+        std::cerr << "Failed to login shared account (status " << (res ? res->status : -1) << ")\n";
+        return false;
+    }
+
+    try {
+        json response = json::parse(res->body);
+        bool success = response.value("success", false);
+        if (!success) {
+            std::cerr << "Failed to login shared account: " << response.value("message", "No message provided") << "\n";
+            return false;
+        }
+
+        std::string hashed_challenge = response.value("hashed_challenge", "");
+        std::string email = response.value("email", "");
+
+        if (hashed_challenge.empty()) {
+            std::cerr << "Shared account login response missing hashed challenge\n";
+            return false;
+        }
+        if(email.empty()) {
+            std::cerr << "Shared account login response missing email\n";
+            return false;
+        }
+        out_hashed_challenge = hashed_challenge;
+        out_email = email;
+        return true;
+
+    }  catch (const json::exception& e) {
+        std::cerr << "Failed to parse response from shared account login: " << e.what() << "\n";
+        return false;
+    }
+}
+bool YummyLife::AccountManager::editSharedAccount(const char* account_owner_token, const char* action, const char* value) {
+    if(!account_owner_token || !action || strlen(account_owner_token) == 0) {
+        std::cerr << "Account owner token and action are required to edit shared account\n";
+        return false;
+    }
+
+    std::string sAction = action;
+
+    // Valid actions: delete, set_expired, set_num_uses, set_expiration_date
+    if(sAction != "delete" &&
+       sAction != "set_expired" &&
+       sAction != "set_num_uses" &&
+       sAction != "set_expiration_date") {
+        std::cerr << "Invalid action for editing shared account: " << sAction << "\n";
+        return false;
+    }
+
+    // Delete doesn't require a value, but all other actions do
+    if(sAction != "delete" && strlen(value) == 0) {
+        std::cerr << "Value is required for action '" << sAction << "'\n";
+        return false;
+    }
+
+    httplib::Client cli("https://beta.oholcurse.com");
+    cli.set_connection_timeout(5);
+    json body;
+    body["owner_token"] = account_owner_token;
+    body["action"] = action;
+
+    if(sAction == "delete" || sAction == "set_expired") {
+        // No additional value needed
+    } else if (sAction == "set_num_uses") {
+        int numUses = std::stoi(value);
+        body["max_uses"] = numUses;
+    } else if (sAction == "set_expiration_date") {
+        // Expecting a unix timestamp in seconds
+        long expirationTimestamp = std::stol(value);
+        body["expiration"] = expirationTimestamp;
+    }
+
+    auto res = cli.Post("/api/v1/shared-account/edit", body.dump(), "application/json");
+
+    if(!res || res->status < 200 || res->status >= 300) {
+        std::cerr << "Failed to edit shared account (status " << (res ? res->status : -1) << ")\n";
+        return false;
+    }
+
+    try {
+        std::cout << "Edit shared account response: " << res->body << "\n";
+        json response = json::parse(res->body);
+        bool success = response.value("success", false);
+        if (!success) {
+            std::cerr << "Failed to edit shared account: " << response.value("message", "No message provided") << "\n";
+            return false;
+        }
+        return true;
+
+    }  catch (const json::exception& e) {
+        std::cerr << "Failed to parse response from shared account edit: " << e.what() << "\n";
+        return false;
+    }
+}
+
+const char* YummyLife::AccountManager::standerdizeToken(const char* token) {
+    // Lowercase and trim whitespace
+    if (!token) return nullptr;
+    std::string sToken(token);
+    sToken.erase(0, sToken.find_first_not_of(" \t\r\n"));
+    sToken.erase(sToken.find_last_not_of(" \t\r\n") + 1);
+    std::transform(sToken.begin(), sToken.end(), sToken.begin(), ::tolower);
+    return strdup(sToken.c_str());
 }
 

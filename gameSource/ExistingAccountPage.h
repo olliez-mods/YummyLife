@@ -67,6 +67,7 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         TextButton mFamilyTreesButton;
         TextButton mClearAccountButton;
         TextButton mChangeAccountButton;
+        TextButton mShareAccountButton;
         TextButton mCancelButton;
 
         TextButton mSettingsButton;
@@ -106,6 +107,8 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         TextField mAcntKeyField;
         TextField mAcntNotesField;
         KeyEquivalentTextButton mAcntPasteButton;
+        TextButton mAccessTokenCopyButton;
+        TextButton mDeleteSharedAccountButton;
 
         yumRebirthComponent mYumRebirth;
         
@@ -125,6 +128,8 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         double accountSaveStartTime = 0.0; // For request timeout
 
         char shouldAcntPasteButtonBeVisable;
+        char shouldSharedAccountOptionsBeVisable;
+        char shouldOwnerSharedAccountOptionsBeVisable;
         char confirmDeleteAccount = false;
 
         char mHideAccount;
@@ -139,10 +144,23 @@ class ExistingAccountPage : public GamePage, public ActionListener {
 
         void selectAccountAtIndex(int index);
         void updateLoginInfo(const char* inEmail, const char* inKey, bool saveToSettings = false);
+        void updateCenterInfoStates();
+        void deleteOwnedSharedAccount();
 
         void switchFields();
         
         void processLogin( char inStore, const char *inSignal );
+
+        // YummyLife: Display a temporary colored message at the tip position
+        // color: "white", "red", "green", "blue", "yellow", "orange"
+        // durationMs: how long to show the message in milliseconds
+        void displayTipMessage( const char *message, const char *color, int durationMs );
+
+        virtual void setToolTip( const char *inTip );
+
+        char *mTimedTipMessage;
+        float mTimedTipR, mTimedTipG, mTimedTipB;
+        double mTimedTipExpireTime;
 
     };
 

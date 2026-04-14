@@ -12,6 +12,7 @@
 #include "accountHmac.h"
 #include "hetuwFont.h"
 #include "yummyGPS.h"
+#include "yummyLife.h"
 #include "fitnessScore.h"
 
 #define ALWAYS_RECONNECT_PHEX_ON_BIRTH true
@@ -2059,6 +2060,9 @@ void Phex::onRingApoc(int x, int y) {
 
 void Phex::onBirth() {
 	if (!HetuwMod::phexIsEnabled) return;
+	if(YummyLife::AccountManager::loginSharedAccountIndex != -1) {
+		return;
+	} // Don't connect if we are using a shared account
 
 	// Re-initialize Phex on birth when socket is online to ensure a clean state
 	if (ALWAYS_RECONNECT_PHEX_ON_BIRTH && tcp.status != TCPConnection::OFFLINE) {

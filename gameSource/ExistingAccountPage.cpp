@@ -129,8 +129,9 @@ ExistingAccountPage::ExistingAccountPage()
           mFriendsButton( mainFont, 385, -280, translateWithDefault( "yummyLifeTwinsButton", "TWINS") ),
           mGenesButton( mainFont, 0, -65, translateWithDefault( "yummyLifeGenesButton", "LIFE DATA" ) ),
           mFamilyTreesButton( mainFont, 0, -140, translate( "familyTrees" ) ),
-          mClearAccountButton( mainFont, 220, 135, translateWithDefault( "yummyLifeClearButton", "CLEAR") ),
-          mChangeAccountButton( mainFont, 430, 135, translateWithDefault( "yummyLifeChangeAccountButton", "CHANGE ACNT") ),
+          mClearAccountButton( mainFont, 120, 135, translateWithDefault( "yummyLifeClearButton", "CLEAR") ),
+          mChangeAccountButton( mainFont, 330, 135, translateWithDefault( "yummyLifeChangeAccountButton", "ACCNT MNGR") ),
+          mShareAccountButton( mainFont, 540, 135, translateWithDefault( "yummyLifeShareAccountButton", "SHARE") ),
           mCancelButton( mainFont, -530, -280, translate( "quit" ) ),
           mSettingsButton( mainFont, -522, 275, translate( "settingsButton" ) ),
           mReviewButton( mainFont, -400, -200, 
@@ -160,13 +161,15 @@ ExistingAccountPage::ExistingAccountPage()
           mAcntConfirmButton( mainFont, -280, -150, translateWithDefault( "accountConfirm", "Confirm" ) ),
           mAcntCancelButton( mainFont, -490, -150, translateWithDefault( "accountCancel", "Cancel" ) ),
           mAcntPasteButton( mainFont, -540, 260, translate( "paste" ), 'v', 'V' ),
+          mAccessTokenCopyButton( mainFont, -350, 160, translateWithDefault( "accessTokenCopy", "Copy Access Token" ) ),
+          mDeleteSharedAccountButton( mainFont, -380, -60, translateWithDefault( "deleteSharedAccount", "Delete Shared Account" ) ),
           mAcntEmailField( mainFont, -335, 150, 8, false,
                            translate( "email" ),
                            NULL,
                            "\"' \\" ),
           mAcntKeyField( mainFont, -335, 80, 10, true,
                            translate( "accountKey" ),
-                           "23456789ABCDEFGHJKLMNPQRSTUVWXYZ-" ),
+                           "0123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-" ),
           mAcntNotesField( mainFont, -335, 10, 8, false,
                            translateWithDefault( "yummyLifeAccountNotesField", "NOTES" ),
                             NULL,
@@ -190,6 +193,7 @@ ExistingAccountPage::ExistingAccountPage()
     setButtonStyle( &mFamilyTreesButton );
     setButtonStyle( &mClearAccountButton );
     setButtonStyle( &mChangeAccountButton );
+    setButtonStyle( &mShareAccountButton );
     setButtonStyle( &mCancelButton );
     setButtonStyle( &mSettingsButton );
     setButtonStyle( &mReviewButton );
@@ -223,6 +227,8 @@ ExistingAccountPage::ExistingAccountPage()
     setButtonStyle( &mAcntConfirmButton );
     setButtonStyle( &mAcntCancelButton );
     setButtonStyle( &mAcntPasteButton );
+    setButtonStyle( &mAccessTokenCopyButton );
+    setButtonStyle( &mDeleteSharedAccountButton );
     
     // draw attention to login button
     mLoginButton.setNoHoverColor( 1, 1, 0, 1 );
@@ -241,6 +247,7 @@ ExistingAccountPage::ExistingAccountPage()
     addComponent( &mFamilyTreesButton );
     addComponent( &mClearAccountButton );
     addComponent( &mChangeAccountButton );
+    addComponent( &mShareAccountButton );
     addComponent( &mCancelButton );
     addComponent( &mSettingsButton );
     // addComponent( &mReviewButton ); YummyLife: Disabled for now
@@ -275,10 +282,12 @@ ExistingAccountPage::ExistingAccountPage()
     addComponent( &mAcntCloseButton );
     addComponent( &mAcntConfirmButton );
     addComponent( &mAcntCancelButton );
-    addComponent( &mAcntPasteButton );
     addComponent( &mAcntEmailField );
     addComponent( &mAcntKeyField );
     addComponent( &mAcntNotesField );
+    addComponent( &mAcntPasteButton );
+    addComponent( &mAccessTokenCopyButton );
+    addComponent( &mDeleteSharedAccountButton );
 
     //addComponent( &mYumRebirth ); Yummylife: Disabled for now
     
@@ -288,6 +297,7 @@ ExistingAccountPage::ExistingAccountPage()
     mFamilyTreesButton.addActionListener( this );
     mClearAccountButton.addActionListener( this );
     mChangeAccountButton.addActionListener( this );
+    mShareAccountButton.addActionListener( this );
     
     mCancelButton.addActionListener( this );
     mSettingsButton.addActionListener( this );
@@ -318,6 +328,8 @@ ExistingAccountPage::ExistingAccountPage()
     mAcntConfirmButton.addActionListener( this );
     mAcntCancelButton.addActionListener( this );
     mAcntPasteButton.addActionListener( this );
+    mAccessTokenCopyButton.addActionListener( this );
+    mDeleteSharedAccountButton.addActionListener( this );
     
     // YummyLife: Setup the Gallery control buttons
     mNextImageButton.addActionListener( this );
@@ -330,6 +342,7 @@ ExistingAccountPage::ExistingAccountPage()
     mDisableCustomServerButton.addActionListener( this );
 
     mChangeAccountButton.setVisible( true );
+    mShareAccountButton.setVisible( true );
 
     mRetryButton.setVisible( false );
     mRedetectButton.setVisible( false );
@@ -353,6 +366,7 @@ ExistingAccountPage::ExistingAccountPage()
     mLoginButton.setMouseOverTip( translateWithDefault( "yummyLifeLoginButtonTip", "PLAY ONLINE - GOOD LUCK <3") );
     mClearAccountButton.setMouseOverTip( translate( "clearAccountTip" ) );
     mChangeAccountButton.setMouseOverTip( translateWithDefault( "yummyLifeChangeAccountButtonTip", "SWITCH TO A DIFFERENT ACCOUNT") );
+    mShareAccountButton.setMouseOverTip( translateWithDefault( "yummyLifeShareAccountButtonTip", "SAFELY SHARE ACCOUNT WITH FRIENDS") );
     
     mFriendsButton.setMouseOverTip( translate( "friendsTip" ) );
     mGenesButton.setMouseOverTip( translate( "genesTip" ) );
@@ -422,10 +436,17 @@ ExistingAccountPage::ExistingAccountPage()
     if(true) {
         YummyLife::AccountManager::loadSavedAccounts();
     }
+
+    mTimedTipMessage = NULL;
+    mTimedTipR = mTimedTipG = mTimedTipB = 1.0f;
+    mTimedTipExpireTime = 0;
 }
           
         
 ExistingAccountPage::~ExistingAccountPage() {
+    if( mTimedTipMessage != NULL ) {
+        delete [] mTimedTipMessage;
+        }
     }
 
 
@@ -623,6 +644,7 @@ void ExistingAccountPage::hideLeftScreenItems(bool hide) {
     mServicesButton.setVisible(!hide);
 }
 
+// YummyLife: This function is used to show/hide the change account window, and set the hovered account index when opening
 void ExistingAccountPage::setChangeAccountWindow(bool open, int hoveredAccountIndexOverride) {
     confirmDeleteAccount = false;
     showChangeAccountWindow = open;
@@ -644,11 +666,20 @@ void ExistingAccountPage::setChangeAccountWindow(bool open, int hoveredAccountIn
     mAcntCancelButton.setVisible(false);
     mAcntPasteButton.setVisible(false);
 
+    mAccessTokenCopyButton.setVisible(false);
+    mDeleteSharedAccountButton.setVisible(false);
+    shouldSharedAccountOptionsBeVisable = false;
+
     if(showChangeAccountWindow) {
-        selectedAccountIndex = YummyLife::AccountManager::findMatchingLocalAccount(
-            mEmailField.getText(),
-            mKeyField.getText()
-        );
+        // Currently have a shared account selected
+        if(YummyLife::AccountManager::loginSharedAccountIndex != -1) {
+            selectedAccountIndex = YummyLife::AccountManager::loginSharedAccountIndex;
+        } else {
+            selectedAccountIndex = YummyLife::AccountManager::findMatchingLocalAccount(
+                mEmailField.getText(),
+                mKeyField.getText()
+            );
+        }
         printf("selectedAccountIndex = %d\n", selectedAccountIndex);
 
         // Choose either override index, or selected index, or 0
@@ -658,10 +689,14 @@ void ExistingAccountPage::setChangeAccountWindow(bool open, int hoveredAccountIn
     }
 }
 
+// YummyLife: This function is used to show/hide the edit account window, and populate fields when opening
 void ExistingAccountPage::setEditAccountWindow(bool open, int accountIndex) {
     showEditAccountWindow = open;
 
     hideLeftScreenItems(showEditAccountWindow);
+
+    shouldSharedAccountOptionsBeVisable = false;
+    shouldOwnerSharedAccountOptionsBeVisable = false;
 
     mAcntCloseButton.setVisible(showEditAccountWindow); // Close button still visible in edit mode
     mAcntCancelButton.setVisible(showEditAccountWindow);
@@ -677,13 +712,22 @@ void ExistingAccountPage::setEditAccountWindow(bool open, int accountIndex) {
             mAcntEmailField.setText("");
             mAcntKeyField.setText("");
             mAcntNotesField.setText("");
-            return;
+        } else {
+            YummyLife::AccountManager::Account acc = YummyLife::AccountManager::accounts[idx];
+            mAcntEmailField.setText(acc.email.c_str());
+            mAcntKeyField.setText(acc.key.c_str());
+            mAcntNotesField.setText(acc.notes.c_str());
+            if(acc.type == acc.SHARED) {
+                mAcntKeyField.setText(acc.account_access_token.c_str());
+                shouldSharedAccountOptionsBeVisable = true;
+                mAcntEmailField.setVisible(false); // Email is not used for shared accounts
+                if(acc.isOwner) shouldOwnerSharedAccountOptionsBeVisable = true;
+            }
         }
-        YummyLife::AccountManager::Account acc = YummyLife::AccountManager::accounts[idx];
-        mAcntEmailField.setText(acc.email.c_str());
-        mAcntKeyField.setText(acc.key.c_str());
-        mAcntNotesField.setText(acc.notes.c_str());
     }
+
+    mAccessTokenCopyButton.setVisible(shouldSharedAccountOptionsBeVisable);
+    mDeleteSharedAccountButton.setVisible(shouldOwnerSharedAccountOptionsBeVisable);
 }
 
 void ExistingAccountPage::onAccountDeleteConfirmed() {
@@ -691,6 +735,7 @@ void ExistingAccountPage::onAccountDeleteConfirmed() {
     bool result = YummyLife::AccountManager::deleteAccountAtIndex(hoveredAccountIndex);
     if(!result) {
         printf("Failed to delete account at index %d\n", hoveredAccountIndex);
+        displayTipMessage("Failed to delete account.", "red", 4000);
         return;
     }
     // Adjust hovered index
@@ -698,6 +743,7 @@ void ExistingAccountPage::onAccountDeleteConfirmed() {
         hoveredAccountIndex = (int)YummyLife::AccountManager::accounts.size() - 1;
     }
     YummyLife::AccountManager::saveAccounts();
+    setEditAccountWindow(false);
     setChangeAccountWindow(true, hoveredAccountIndex); // Refresh
 }
 void ExistingAccountPage::onAccountDeleteCancelled() {
@@ -712,6 +758,32 @@ void ExistingAccountPage::onAccountDeleteStarted() {
 }
 
 
+void ExistingAccountPage::setToolTip( const char *inTip ) {
+    // suppress hover tooltips while a timed message is showing
+    if( mTimedTipMessage != NULL && inTip != NULL ) return;
+    GamePage::setToolTip( inTip );
+    }
+
+
+void ExistingAccountPage::displayTipMessage( const char *message, const char *color, int durationMs ) {
+    if( mTimedTipMessage != NULL ) {
+        delete [] mTimedTipMessage;
+        }
+    // clear any current tip and suppress its fade-out
+    GamePage::setToolTip( NULL );
+    mLastTipFade = 0;
+    mTimedTipMessage = stringDuplicate( message );
+    mTimedTipExpireTime = game_getCurrentTime() + durationMs / 1000.0;
+
+    mTimedTipR = 1; mTimedTipG = 1; mTimedTipB = 1;
+    if(      strcmp( color, "red" )    == 0 ) { mTimedTipR = 1;    mTimedTipG = 0;    mTimedTipB = 0;    }
+    else if( strcmp( color, "green" )  == 0 ) { mTimedTipR = 0;    mTimedTipG = 1;    mTimedTipB = 0;    }
+    else if( strcmp( color, "blue" )   == 0 ) { mTimedTipR = 0.2f; mTimedTipG = 0.6f; mTimedTipB = 1;    }
+    else if( strcmp( color, "yellow" ) == 0 ) { mTimedTipR = 1;    mTimedTipG = 1;    mTimedTipB = 0;    }
+    else if( strcmp( color, "orange" ) == 0 ) { mTimedTipR = 1;    mTimedTipG = 0.5f; mTimedTipB = 0;    }
+    }
+
+
 void ExistingAccountPage::step() {
     mPasteButton.setVisible( isClipboardSupported() &&
                              mKeyField.isFocused() );
@@ -722,6 +794,11 @@ void ExistingAccountPage::step() {
     shouldAcntPasteButtonBeVisable = isClipboardSupported() && !inSaveAccountProcess && showEditAccountWindow && 
                                   (mAcntEmailField.isFocused() || mAcntKeyField.isFocused() || mAcntNotesField.isFocused());
     mAcntPasteButton.setVisible( shouldAcntPasteButtonBeVisable );
+
+    if( mTimedTipMessage != NULL && game_getCurrentTime() > mTimedTipExpireTime ) {
+        delete [] mTimedTipMessage;
+        mTimedTipMessage = NULL;
+        }
     
         // Handle save account process
     if( inSaveAccountProcess ) {
@@ -792,7 +869,10 @@ void ExistingAccountPage::actionPerformed( GUIComponent *inTarget ) {
         accountKey = mKeyField.getText();
         
         mEmailField.setContentsHidden( false );
+        mEmailField.setIgnoreEvents( false );
         mKeyField.setContentsHidden( false );
+        mKeyField.setIgnoreEvents( false );
+        YummyLife::AccountManager::loginSharedAccountIndex = -1;
         }
     else if( inTarget == &mFriendsButton ) {
         processLogin( true, "friends" );
@@ -927,6 +1007,45 @@ void ExistingAccountPage::actionPerformed( GUIComponent *inTarget ) {
         setChangeAccountWindow( !showChangeAccountWindow );
         inSaveAccountProcess = false;
         }
+    else if( inTarget == &mShareAccountButton ) {
+
+        // Close any open windows first
+        setEditAccountWindow( false );
+        setChangeAccountWindow( false );
+
+        std::string email = mEmailField.getText();
+        std::string key = mKeyField.getText();
+        if(email.empty() || key.empty()) {
+            printf("Cannot share an account untill an email and key is loaded");
+            displayTipMessage("Load an account before sharing.", "red", 4000);
+            return;
+        }
+
+        const char *leaderboardNameRaw = getLeaderboardName();
+        if(leaderboardNameRaw == NULL || leaderboardNameRaw[0] == '\0') {
+            printf("Cannot share an account unless there is a leaderboard name available.");
+            displayTipMessage("No leaderboard name - try logging in first.", "red", 4000);
+            return;
+        }
+        std::string leaderboardName = leaderboardNameRaw;
+
+        int accountIndex;
+        bool createAccountSuccess = YummyLife::AccountManager::createSharedAccount(email.c_str(), key.c_str(), leaderboardName.c_str(), accountIndex);
+
+        if(!createAccountSuccess) {
+            printf("Failed to create shared account. Please check your network connection and that your account details are correct.\n");
+            displayTipMessage("Failed to create shared account. Check connection & details.", "red", 5000);
+            return;
+        }
+
+        YummyLife::AccountManager::Account &newAccount = YummyLife::AccountManager::accounts[accountIndex];
+        printf("Created new shared account, Email: %s, LeaderboardName: %s\n", newAccount.email.c_str(), newAccount.leaderboardName.c_str());
+        displayTipMessage("Shared account created! Copy the token to share.", "green", 5000);
+
+        // Open edit window for the new account so they can set a note, and copy the access token to share with friends
+        selectAccountAtIndex(accountIndex);
+        setEditAccountWindow(true, accountIndex);
+    }
     else if (inTarget == &mAcntCloseButton) {
         setEditAccountWindow(false, -1);
         setChangeAccountWindow(false);
@@ -944,6 +1063,18 @@ void ExistingAccountPage::actionPerformed( GUIComponent *inTarget ) {
         else if(mAcntNotesField.isFocused()) mAcntNotesField.setText( clipboardText );
         delete [] clipboardText;
         }
+    else if(inTarget == &mAccessTokenCopyButton) {
+        std::string tokenToCopy = mAcntKeyField.getText();
+        setClipboardText("");
+        if(!tokenToCopy.empty()) {
+            setClipboardText(tokenToCopy.c_str());
+            printf("Access token copied to clipboard.\n");
+            displayTipMessage("Access token copied to clipboard.", "green", 3000);
+        }
+    }
+    else if(inTarget == &mDeleteSharedAccountButton) {
+        deleteOwnedSharedAccount();
+    }
     else if(inTarget == &mAcntNextButton) {
         onAccountDeleteCancelled();
         if(hoveredAccountIndex != -1) {
@@ -984,46 +1115,147 @@ void ExistingAccountPage::actionPerformed( GUIComponent *inTarget ) {
         }
     else if( inTarget == &mAcntDeleteConfirmButton ) {
         if(hoveredAccountIndex != -1) {
-            onAccountDeleteConfirmed();
+            YummyLife::AccountManager::Account acc;
+            int r = YummyLife::AccountManager::findAccountByIndex(hoveredAccountIndex, &acc);
+            if(r == -1) {
+                printf("Error finding account at index %d for deletion.\n", hoveredAccountIndex);
+                displayTipMessage("Error: account not found.", "red", 4000);
+                onAccountDeleteCancelled();
+                return;
+            }
+            // If it's a shared account that we own, we need to delete it from the server as well, otherwise just delete locally
+            if(acc.type == acc.SHARED && acc.isOwner) {
+                deleteOwnedSharedAccount();
+            } else {
+                onAccountDeleteConfirmed();
+            }
         }
     }
     else if( inTarget == &mAcntConfirmButton ) {
         // New account
         if(hoveredAccountIndex == -1) {
-            int newIndex = YummyLife::AccountManager::addAccountLocal(
-                mAcntEmailField.getText(),
-                mAcntKeyField.getText(),
-                mAcntNotesField.getText()
-            );
 
-            if(newIndex == -1) {
-                printf("Failed to add new account.\n");
-                setEditAccountWindow(true, -1);
+            // Check if we are creating a local or shared account based on key/token field
+            bool isLocal = (strlen(mAcntKeyField.getText()) != 36);
+
+            if(isLocal && (strlen(mAcntEmailField.getText()) == 0 || strlen(mAcntKeyField.getText()) == 0)) {
+                printf("Local accounts must have both email and key provided.\n");
+                displayTipMessage("Email and key are both required.", "red", 4000);
+                return;
+            }
+            if(!isLocal && strlen(mAcntKeyField.getText()) == 0) {
+                printf("Shared accounts must have an access token provided.\n");
+                displayTipMessage("An access token is required.", "red", 4000);
                 return;
             }
 
-            printf("Adding new account at index %d\n", newIndex);
-            mAcntConfirmButton.setVisible(false);
-            accountSaveStartTime = game_getCurrentTime();
-            inSaveAccountProcess = true;
-            selectedAccountIndexForEdit = newIndex;
-            selectAccountAtIndex(newIndex);
+            if(isLocal) {
+                int newIndex = YummyLife::AccountManager::addAccountLocal(
+                    mAcntEmailField.getText(),
+                    mAcntKeyField.getText(),
+                    mAcntNotesField.getText()
+                );
+                if(newIndex == -1) {
+                    printf("Failed to add new local account.\n");
+                    displayTipMessage("Failed to add account.", "red", 4000);
+                    setEditAccountWindow(true, -1);
+                    return;
+                }
+
+                printf("Adding new local account at index %d\n", newIndex);
+                mAcntConfirmButton.setVisible(false);
+                accountSaveStartTime = game_getCurrentTime();
+                inSaveAccountProcess = true;
+                selectedAccountIndexForEdit = newIndex;
+                selectAccountAtIndex(newIndex);
+                // Account is saved after we get the leaderboard name or timeout in step()
+            } else { // Shared account
+
+                std::string account_email;
+                std::string account_leaderboard_name;
+                int account_usesleft;
+                double expires_at;
+                printf("Fetching shared account details from OHOLCurse\n");
+                const char* token = YummyLife::AccountManager::standerdizeToken(mAcntKeyField.getText());
+                bool fetchResult = YummyLife::AccountManager::fetchSharedAccountInfo(token, account_email, account_leaderboard_name, account_usesleft, expires_at);
+                if(!fetchResult) {
+                    printf("Failed to fetch shared account info. Please check the access token and your network connection.\n");
+                    displayTipMessage("Invalid token or no connection.", "red", 5000);
+                    return;
+                }
+                printf("Fetched shared account info: email=%s, leaderboardName=%s, usesLeft=%d, expiresAt=%.0f\n", account_email.c_str(), account_leaderboard_name.c_str(), account_usesleft, expires_at);
+
+                // Accounts added this way CANNOT have owner tokens added
+                int newIndex = YummyLife::AccountManager::addAccountShared(
+                    mAcntKeyField.getText(),
+                    mAcntNotesField.getText(),
+                    account_leaderboard_name.c_str()
+                );
+
+                if(newIndex == -1) {
+                    printf("Failed to add new shared account.\n");
+                    displayTipMessage("Failed to add shared account.", "red", 4000);
+                    setEditAccountWindow(true, -1);
+                    return;
+                }
+
+                printf("Adding new shared account at index %d\n", newIndex);
+                mAcntConfirmButton.setVisible(false);
+                selectAccountAtIndex(newIndex);
+                setEditAccountWindow(false, newIndex);
+                setChangeAccountWindow(true, newIndex);
+                YummyLife::AccountManager::saveAccounts();
+                displayTipMessage("Shared account added!", "green", 3000);
+            }
         } else { // Save changes to existing account
             YummyLife::AccountManager::Account &acc = YummyLife::AccountManager::accounts[hoveredAccountIndex];
-            acc.email = mAcntEmailField.getText();
-            acc.key = mAcntKeyField.getText();
-            acc.notes = mAcntNotesField.getText();
+            if(acc.type == acc.LOCAL) {
+                acc.email = mAcntEmailField.getText();
+                acc.key = mAcntKeyField.getText();
+                acc.notes = mAcntNotesField.getText();
 
-            mAcntConfirmButton.setVisible(false);
+                mAcntConfirmButton.setVisible(false);
 
-            printf("Saving changes to account index %d\n", hoveredAccountIndex);
-            selectAccountAtIndex(hoveredAccountIndex);
-            accountSaveStartTime = game_getCurrentTime();
-            inSaveAccountProcess = true;
-            selectedAccountIndexForEdit = hoveredAccountIndex;
+                printf("Saving changes to local account index %d\n", hoveredAccountIndex);
+                selectAccountAtIndex(hoveredAccountIndex);
+                accountSaveStartTime = game_getCurrentTime();
+                inSaveAccountProcess = true;
+                selectedAccountIndexForEdit = hoveredAccountIndex;
+                // Account is saved after we get the leaderboard name or timeout in step()
+            } else if(acc.type == acc.SHARED) {
+                if(strlen(mAcntKeyField.getText()) == 0) {
+                    printf("Shared accounts must have an access token.\n");
+                    displayTipMessage("An access token is required.", "red", 4000);
+                    return;
+                }
+
+                std::string account_email;
+                std::string account_leaderboard_name;
+                int account_usesleft;
+                double expires_at;
+                printf("Fetching shared account details from OHOLCurse\n");
+                const char* token = YummyLife::AccountManager::standerdizeToken(mAcntKeyField.getText());
+                bool fetchResult = YummyLife::AccountManager::fetchSharedAccountInfo(token, account_email, account_leaderboard_name, account_usesleft, expires_at);
+                if(!fetchResult) {
+                    printf("Failed to fetch shared account info. Please check the access token and your network connection.\n");
+                    displayTipMessage("Invalid token or no connection.", "red", 5000);
+                    return;
+                }
+                printf("Fetched shared account info: email=%s, leaderboardName=%s, usesLeft=%d, expiresAt=%.0f\n", account_email.c_str(), account_leaderboard_name.c_str(), account_usesleft, expires_at);
+
+                acc.account_access_token = mAcntKeyField.getText();
+                acc.notes = mAcntNotesField.getText();
+
+                selectAccountAtIndex(hoveredAccountIndex);
+                setEditAccountWindow(false, hoveredAccountIndex);
+                setChangeAccountWindow(true);
+                YummyLife::AccountManager::saveAccounts();
+                displayTipMessage("Shared account updated!", "green", 3000);
+                YummyLife::AccountManager::saveAccounts();
             }
         }
     }
+}
 
 
 
@@ -1072,6 +1304,49 @@ void ExistingAccountPage::specialKeyDown( int inKeyCode ) {
     }
 
 
+void ExistingAccountPage::updateCenterInfoStates() {
+    // Normal
+    mGenesButton.setVisible( true );
+    mFamilyTreesButton.setVisible( true );
+
+    // Shared
+    if(YummyLife::AccountManager::loginSharedAccountIndex > -1) {
+        mGenesButton.setVisible( false );
+        mFamilyTreesButton.setVisible( false );
+    }
+
+}
+
+void ExistingAccountPage::deleteOwnedSharedAccount() {
+    // Delete shared account from server, then delete locally
+    if(hoveredAccountIndex == -1) {
+        printf("No account selected to delete.\n");
+        displayTipMessage("No account selected.", "red", 3000);
+        return;
+    }
+    YummyLife::AccountManager::Account &acc = YummyLife::AccountManager::accounts[hoveredAccountIndex];
+    if(acc.type != acc.SHARED) {
+        printf("Selected account is not a shared account.\n");
+        displayTipMessage("Not a shared account.", "red", 3000);
+        return;
+    }
+    if(!acc.isOwner) {
+        printf("Only the owner of a shared account can delete it.\n");
+        displayTipMessage("Only the owner can delete a shared account.", "red", 4000);
+        return;
+    }
+
+    bool deleteSuccess = YummyLife::AccountManager::editSharedAccount(acc.owner_access_token.c_str(), "delete");
+    if(!deleteSuccess) {
+        printf("Failed to delete shared account from server. Please check your network connection and try again.\n");
+        displayTipMessage("Failed to delete from server. Check connection.", "red", 5000);
+        return;
+    }
+    printf("Shared account deleted from server successfully. Deleting locally...\n");
+    displayTipMessage("Shared account deleted.", "green", 3000);
+    onAccountDeleteConfirmed();
+}
+
 // YummyLife: Store email and key, and optionally save to settings
 void ExistingAccountPage::updateLoginInfo( const char *inEmail, const char *inKey, bool saveToSettings ) {
     mEmailField.setText( inEmail );
@@ -1090,6 +1365,7 @@ void ExistingAccountPage::updateLoginInfo( const char *inEmail, const char *inKe
 }
 
 void ExistingAccountPage::selectAccountAtIndex(int index) {
+    YummyLife::AccountManager::loginSharedAccountIndex = -1; // Reset shared account index on any account selection
     if(index < 0 || index >= (int)YummyLife::AccountManager::accounts.size()) return;
     YummyLife::AccountManager::Account acc = YummyLife::AccountManager::accounts[index];
     if(acc.type == acc.LOCAL && acc.email != "" && acc.key != "") {
@@ -1104,6 +1380,24 @@ void ExistingAccountPage::selectAccountAtIndex(int index) {
         triggerLifeTokenUpdate();
         triggerFitnessScoreUpdate();
     }
+    if(acc.type == acc.SHARED && acc.account_access_token != "") {
+        updateLoginInfo( "", "", false ); // Shared accounts don't have email/key, so clear those fields and DON'T save to settings
+        freeFitnessScore(); // Clear fitness score since leaderboard name will be incorrect
+        forceSetLeaderboardName( acc.leaderboardName.c_str() ); // Set leaderboard name directly
+
+        YummyLife::AccountManager::loginSharedAccountIndex = index; // Set the shared account index on successful fetch
+        printf("Switched to shared account\n");
+    }
+    selectedAccountIndex = index;
+    hoveredAccountIndex = index;
+    updateCenterInfoStates();
+
+    mEmailField.setIgnoreEvents( true );
+    mEmailField.setContentsHidden( true );
+    mEmailField.unfocus();
+    mKeyField.setIgnoreEvents( true );
+    mKeyField.setContentsHidden( true );
+    mKeyField.unfocus();
 }
 
 
@@ -1118,7 +1412,8 @@ void ExistingAccountPage::processLogin( char inStore, const char *inSignal ) {
         }
     accountKey = mKeyField.getText();
 
-    if( !gamePlayingBack ) {
+    // Do not store in settings if logging in with a shared account, since those don't use email/key
+    if( !gamePlayingBack && YummyLife::AccountManager::loginSharedAccountIndex == -1 ) {
         
         if( inStore ) {
             SettingsManager::setSetting( "email", userEmail );
@@ -1315,16 +1610,18 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
         YummyLife::drawLeaderboardName(pos);
 
         pos.x = 0;
-        pos.y = 20;
+        pos.y = 30;
         
-        drawFitnessScore( pos );
+        if( YummyLife::AccountManager::loginSharedAccountIndex == -1) {
+            drawFitnessScore( pos );
 
-        if( isFitnessScoreReady() ) {
-            mGenesButton.setVisible( true );
-            }
+            if( isFitnessScoreReady() ) {
+                mGenesButton.setVisible( true );
+                }
+        }
 
         // YummyLife: Add fade affect, since the tip now covers this text
-        if(mTip == NULL && mLastTipFade < 0.5){
+        if(mTip == NULL && mLastTipFade < 0.5 && mTimedTipMessage == NULL){
             // YumLife: show window title with version info
             pos = mServicesButton.getPosition();
             pos.y += 50;
@@ -1346,12 +1643,15 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
 
         if(showEditAccountWindow) {
             // Draw the edit account fields and buttons over the top of the window
-            mAcntEmailField.base_draw(inViewCenter, inViewSize);
+            if(!shouldSharedAccountOptionsBeVisable) mAcntEmailField.base_draw(inViewCenter, inViewSize); // Email field is only for local accounts
             mAcntKeyField.base_draw(inViewCenter, inViewSize);
             mAcntNotesField.base_draw(inViewCenter, inViewSize);
             if(!inSaveAccountProcess) mAcntConfirmButton.base_draw(inViewCenter, inViewSize);
             mAcntCancelButton.base_draw(inViewCenter, inViewSize);
             if(shouldAcntPasteButtonBeVisable) mAcntPasteButton.base_draw(inViewCenter, inViewSize);
+
+            if(shouldSharedAccountOptionsBeVisable) mAccessTokenCopyButton.base_draw(inViewCenter, inViewSize);
+            if(shouldOwnerSharedAccountOptionsBeVisable) mDeleteSharedAccountButton.base_draw(inViewCenter, inViewSize);
 
             if(inSaveAccountProcess) {
                 // Draw saving message
@@ -1364,6 +1664,12 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
                 delete [] secondsStr;
             }
         }
+
+        if( mTimedTipMessage != NULL ) {
+            doublePair tipPos = { 0, mUsingCustomTipHeight ? (double)mCustomTipHeight : -300.0 };
+            setDrawColor( mTimedTipR, mTimedTipG, mTimedTipB, 1.0f );
+            mainFont->drawString( mTimedTipMessage, tipPos, alignCenter );
+            }
 
         if(showChangeAccountWindow) {
 
@@ -1401,6 +1707,17 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
                     doublePair selectPos = {backGroundEnd.x - 50, lb_name_pos.y + 10};
                     setDrawColor(0, 1, 0, 1);
                     mainFont->drawString("*", selectPos, alignCenter);
+                }
+
+                // Draw account type indicator
+                {
+                    doublePair typePos = {backGroundEnd.x - 90, lb_name_pos.y + 10};
+                    if(acnt.type == YummyLife::AccountManager::Account::Type::SHARED) {
+                        const char* typeStr = acnt.isOwner ? "[O]" : "[S]";
+                        if(acnt.isOwner) setDrawColor(1, 0.8, 0, 1); // Gold = shared owner
+                        else setDrawColor(0, 0.8, 1, 1); // Cyan = shared non-owner
+                        mainFont->drawString(typeStr, typePos, alignCenter);
+                    }
                 }
 
                 if(idx == hoveredAccountIndex) {

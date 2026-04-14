@@ -105,21 +105,27 @@ class YummyLife {
 
                         // Shared accounts have these fields
                         bool isOwner = false;
-                        std::string email_decrypt_key; // Decrypted on fetch
                         std::string account_access_token;
                         std::string owner_access_token; // May be empty
-                        // Fetched from OHOLcurse server - get account info
-                        // Fetched from OHOLCurse server - login process
 
                 };
                 static void loadSavedAccounts(); // Reads accounts from disk
                 static void saveAccounts(); // Saves accounts to disk
                 static int addAccountLocal(const char* email, const char* key, const char* notes, const char* leaderboardName = nullptr);
+                static int addAccountShared(const char* account_access_token, const char* notes, const char* leaderboardName, const char* owner_access_token = nullptr);
                 static bool deleteAccountAtIndex(int index); // Returns true on success
                 static int findAccountByIndex(int index, Account* outAccount);
                 static int findMatchingLocalAccount(const char* email, const char* key, Account* outAccount = nullptr);
-                static void addAccountShared(const char* account_access_token, const char* owner_access_token); // leaderboardName and notes are fetched from server
+
+                // OHOLCurse API functions for shared accounts
+                static const char* standerdizeToken(const char* token);
+                static bool createSharedAccount(const char* email, const char* key, const char* lb_name, int& account_index_out); // Create a shared account
+                static bool fetchSharedAccountInfo(const char* account_access_token, std::string& out_email, std::string& out_leaderboardName, int& uses_left, double& expiration);
+                static bool loginSharedAccount(const char* account_access_token, const char* challenge, std::string& out_hashed_challenge, std::string& out_email);
+                static bool editSharedAccount(const char* account_owner_token, const char* action, const char* value = nullptr);
+
                 static std::vector<Account> accounts;
+                static int loginSharedAccountIndex;
         };
 
         static void cleanUp();

@@ -123,6 +123,14 @@ void freeFitnessScore() {
     freeAllOffspring();
     }
 
+    void forceSetLeaderboardName( const char *inLeaderboardName ) {
+    if( leaderboardName != NULL ) {
+        delete [] leaderboardName;
+        }
+    leaderboardName = stringDuplicate( inLeaderboardName );
+    }
+
+
 
 
 char usingFitnessServer() {

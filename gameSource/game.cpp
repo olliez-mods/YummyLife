@@ -2504,6 +2504,24 @@ void drawFrame( char inUpdate ) {
 
                 currentGamePage->base_makeActive( true );
                 }
+            // YummyLife: Shared account login failure
+            else if( livingLifePage->checkSignal( "sharedLoginFailed" ) ) {
+                lastScreenViewCenter.x = 0;
+                lastScreenViewCenter.y = 0;
+
+                setViewCenterPosition( lastScreenViewCenter.x,
+                                       lastScreenViewCenter.y );
+
+                currentGamePage = existingAccountPage;
+
+                char *message = autoSprintf( translateWithDefault( "sharedLoginFailed", "Shared account login failed, may be expired, or invalid." ) );
+
+                existingAccountPage->setStatusDirect( message, true );
+                delete [] message;
+
+                existingAccountPage->setStatusPosition( true );
+                currentGamePage->base_makeActive( true );
+            }
             else if( livingLifePage->checkSignal( "twinCancel" ) ) {
                 
                 lastScreenViewCenter.x = 0;

@@ -5,6 +5,8 @@ void initFitnessScore();
 
 void freeFitnessScore();
 
+void forceSetLeaderboardName( const char *inLeaderboardName );
+
 
 void triggerFitnessScoreUpdate();
 

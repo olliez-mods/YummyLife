@@ -15662,7 +15662,6 @@ void LivingLifePage::step() {
                     return;
                     }
                 }
-            
 
             char *pureKey = getPureAccountKey();
             
@@ -15676,7 +15675,8 @@ void LivingLifePage::step() {
 
             char *pwHash = hmac_sha1( password, challengeString );
 
-            char *keyHash = hmac_sha1( pureKey, challengeString );
+            // YummyLife: Update to string
+            std::string keyHash = hmac_sha1( pureKey, challengeString );
             
             delete [] pureKey;
             delete [] password;
@@ -15702,19 +15702,43 @@ void LivingLifePage::step() {
 
             char *outMessage;
 
-            char *tempEmail;
+            // YummyLife: Update to string
+            std::string tempEmail;
             
             if( strlen( userEmail ) > 0 ) {
-                tempEmail = stringDuplicate( userEmail );
+                tempEmail = userEmail;
                 }
             else {
                 // a blank email
                 // this will cause LOGIN message to have one less token
                 
                 // stick a place-holder in there instead
-                tempEmail = stringDuplicate( "blank_email" );
+                tempEmail = "blank_email";
                 }
             
+            // YummyLife: shared account logic
+            bool usingShared = YummyLife::AccountManager::loginSharedAccountIndex != -1;
+
+            if( usingShared ) {
+                printf( "Using shared account with index %d\n", YummyLife::AccountManager::loginSharedAccountIndex );
+                YummyLife::AccountManager::Account acc = YummyLife::AccountManager::accounts[YummyLife::AccountManager::loginSharedAccountIndex];
+                std::string sh_email;
+                std::string sh_hashed_challenge;
+                bool hashSucc = YummyLife::AccountManager::loginSharedAccount(acc.account_access_token.c_str(), challengeString, sh_hashed_challenge, sh_email);
+                if( !hashSucc ) {
+                    closeSocket( mServerSocket );
+                    mServerSocket = -1;
+                    setWaiting( false );
+                    setSignal( "sharedLoginFailed" );
+                    delete [] message;
+                    return;
+                }
+
+                printf( "Shared account email: %s\n", sh_email.c_str() );
+                keyHash = sh_hashed_challenge;
+                tempEmail = sh_email;
+            }
+
             const char *loginWord = "LOGIN";
             
             if( userReconnect ) {
@@ -15725,7 +15749,7 @@ void LivingLifePage::step() {
             if( strlen( userEmail ) <= 80 ) {    
                 outMessage = autoSprintf( "%s %s %-80s %s %s %d%s#",
                                           loginWord,
-                                          clientTag, tempEmail, pwHash, keyHash,
+                                          clientTag, tempEmail.c_str(), pwHash, keyHash.c_str(),
                                           mTutorialNumber, twinExtra );
                 }
             else {
@@ -15735,14 +15759,14 @@ void LivingLifePage::step() {
                 // doesn't match on the playback machine
                 outMessage = autoSprintf( "%s %s %s %s %s %d%s#",
                                           loginWord,
-                                          clientTag, tempEmail, pwHash, keyHash,
+                                          clientTag, tempEmail.c_str(), pwHash, keyHash.c_str(),
                                           mTutorialNumber, twinExtra );
                 }
             
-            delete [] tempEmail;
+            //delete [] tempEmail;
             delete [] twinExtra;
             delete [] pwHash;
-            delete [] keyHash;
+            //delete [] keyHash;
 
             sendToServerSocket( outMessage );
             
