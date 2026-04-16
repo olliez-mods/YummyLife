@@ -2678,6 +2678,26 @@ void HetuwMod::drawSearchTiles() {
 		setDrawColor( colorRainbow->color[1]-0.5, colorRainbow->color[2]-0.5, 0.7, 1.3-alpha );
 		drawSearchTilesLoop(true);
 	}
+
+	// YummyLife: grave name search — pulsing rect per matching tile
+	setDrawColor( 0.2, colorRainbow->color[1], colorRainbow->color[2], alpha );
+	int radius = 32;
+	int startX = ourLiveObject->xd - radius;
+	int endX   = ourLiveObject->xd + radius;
+	int startY = ourLiveObject->yd - radius;
+	int endY   = ourLiveObject->yd + radius;
+	for( int x = startX; x < endX; x++ ) {
+		for( int y = startY; y < endY; y++ ) {
+			GraveInfo *grave = livingLifePage->yumGetGraveAt( x, y );
+			if( !grave || !grave->relationName ) continue;
+			for( unsigned k = 0; k < searchWordList.size(); k++ ) {
+				if( charArrContainsCharArr( grave->relationName, searchWordList[k] ) ) {
+					drawTileRect( x, y );
+					break;
+					}
+				}
+			}
+		}
 }
 
 void HetuwMod::drawInputString() {

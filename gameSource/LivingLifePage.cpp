@@ -150,7 +150,7 @@ void LivingLifePage::hetuwDrawGraveProfiles() {
         if( gI->lifeId == -1 ) continue;
         doublePair gravePos = { (double)gI->worldPos.x * CELL_D,
                                 (double)gI->worldPos.y * CELL_D + 34 };
-        HetuwMod::drawPhexLeaderboardName( gravePos, gI->lifeId, 0.6, "NO DATA" );
+        HetuwMod::drawPhexLeaderboardName( gravePos, gI->lifeId, 0.6 );
     }
 }
 
