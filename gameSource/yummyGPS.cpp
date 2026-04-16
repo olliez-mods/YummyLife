@@ -26,8 +26,8 @@
 #define SAVED_COORDS_FILENAME "yummyGPSCoords.txt"
 
 // Damn terminology is hard - I'm sorry
-static const double GPS_STATUE_SCAN_INTERVAL_SLOW = 1.0 / 12.0; // seconds between scans while Y pos is unknown
-static const double GPS_STATUE_SCAN_INTERVAL_FAST = 1.0 / 60.0; // seconds between scans once Y pos is known
+static const double GPS_STATUE_SCAN_INTERVAL_SLOW = 1.0 / 6.0; // seconds between scans while Y pos is unknown
+static const double GPS_STATUE_SCAN_INTERVAL_FAST = 1.0 / 30.0; // seconds between scans once Y pos is known
 #define STATUE_SCAN_MULTIPLIER 5 // How many Y axis statue scan request bunches to send per scan
 
 // Statues built by me and friends in ghost town +200k east of Tarr
