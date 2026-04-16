@@ -172,6 +172,9 @@ bool HetuwMod::bAllowLiveResources;
 bool HetuwMod::bDisplayGhostsAsSeparateFamily;
 bool HetuwMod::bGPSEnabled;
 bool HetuwMod::bAllowPhexAccessories;
+bool HetuwMod::bRequestAllGraves;
+bool HetuwMod::bRenderGraveLeaderboards;
+bool HetuwMod::bRequestGraveInfoFromPhex;
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -437,6 +440,9 @@ void HetuwMod::init() {
 	bDisplayGhostsAsSeparateFamily = true;
 	bGPSEnabled = true;
 	bAllowPhexAccessories = true;
+	bRequestAllGraves = true;
+	bRenderGraveLeaderboards = true;
+	bRequestGraveInfoFromPhex = true;
 
 	iDrawNames = 1;
 	bDrawCords = true;
@@ -941,6 +947,9 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("display_ghosts_as_separate_family", bDisplayGhostsAsSeparateFamily, {postComment: " // Display ghosts as a separate family in the family list"});
 	yumConfig::registerSetting("enable_gps", bGPSEnabled, {postComment: " // Enable GPS functionality if available on your server"});
 	yumConfig::registerSetting("allow_phex_accessories", bAllowPhexAccessories, {postComment: " // Allow Phex to load and show accessories on players and yourself"});
+	yumConfig::registerSetting("request_all_graves", bRequestAllGraves, {postComment: " // Auto-request grave info for all visible graves without hover"});
+	yumConfig::registerSetting("render_grave_leaderboards", bRenderGraveLeaderboards, {postComment: " // Render profile leaderboard names on graves"});
+	yumConfig::registerSetting("request_grave_info_from_phex", bRequestGraveInfoFromPhex, {postComment: " // Request grave life info from Phex"});
 	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {
@@ -2238,6 +2247,8 @@ void HetuwMod::livingLifeDraw() {
 	if (bDrawHostileTiles) drawHostileTiles();
 	if (searchWordList.size() > 0) drawSearchTiles();
 	if (bDrawSelectedPlayerInfo && iDrawNames > 0 && !bHidePlayers) drawHighlightedPlayer();
+	if (iDrawNames > 0 && bRenderGraveLeaderboards) livingLifePage->hetuwDrawGraveProfiles();
+	if (bRequestGraveInfoFromPhex) Phex::flushGraveIdRequests();
 	if (bDrawPhotoRec) drawPhotoRec(recTakePhoto);
 	if (bDrawMap) drawMap();
 	Phex::draw();
@@ -2967,7 +2978,7 @@ bool HetuwMod::itsTimeToDrawPhexName() {
 
 // YummyLife: Draw a Phex Leaderboard name of an id at a position
 // Returns True if it drew something
-bool HetuwMod::drawPhexLeaderboardName(doublePair pos, int lifeId, float scale){
+bool HetuwMod::drawPhexLeaderboardName(doublePair pos, int lifeId, float scale, std::string missingText){
 	setDrawColor( 0.0, 0.0, 0.0, 0.8 );
 	auto it = Phex::lifeIdToProfiles.find(lifeId);
 	if (it != Phex::lifeIdToProfiles.end()) {
@@ -2991,6 +3002,14 @@ bool HetuwMod::drawPhexLeaderboardName(doublePair pos, int lifeId, float scale){
 
 		return true;
 	}
+
+	if(!missingText.empty()) {
+		float textWidth = livingLifePage->hetuwMeasureScaledHandwritingFont( missingText.c_str(), scale );
+		drawRect(pos, textWidth / 2 + 6*scale, 16*scale);
+		setDrawColor(0.5, 0.5, 0.5, 1);
+		livingLifePage->hetuwDrawScaledHandwritingFont( missingText.c_str(), pos, scale, alignCenter );
+	}
+
 	return false;
 }
 

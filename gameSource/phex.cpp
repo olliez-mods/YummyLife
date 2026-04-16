@@ -144,6 +144,11 @@ std::string Phex::lastLBNkey = "";
 std::string Phex::lastLBN = "";
 bool Phex::LBNRequestInProgress;
 double Phex::LBNRequestStartTime = 0.0f;
+
+// YummyLife: batched grave-id requests to Phex
+std::vector<Phex::GrvIdEntry> Phex::pendingGraveIds;
+double Phex::graveIdDebounceStartTime = 0;
+
 #define LBN_REQUEST_TIMEOUT 8.0f
 
 static bool temporaryJasonAuthOptIn = false;
@@ -2301,6 +2306,30 @@ void Phex::testDrawBiomeChunks() {
 		float *r = biomeChunksDrawRecs[k];
 		HetuwMod::hDrawRect(r[0], r[1], r[2], r[3]);
 	}
+}
+
+void Phex::queueGraveIdRequest( int x, int y, int id ) {
+	for( const GrvIdEntry &e : pendingGraveIds ) {
+		if( e.x == x && e.y == y ) return;
+	}
+	pendingGraveIds.push_back( { x, y, id } );
+	graveIdDebounceStartTime = HetuwMod::curStepTime;
+}
+
+void Phex::flushGraveIdRequests() {
+	if( pendingGraveIds.empty() ) return;
+	if( HetuwMod::curStepTime - graveIdDebounceStartTime
+		< graveIdDebounceDelay ) return;
+	
+	std::string msg = "GRV_IDS";
+	for( const GrvIdEntry &e : pendingGraveIds ) {
+		msg += " " + to_string( e.x )
+		     + " " + to_string( e.y )
+		     + " " + to_string( e.id );
+	}
+	tcp.send( msg );
+	printf( "Phex: sent %zu grave id(s)\n", pendingGraveIds.size() );
+	pendingGraveIds.clear();
 }
 
 void Phex::sendPosition() {

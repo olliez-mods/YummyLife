@@ -142,6 +142,18 @@ double LivingLifePage::hetuwMeasureScaledHandwritingFont(const char* str, double
 	return r;
 }
 
+// YummyLife: Draw Phex LifeProfile labels on visible graves
+void LivingLifePage::hetuwDrawGraveProfiles() {
+    if( !HetuwMod::bRequestLifeProfiles || HetuwMod::iDrawNames <= 0 ) return;
+    for( int g = 0; g < mGraveInfo.size(); g++ ) {
+        GraveInfo *gI = mGraveInfo.getElement( g );
+        if( gI->lifeId == -1 ) continue;
+        doublePair gravePos = { (double)gI->worldPos.x * CELL_D,
+                                (double)gI->worldPos.y * CELL_D + 34 };
+        HetuwMod::drawPhexLeaderboardName( gravePos, gI->lifeId, 0.6, "NO DATA" );
+    }
+}
+
 void LivingLifePage::hetuwSay(const char* text) {
 	//printf("hetuw say: %s\n", text);
 	char *message = autoSprintf( "SAY 0 0 %s#", text );
@@ -1498,6 +1510,34 @@ static char equal( GridPos inA, GridPos inB ) {
         return true;
         }
     return false;
+    }
+
+// YummyLife: send GRAVE request to game server for a grave at worldX,worldY
+// if we don't already have info for it and haven't already sent a request.
+void LivingLifePage::yumAutoRequestGraveAt( int worldX, int worldY ) {
+    GridPos graveWorldPos = { worldX, worldY };
+    for( int gi=0; gi<mGraveInfo.size(); gi++ ) {
+        if( equal( mGraveInfo.getElement(gi)->worldPos, graveWorldPos ) )
+            return;
+        }
+    for( int ri=0; ri<graveRequestPos.size(); ri++ ) {
+        if( equal( graveRequestPos.getElementDirect(ri), graveWorldPos ) )
+            return;
+        }
+    char *graveMsg = autoSprintf( "GRAVE %d %d#",
+                                  sendX( worldX ), sendY( worldY ) );
+    sendToServerSocket( graveMsg );
+    delete [] graveMsg;
+    graveRequestPos.push_back( graveWorldPos );
+    }
+
+// YummyLife: return the GraveInfo at world position, or NULL.
+GraveInfo *LivingLifePage::yumGetGraveAt( int worldX, int worldY ) {
+    for( int g = 0; g < mGraveInfo.size(); g++ ) {
+        GraveInfo *gI = mGraveInfo.getElement( g );
+        if( gI->worldPos.x == worldX && gI->worldPos.y == worldY ) return gI;
+        }
+    return NULL;
     }
 
 
@@ -15924,7 +15964,15 @@ void LivingLifePage::step() {
                                   &posX, &posY, &playerID );
             if( numRead == 3 ) {
                 applyReceiveOffset( &posX, &posY );
-                
+
+                if( HetuwMod::bRequestGraveInfoFromPhex &&
+                    playerID > 0 &&
+                    Phex::lifeIdToProfiles.find( playerID ) ==
+                    Phex::lifeIdToProfiles.end() ) {
+                    Phex::queueGraveIdRequest( sendX(posX), sendY(posY),
+                                               playerID );
+                    }
+
                 LiveObject *gravePerson = getLiveObject( playerID );
                 
                 if( gravePerson != NULL && 
@@ -15962,6 +16010,8 @@ void LivingLifePage::step() {
                         delete [] desToDelete;
                         }
                     
+                    g.lifeId = playerID;
+
                     // this grave replaces any in same location
                     for( int i=0; i< mGraveInfo.size(); i++ ) {
                         GraveInfo *otherG = mGraveInfo.getElement( i );
@@ -16190,7 +16240,17 @@ void LivingLifePage::step() {
                 g.lastMouseOverYears = -1;
                 g.lastMouseOverTime = g.creationTime;
                 
+                g.lifeId = playerID;
+
                 mGraveInfo.push_back( g );
+
+                if( HetuwMod::bRequestGraveInfoFromPhex &&
+                    playerID > 0 &&
+                    Phex::lifeIdToProfiles.find( playerID ) ==
+                    Phex::lifeIdToProfiles.end() ) {
+                    Phex::queueGraveIdRequest( sendX(posX), sendY(posY),
+                                               playerID );
+                    }
                 }
             }
         else if( type == STATUE_INFO ) {
@@ -16911,7 +16971,18 @@ void LivingLifePage::step() {
                                     checkForStatueAtPosition(
                                         worldPosX, worldPosY ); 
                                     }
-                                }
+
+                                // YummyLife: auto-request grave info for
+                                // graves arriving in map chunks (on spawn)
+                                if( HetuwMod::bRequestAllGraves &&
+                                    strstr( obj->description, "origGrave" )
+                                    != NULL ) {
+                                    int worldPosX = x + cX;
+                                    int worldPosY = y + cY;
+                                    yumAutoRequestGraveAt( worldPosX,
+                                                           worldPosY );
+                                    }
+                            }
                             
                             mMapContainedStacks[mapI].deleteAll();
                             mMapSubContainedStacks[mapI].deleteAll();
@@ -17367,9 +17438,41 @@ void LivingLifePage::step() {
                             if( newObj->isStatue ) {
                                 checkForStatueAtPosition( x, y );
                                 }
+
+                            // YummyLife: auto-request grave info when a grave
+                            // object appears, so we get lifeId without hover
+                            if( HetuwMod::bRequestAllGraves &&
+                                strstr( newObj->description, "origGrave" ) != NULL ) {
+                                yumAutoRequestGraveAt( x, y );
+                                }
+                            else {
+                                // YummyLife: non-grave replaced what was here —
+                                // remove any stale grave label at this position
+                                GridPos thisPos = { x, y };
+                                for( int gi=0; gi<mGraveInfo.size(); gi++ ) {
+                                    GraveInfo *gI = mGraveInfo.getElement( gi );
+                                    if( equal( gI->worldPos, thisPos ) ) {
+                                        delete [] gI->relationName;
+                                        mGraveInfo.deleteElement( gi );
+                                        gi--;
+                                        }
+                                    }
+                                }
                             }
                         
-                        
+                        if( newID == 0 ) {
+                            // YummyLife: tile cleared — remove stale grave label
+                            GridPos thisPos = { x, y };
+                            for( int gi=0; gi<mGraveInfo.size(); gi++ ) {
+                                GraveInfo *gI = mGraveInfo.getElement( gi );
+                                if( equal( gI->worldPos, thisPos ) ) {
+                                    delete [] gI->relationName;
+                                    mGraveInfo.deleteElement( gi );
+                                    gi--;
+                                    }
+                                }
+                            }
+
                         if( speed > 0 ) {
                             // this cell moved from somewhere
                             

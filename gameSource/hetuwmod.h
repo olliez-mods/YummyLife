@@ -343,6 +343,9 @@ public:
 	static bool bDisplayGhostsAsSeparateFamily;
 	static bool bGPSEnabled;
 	static bool bAllowPhexAccessories;
+	static bool bRequestAllGraves;
+	static bool bRenderGraveLeaderboards;
+	static bool bRequestGraveInfoFromPhex;
 	// <-
 
 	static int iDrawNames;
@@ -484,7 +487,7 @@ public:
 	static bool dirIsSafeToWalk(int x, int y, int dir);
 	static bool findNextMove(int &x, int &y, int dir);
 
-	static bool drawPhexLeaderboardName(doublePair pos, int lifeId, float scale);
+	static bool drawPhexLeaderboardName(doublePair pos, int lifeId, float scale, std::string missingText = "");
 
 	static void setOurFamilyName(const char* lastName);
 	static void getOurFamilyName();

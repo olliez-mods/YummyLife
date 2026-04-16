@@ -413,6 +413,9 @@ typedef struct GraveInfo {
         // used to detect when we've moused away, even if not mousing
         // over another grave
         double lastMouseOverTime;
+
+        // YummyLife: Phex life ID for LifeProfile lookup, -1 if unknown
+        int lifeId = -1;
     } GraveInfo;
 
 
@@ -597,6 +600,9 @@ class LivingLifePage : public GamePage, public ActionListener {
 		double hetuwMeasureStringHandwritingFont(const char* str);
 		void hetuwDrawScaledHandwritingFont( const char* str, doublePair drawPos, double customScale, TextAlignment align = alignLeft  );
 		double hetuwMeasureScaledHandwritingFont(const char* str, double customScale );
+		void hetuwDrawGraveProfiles();
+		void yumAutoRequestGraveAt( int worldX, int worldY );
+		GraveInfo *yumGetGraveAt( int worldX, int worldY );
 		void hetuwSay(const char* text);
 		void hetuwSetNextActionMessage( const char* str, int x, int y );
 		void hetuwSetNextActionEating( bool b );

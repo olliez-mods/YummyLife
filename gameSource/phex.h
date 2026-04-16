@@ -498,6 +498,9 @@ public:
 	static void onGlobalBirthSet(int globalX, int globalY);
 
 	static LifeProfile* getLifeProfile(int lifeID);
+	static void queueGraveIdRequest( int x, int y, int id );
+	static void flushGraveIdRequests();
+	struct GrvIdEntry { int x, y, id; };
 
 private:
 
@@ -544,6 +547,11 @@ private:
 	static std::string lastLBN;
 	static bool LBNRequestInProgress;
 	static double LBNRequestStartTime;
+
+	// YummyLife: batched grave-id requests to Phex
+	static std::vector<GrvIdEntry> pendingGraveIds;
+	static double graveIdDebounceStartTime;
+	static constexpr double graveIdDebounceDelay = 0.5;	
 };
 
 #endif
