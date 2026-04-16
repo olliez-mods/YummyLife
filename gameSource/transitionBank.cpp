@@ -2465,6 +2465,24 @@ SimpleVector<TransRecord*> *getAllProduces( int inProducesID ) {
     }
 
 
+char hasIDPreservingInteractionAsTarget( int inTargetID ) {
+    SimpleVector<TransRecord*> *uses = getAllUses( inTargetID );
+    if( uses == NULL ) {
+        return false;
+        }
+    for( int i=0; i<uses->size(); i++ ) {
+        TransRecord *r = uses->getElementDirect( i );
+        // Only care about transitions where inTargetID IS the target,
+        // a real actor (>= 0, not -1 auto-decay) interacts with it,
+        // and the result leaves the target's ID unchanged.
+        if( r->target == inTargetID &&
+            r->actor >= 0 &&
+            r->newTarget == inTargetID ) {
+            return true;
+            }
+        }
+    return false;
+    }
 
 
 char isAncestor( int inTargetID, int inPossibleAncestorID, int inStepLimit ) {

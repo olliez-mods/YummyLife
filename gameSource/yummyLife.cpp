@@ -21,7 +21,9 @@ using json = nlohmann::json;
 #include "fitnessScore.h"
 #include "soundBank.h"
 #include "objectBank.h"
+#include "transitionBank.h"
 #include "message.h"
+#include "minorGems/util/SimpleVector.h"
 
 #include <iostream>
 
@@ -1404,4 +1406,156 @@ const char* YummyLife::AccountManager::standerdizeToken(const char* token) {
     std::transform(sToken.begin(), sToken.end(), sToken.begin(), ::tolower);
     return strdup(sToken.c_str());
 }
+
+
+// ============================================================
+// YummyLife decay timer system
+// ============================================================
+
+struct YumDecayTimerEntry {
+    int worldX, worldY;
+    int objectID;
+    double eta;           // game_getCurrentTime() + autoDecaySeconds
+    bool survivesReload;  // safe to keep across chunk reloads
+};
+
+static SimpleVector<YumDecayTimerEntry> sDecayTimers;
+
+
+// -- internal helpers --
+
+static int yumFindTimer( int worldX, int worldY ) {
+    for( int i=0; i<sDecayTimers.size(); i++ ) {
+        YumDecayTimerEntry *e = sDecayTimers.getElement( i );
+        if( e->worldX == worldX && e->worldY == worldY ) return i;
+        }
+    return -1;
+    }
+
+
+// -- public API --
+
+bool yumIsDecayTrackable( int objectID ) {
+    TransRecord *decayTr = getTrans( -1, objectID );
+    if( decayTr == NULL ||
+        decayTr->autoDecaySeconds <= 0 ||
+        decayTr->epochAutoDecay != 0 ) {
+        return false;
+        }
+
+    ObjectRecord *obj = getObject( objectID );
+    if( obj == NULL ) return false;
+
+    // Permanent objects can't be picked up — timer is always reliable.
+    if( obj->permanent ) return true;
+
+    // Non-permanent: only trackable if picking up and putting down produces
+    // a different ground ID (server then restarts decay on drop).
+    TransRecord *pickupTr = getTrans( 0, objectID );
+    if( pickupTr == NULL || pickupTr->newActor <= 0 ) return false;
+
+    int heldID = pickupTr->newActor;
+    TransRecord *dropTr = getTrans( heldID, 0 );
+    if( dropTr == NULL ) return false;
+    return ( dropTr->newTarget != objectID );
+    }
+
+
+bool yumDecaySurvivesChunkReload( int objectID ) {
+    ObjectRecord *obj = getObject( objectID );
+    if( obj == NULL ) return false;
+
+    // Non-permanent objects can be picked up and replaced while away.
+    if( !obj->permanent ) return false;
+
+    // If any non-decay interaction can CHANGE this object, someone may
+    // have changed it and changed it back, resetting the server's decay.
+    // Interactions that leave it as the same ID are safe to ignore.
+    SimpleVector<TransRecord*> *uses = getAllUses( objectID );
+    if( uses != NULL ) {
+        for( int i=0; i<uses->size(); i++ ) {
+            TransRecord *r = uses->getElementDirect( i );
+            if( r->target == objectID && r->actor >= 0 && r->newTarget != objectID ) {
+                return false;
+                }
+            }
+        }
+    return true;
+    }
+
+
+void yumOnMapChange( int worldX, int worldY, int newID, int oldID ) {
+    if( newID <= 0 ) {
+        yumClearDecayTimer( worldX, worldY );
+        return;
+        }
+
+    // Same ID: an interaction kept the object unchanged — preserve the timer.
+    if( newID == oldID ) return;
+
+    // Object changed; set a fresh timer if trackable, else clear.
+    if( yumIsDecayTrackable( newID ) ) {
+        TransRecord *decayTr = getTrans( -1, newID );
+        double eta = game_getCurrentTime() + decayTr->autoDecaySeconds;
+        bool survives = yumDecaySurvivesChunkReload( newID );
+
+        int idx = yumFindTimer( worldX, worldY );
+        if( idx >= 0 ) {
+            YumDecayTimerEntry *e = sDecayTimers.getElement( idx );
+            e->objectID       = newID;
+            e->eta            = eta;
+            e->survivesReload = survives;
+            }
+        else {
+            YumDecayTimerEntry entry;
+            entry.worldX         = worldX;
+            entry.worldY         = worldY;
+            entry.objectID       = newID;
+            entry.eta            = eta;
+            entry.survivesReload = survives;
+            sDecayTimers.push_back( entry );
+            }
+        }
+    else {
+        yumClearDecayTimer( worldX, worldY );
+        }
+    }
+
+
+void yumOnMapChunkCell( int worldX, int worldY, int newID ) {
+    // Chunk data has no timestamp — never start timers here, only validate.
+    int idx = yumFindTimer( worldX, worldY );
+    if( idx < 0 ) return;
+
+    YumDecayTimerEntry *e = sDecayTimers.getElement( idx );
+
+    // Different object arrived — stored timer is stale.
+    if( newID != e->objectID ) {
+        sDecayTimers.deleteElement( idx );
+        return;
+        }
+
+    // Same object; keep only if the timer survives chunk reloads.
+    if( !e->survivesReload ) {
+        sDecayTimers.deleteElement( idx );
+        }
+    }
+
+
+double yumGetDecayETA( int worldX, int worldY ) {
+    int idx = yumFindTimer( worldX, worldY );
+    if( idx < 0 ) return 0.0;
+    return sDecayTimers.getElement( idx )->eta;
+    }
+
+
+void yumClearDecayTimer( int worldX, int worldY ) {
+    int idx = yumFindTimer( worldX, worldY );
+    if( idx >= 0 ) sDecayTimers.deleteElement( idx );
+    }
+
+
+void yumClearAllDecayTimers() {
+    sDecayTimers.deleteAll();
+    }
 

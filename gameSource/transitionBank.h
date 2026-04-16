@@ -154,6 +154,14 @@ SimpleVector<TransRecord*> *getAllUses( int inUsesID );
 SimpleVector<TransRecord*> *getAllProduces( int inUsesID );
 
 
+// Returns true if any non-decay transition keeps inTargetID as the target
+// result (actor >= 0, target == inTargetID, newTarget == inTargetID).
+// Used to determine whether a client-side decay timer is reliable across
+// chunk reloads: if an interaction can "feed" the object while keeping the
+// same ID, the server may have reset its decay while the client was away.
+char hasIDPreservingInteractionAsTarget( int inTargetID );
+
+
 
 // returns true if inPossibleAncestorID is an ancestor of inTargetID
 // (used to make an ancestor of inTargetID no more than inStepLimit steps

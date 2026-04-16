@@ -3186,6 +3186,7 @@ void LivingLifePage::clearMap() {
         
         mMapPlayerPlacedFlags[i] = false;
         }
+    yumClearAllDecayTimers();
     }
 
 
@@ -3819,7 +3820,7 @@ LivingLifePage::~LivingLifePage() {
     
     delete [] mMapContainedStacks;
     delete [] mMapSubContainedStacks;
-    
+
     delete [] mMap;
     delete [] mMapBiomes;
     delete [] mMapFloors;
@@ -5378,7 +5379,54 @@ void LivingLifePage::drawMapCell( int inMapI,
         
             }
         
-        
+        // YummyLife: draw decay countdown timer if this cell has one
+        if( !inHighlightOnly && !inNoTimeEffects &&
+            HetuwMod::iShowObjectTimers > 0 ) {
+            int worldX = ( inMapI % mMapD ) + mMapOffsetX - mMapD / 2;
+            int worldY = ( inMapI / mMapD ) + mMapOffsetY - mMapD / 2;
+
+            // In hover mode only draw for the cell the mouse is over.
+            bool showTimer = ( HetuwMod::iShowObjectTimers == 1 );
+            if( !showTimer && HetuwMod::iShowObjectTimers == 2 ) {
+                int hoverWorldX = mCurMouseOverCell.x + mMapOffsetX - mMapD / 2;
+                int hoverWorldY = mCurMouseOverCell.y + mMapOffsetY - mMapD / 2;
+                showTimer = ( worldX == hoverWorldX && worldY == hoverWorldY );
+                }
+
+            if( showTimer ) {
+                double eta = yumGetDecayETA( worldX, worldY );
+                if( eta > 0 ) {
+                    double remaining = eta - game_getCurrentTime();
+                    if( remaining > 0 ) {
+                        int remSec = (int)remaining + 1;
+                        char timerBuf[32];
+                        if( remSec >= 3600 ) {
+                            sprintf( timerBuf, "%dh%02dm",
+                                     remSec / 3600, ( remSec % 3600 ) / 60 );
+                            }
+                        else if( remSec >= 60 ) {
+                            sprintf( timerBuf, "%dm%02ds",
+                                     remSec / 60, remSec % 60 );
+                            }
+                        else {
+                            sprintf( timerBuf, "%ds", remSec );
+                            }
+
+                        doublePair timerPos = { (double)inScreenX - CELL_D / 2.0 + 4,
+                                                (double)inScreenY + CELL_D / 2.0 - 18 };
+                        setDrawColor( 0, 0, 0, 1 );
+                        numbersFontFixed->drawString( timerBuf, timerPos, alignLeft );
+                        doublePair timerFacePos = { timerPos.x + 1, timerPos.y - 1 };
+                        setDrawColor( 1, 0.85f, 0, 1 );
+                        numbersFontFixed->drawString( timerBuf, timerFacePos, alignLeft );
+                        }
+                    else {
+                        yumClearDecayTimer( worldX, worldY );
+                        }
+                    }
+                }
+            }
+
         ignoreWatchedObjectDraw( false );
         
         }
@@ -16961,6 +17009,10 @@ void LivingLifePage::step() {
                                 // our placement status cleared
                                 mMapPlayerPlacedFlags[mapI] = false;
                                 }
+                            // YummyLife: validate any stored decay timer
+                            // against what the chunk actually contains.
+                            // (Never starts new timers — only MAP_CHANGE can.)
+                            yumOnMapChunkCell( x + cX, y + cY, mMap[mapI] );
                             
                             if( mMap[mapI] != 0 ) {
                                 ObjectRecord *obj = getObject( mMap[mapI] );
@@ -17431,6 +17483,9 @@ void LivingLifePage::step() {
                             mMapContainedStacks[mapI].deleteAll();
                             mMapSubContainedStacks[mapI].deleteAll();
                             }
+
+                        // YummyLife: update world-coordinate decay timer
+                        yumOnMapChange( x, y, newID, old );
 
                         if( newID > 0 ) {
                             ObjectRecord *newObj = getObject( newID );

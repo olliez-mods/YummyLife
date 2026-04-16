@@ -175,6 +175,7 @@ bool HetuwMod::bAllowPhexAccessories;
 bool HetuwMod::bRequestAllGraves;
 bool HetuwMod::bRenderGraveLeaderboards;
 bool HetuwMod::bRequestGraveInfoFromPhex;
+int HetuwMod::iShowObjectTimers = 2; // 0=none, 1=always, 2=hover
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -950,6 +951,12 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("request_all_graves", bRequestAllGraves, {postComment: " // Auto-request grave info for all visible graves without hover"});
 	yumConfig::registerSetting("render_grave_leaderboards", bRenderGraveLeaderboards, {postComment: " // Render profile leaderboard names on graves"});
 	yumConfig::registerSetting("request_grave_info_from_phex", bRequestGraveInfoFromPhex, {postComment: " // Request grave life info from Phex"});
+	static std::map<std::string, int> showObjectTimersMap = {
+		{"none", 0},
+		{"always", 1},
+		{"hover", 2}
+	};
+	yumConfig::registerMappedSetting("init_show_object_timers", iShowObjectTimers, showObjectTimersMap, {postComment: " // none, always, hover"});
 	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {
@@ -3718,9 +3725,9 @@ bool HetuwMod::livingLifeKeyDown(unsigned char inASCII) {
 		return true; 
 	}
 	if (!commandKey && isCharKey(inASCII, charKey_TeachLanguage)) {
-		//bTeachLanguage = !bTeachLanguage;
-		//if (!bTeachLanguage) teachLanguageCount = 0;
-		//return true;
+		iShowObjectTimers++;
+		if (iShowObjectTimers >= 3) iShowObjectTimers = 0;
+		return true;
 	}
 	if (!commandKey && isCharKey(inASCII, charKey_FindYum)) {
 		if (bHoldDownTo_FindYum) bDrawYum = true;
@@ -5375,6 +5382,13 @@ void HetuwMod::drawHelp() {
 	if (iDrawNames > 0) setHelpColorSpecial();
 	else setHelpColorNormal();
 	snprintf(str, sizeof(str), "%c TOGGLE SHOW NAMES", toupper(charKey_ShowNames));
+	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
+	drawPos.y -= lineHeight;
+
+	if (iShowObjectTimers > 0) setHelpColorSpecial();
+	else setHelpColorNormal();
+	const char *timerModeStr = iShowObjectTimers == 2 ? "HOVER" : (iShowObjectTimers == 1 ? "ALWAYS" : "NONE");
+	snprintf(str, sizeof(str), "%c OBJECT TIMERS: %s", toupper(charKey_TeachLanguage), timerModeStr);
 	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
 	drawPos.y -= lineHeight;
 

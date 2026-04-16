@@ -346,6 +346,7 @@ public:
 	static bool bRequestAllGraves;
 	static bool bRenderGraveLeaderboards;
 	static bool bRequestGraveInfoFromPhex;
+	static int iShowObjectTimers; // 0=none, 1=always, 2=hover
 	// <-
 
 	static int iDrawNames;

@@ -150,4 +150,43 @@ class YummyLife {
         static bool deleteLastYumsFile();
 };
 
+
+// ---------------------------------------------------------------------------
+// YummyLife decay timer system — stores per-world-tile ETA in world coords
+// so timers survive rolling-buffer resets and chunk reloads.
+// ---------------------------------------------------------------------------
+
+// Returns true if this objectID should be tracked at all:
+//   - has autoDecaySeconds > 0 and is not epoch-based
+//   - cannot be held in hand (can't be picked up), OR
+//     can be held but when dropped produces a different ID
+//     (so the server restarts decay on placement → our MAP_CHANGE is fresh)
+bool yumIsDecayTrackable( int objectID );
+
+// Returns true if the timer is reliable across chunk reloads:
+//   - object cannot be held in hand / ridden, AND
+//   - no interaction leaves the object as the same target ID
+//     (all interactions either change it or leave it to decay naturally)
+bool yumDecaySurvivesChunkReload( int objectID );
+
+// Called from MAP_CHANGE handler.
+// newID / oldID are what's at the cell now vs before the message.
+// worldX / worldY are the full world-coordinate tile position.
+void yumOnMapChange( int worldX, int worldY, int newID, int oldID );
+
+// Called from MAP_CHUNK cell handler.
+// newID / oldID are chart-based: newID is from the chunk, oldID was in mMap.
+void yumOnMapChunkCell( int worldX, int worldY, int newID );
+
+// Returns the decay ETA (absolute game_getCurrentTime() seconds) for a cell,
+// or 0.0 if no timer is tracked.
+double yumGetDecayETA( int worldX, int worldY );
+
+// Explicitly clears any timer at this world position.
+void yumClearDecayTimer( int worldX, int worldY );
+
+// Clears all decay timers (called when the local map is reset).
+void yumClearAllDecayTimers();
+
+
 #endif

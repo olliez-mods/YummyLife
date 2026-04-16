@@ -696,6 +696,7 @@ class LivingLifePage : public GamePage, public ActionListener {
         
         int *mMapBiomes;
         int *mMapFloors;
+
 		protected: // hetuw mod
 
         char *mMapCellDrawnFlags;
