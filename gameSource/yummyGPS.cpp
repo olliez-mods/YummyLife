@@ -5,6 +5,7 @@
 #include "yummyGPS.h"
 #include "hetuwmod.h"
 #include "phex.h"
+#include "minorGems/game/game.h"
 
 #include <sstream>
 
@@ -25,8 +26,8 @@
 #define SAVED_COORDS_FILENAME "yummyGPSCoords.txt"
 
 // Damn terminology is hard - I'm sorry
-#define STEPS_PER_STATUE_SCAN_SLOW 5 // We aren't sure about Y pos yet, so scan slowly (save Jason's server)
-#define STEPS_PER_STATUE_SCAN_FAST 1 // We know Y pos, can scan faster (more likely to find statue quickly)
+static const double GPS_STATUE_SCAN_INTERVAL_SLOW = 1.0 / 12.0; // seconds between scans while Y pos is unknown
+static const double GPS_STATUE_SCAN_INTERVAL_FAST = 1.0 / 60.0; // seconds between scans once Y pos is known
 #define STATUE_SCAN_MULTIPLIER 5 // How many Y axis statue scan request bunches to send per scan
 
 // Statues built by me and friends in ghost town +200k east of Tarr
@@ -80,6 +81,7 @@ int GPS::globalBirthY = 0;
 
 int GPS::xScanCount = 0;
 int GPS::stepCount = 0;
+static double sLastStatueScanTime = 0.0;
 
 time_t GPS::birthTimeoutStart = 0;
 
@@ -347,10 +349,12 @@ void GPS::step() {
     if(!hasYRange) return; // No Y range data yet
     if(xScanCount * WORLD_GRID_SIZE * 2 > MAX_X_SCAN_TILES) return; // Scanned max distance
     if(HetuwMod::curStepSecondsSince1970 - birthTimeoutStart < SECONDS_BEGIN_TIMEOUT) return; // Still in timeout period
-    int steps_per = knowsYPosition ? STEPS_PER_STATUE_SCAN_FAST : STEPS_PER_STATUE_SCAN_SLOW;
 
     const int GROUP_STEP = WORLD_GRID_SIZE * 2; // 80 tiles apart
-    if(stepCount % steps_per != 0) return; // Not time yet
+    double interval = knowsYPosition ? GPS_STATUE_SCAN_INTERVAL_FAST : GPS_STATUE_SCAN_INTERVAL_SLOW;
+    double now = game_getCurrentTime();
+    if( now - sLastStatueScanTime < interval ) return;
+    sLastStatueScanTime = now;
     int numRequestsSent = 0;
     for(int i = 0; i < STATUE_SCAN_MULTIPLIER; i++) {
         // We can push starting point out by this far, since we assume everyone is west of 0,0
@@ -493,6 +497,7 @@ std::string GPS::getStatusString() {
 void GPS::onBirth(LivingLifePage* inLivingLifePage){
     livingLifePage = inLivingLifePage;
     stepCount = 0;
+    sLastStatueScanTime = 0.0;
     enabled = HetuwMod::bGPSEnabled;
 
     for (int i = 0; i < BIOME_COUNT; i++) {
