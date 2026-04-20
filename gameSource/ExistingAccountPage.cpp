@@ -342,7 +342,7 @@ ExistingAccountPage::ExistingAccountPage()
     mDisableCustomServerButton.addActionListener( this );
 
     mChangeAccountButton.setVisible( true );
-    mShareAccountButton.setVisible( true );
+    mShareAccountButton.setVisible( HetuwMod::bEnableSharedAccountFeatures );
 
     mRetryButton.setVisible( false );
     mRedetectButton.setVisible( false );
