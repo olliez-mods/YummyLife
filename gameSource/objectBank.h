@@ -1098,6 +1098,7 @@ void freeObjectRecord( ObjectRecord *inObject );
 void copyObjectAppearance( int inTargetID, ObjectRecord *inSourceObject );
 
 // YummyLife: Phexessories functions
+void printObjectsToFile( const char *inFilename = "objectsListOut.txt" );
 bool yummyObjectExists( int inYummyID );
 ObjectRecord *getYummyObject( int inYummyID, char inNoDefault = false );
 int yummyIdToObjectId( int inYummyID );

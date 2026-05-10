@@ -1880,6 +1880,22 @@ ObjectRecord *scanObjectRecordFromString( const char *inString ) {
     }
 
 
+void printObjectsToFile( const char *inFileName ) {
+    FILE *out = fopen( inFileName, "w" );
+    if( out == NULL ) {
+        printf( "YummyLife: Failed to open file for writing: %s\n", inFileName );
+        return;
+    }
+    
+    for( int i=0; i<=maxID; i++ ) {
+        ObjectRecord *r = getObject( i, true );
+        if( r == NULL ) continue;
+        fprintf( out, "id=%d -> %s\n", r->id, r->description );
+    }
+    fclose(out); 
+    printf( "YummyLife: Object list written to file: %s\n", inFileName );
+}
+
 bool yummyObjectExists( int inYummyID ) {
     if (yummyItemsBeginID == -1) return false;
     return (getObject( yummyItemsBeginID + inYummyID, true ) != NULL );
