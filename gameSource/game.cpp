@@ -472,7 +472,7 @@ void hetuwSetViewSize() {
 	visibleViewWidth = viewWidth;
 
     // YummyLife: Bugfix brought from YumLife
-    if( viewHeightFraction < 9.0 / 16.0 ) {
+    if( viewHeightFraction > 0 && viewHeightFraction < 9.0 / 16.0 ) {
         // copypasta; search for "weird, wider than 16:9 aspect ratio"
         viewWidth = viewHeight / viewHeightFraction;
     }
