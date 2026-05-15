@@ -12,6 +12,11 @@
 
 #include "minorGems/game/game.h"
 
+#include "yummyLife.h"
+#include "accountHmac.h"
+#include "minorGems/crypto/hashes/sha1.h"
+extern char *userEmail;
+
 
 #include <stdio.h>
 
@@ -222,6 +227,25 @@ void TwinPage::actionPerformed( GUIComponent *inTarget ) {
             userTwinCount = mPlayerCountRadioButtonSet->getSelectedItem() + 2;
             }
         
+        // YummyLife: If we are playing with friends mode, check if it's a shared friend token, if so start third party login flow
+        if( userTwinCount == 0 && YummyLife::FriendCodeSharing::isSharedFriendToken(userTwinCode) ) {
+            const char* challenge = YummyLife::FriendCodeSharing::begin(userTwinCode);
+            if(challenge == nullptr) {
+                // TODO: Make error messages more specific
+                displayTipMessage( "Could not start SharedFriendCode login", "red", 5000 );
+                return;
+            }
+            // Hash the challenge and send it on
+            char *pureKey = getPureAccountKey();
+            std::string keyHash = hmac_sha1( pureKey, challenge );
+            bool res = YummyLife::FriendCodeSharing::complete(userEmail, keyHash.c_str());
+            delete [] pureKey;
+            if(!res) {
+                displayTipMessage( "Failed to complete SharedFriendCode login", "red", 5000 );
+                return;
+            }
+            displayTipMessage( "SharedFriendCode login successful! Starting game...", "green", 5000 );
+        }
 
         // YummyLife: Always login to main game UNLESS Shift or Ctl is held down
         SettingsManager::setSetting( "tutorialDone", 2 );

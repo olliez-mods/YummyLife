@@ -25,6 +25,8 @@ using json = nlohmann::json;
 #include "message.h"
 #include "minorGems/util/SimpleVector.h"
 
+#include "minorGems/util/SettingsManager.h"
+
 #include <iostream>
 
 #define SAVED_ACCOUNTS_FILE "accounts.txt"
@@ -47,6 +49,9 @@ doublePair YummyLife::AFK::startAfkPos = {0, 0};
 int YummyLife::AFK::timesEaten = 0;
 
 int YummyLife::AccountManager::loginSharedAccountIndex = -1;
+
+std::string YummyLife::FriendCodeSharing::lastSessionToken = "";
+std::string YummyLife::FriendCodeSharing::lastChallenge = "";
 
 std::vector<string> galleryFileNames;
 int galleryImageIndex = -1;
@@ -1170,6 +1175,20 @@ bool YummyLife::AccountManager::deleteAccountAtIndex(int index) {
     return true;
 }
 
+// Tries to parse an HTTP response body as JSON and return the "error" or "message" field.
+// Returns an empty string if the body is empty, not valid JSON, or neither field is present.
+static std::string getResponseMessage(const std::string& body) {
+    if (body.empty()) return "";
+    try {
+        json response = json::parse(body);
+        if (response.contains("error") && response["error"].is_string())
+            return response["error"].get<std::string>();
+        if (response.contains("message") && response["message"].is_string())
+            return response["message"].get<std::string>();
+    } catch (...) {}
+    return "";
+}
+
 bool YummyLife::AccountManager::createSharedAccount(const char* email, const char* key, const char* lb_name, int& account_index_out) {
     // Must have email, key, and leaderboard name to create a shared account
     if(!email || !key || !lb_name || strlen(email) == 0 || strlen(key) == 0 || strlen(lb_name) == 0) {
@@ -1187,7 +1206,9 @@ bool YummyLife::AccountManager::createSharedAccount(const char* email, const cha
     auto res = cli.Post("/api/v1/shared-account/create", body.dump(), "application/json");
 
     if(!res || res->status < 200 || res->status >= 300) {
-        std::cerr << "Failed to create shared account (status " << (res ? res->status : -1) << ")\n";
+        std::string msg = res ? getResponseMessage(res->body) : "";
+        std::cerr << "Failed to create shared account (status " << (res ? res->status : -1) << ")"
+                  << (msg.empty() ? "" : ": " + msg) << "\n";
         return false;
     }
 
@@ -1251,7 +1272,9 @@ bool YummyLife::AccountManager::fetchSharedAccountInfo(const char* account_acces
     auto res = sent ? std::make_shared<httplib::Response>(resObj) : nullptr;
 
     if(!res || res->status < 200 || res->status >= 300) {
-        std::cerr << "Failed to fetch shared account info (status " << (res ? res->status : -1) << ")\n";
+        std::string msg = res ? getResponseMessage(res->body) : "";
+        std::cerr << "Failed to fetch shared account info (status " << (res ? res->status : -1) << ")"
+                  << (msg.empty() ? "" : ": " + msg) << "\n";
         return false;
     }
 
@@ -1302,7 +1325,9 @@ bool YummyLife::AccountManager::loginSharedAccount(const char* account_access_to
     auto res = cli.Post("/api/v1/shared-account/login", body.dump(), "application/json");
 
     if(!res || res->status < 200 || res->status >= 300) {
-        std::cerr << "Failed to login shared account (status " << (res ? res->status : -1) << ")\n";
+        std::string msg = res ? getResponseMessage(res->body) : "";
+        std::cerr << "Failed to login shared account (status " << (res ? res->status : -1) << ")"
+                  << (msg.empty() ? "" : ": " + msg) << "\n";
         return false;
     }
 
@@ -1377,7 +1402,9 @@ bool YummyLife::AccountManager::editSharedAccount(const char* account_owner_toke
     auto res = cli.Post("/api/v1/shared-account/edit", body.dump(), "application/json");
 
     if(!res || res->status < 200 || res->status >= 300) {
-        std::cerr << "Failed to edit shared account (status " << (res ? res->status : -1) << ")\n";
+        std::string msg = res ? getResponseMessage(res->body) : "";
+        std::cerr << "Failed to edit shared account (status " << (res ? res->status : -1) << ")"
+                  << (msg.empty() ? "" : ": " + msg) << "\n";
         return false;
     }
 
@@ -1406,6 +1433,124 @@ const char* YummyLife::AccountManager::standerdizeToken(const char* token) {
     std::transform(sToken.begin(), sToken.end(), sToken.begin(), ::tolower);
     return strdup(sToken.c_str());
 }
+
+// ============================================================
+// YummyLife Friend share token system
+// ============================================================
+
+// Starts with "FR-" and is at least 4 characters long (e.g. "FR-1")
+bool YummyLife::FriendCodeSharing::isSharedFriendToken(const char* twinCode) {
+    if (!twinCode) return false;
+    std::string codeStr(twinCode);
+    if(codeStr.length() < 4) return false; // Too short to be valid
+    if(codeStr.substr(0, 3) == "FR-") return true;
+    return false;
+}
+
+const char* YummyLife::FriendCodeSharing::begin(const char* friendToken) {
+    if(!friendToken || strlen(friendToken) == 0) {
+        std::cerr << "Friend token is required\n";
+        return nullptr;
+    }
+
+    std::string serverIP = "example.com"; // Just a placeholder
+    if( SettingsManager::getIntSetting( "useCustomServer", 0 ) ) {
+        serverIP = SettingsManager::getStringSetting( "customServerAddress" );
+        if( serverIP.empty() ) serverIP = "127.0.0.1";
+    }
+
+    httplib::Client cli("http://yummy.antinoid.com");
+    cli.set_connection_timeout(5);
+    json body;
+    body["token"] = friendToken;
+    body["server_ip"] = serverIP;
+    auto res = cli.Post("/friendscode/begin", body.dump(), "application/json");
+
+    if(!res || res->status < 200 || res->status >= 300) {
+        std::string msg = res ? getResponseMessage(res->body) : "";
+        std::cerr << "Failed to begin friend code sharing (status " << (res ? res->status : -1) << ")"
+                  << (msg.empty() ? "" : ": " + msg) << "\n";
+        return nullptr;
+    }
+
+    try {
+        json response = json::parse(res->body);
+        bool success = response.value("success", false);
+        if (!success) {
+            std::cerr << "Failed to begin friend code sharing: " << response.value("error", response.value("message", "No message provided")) << "\n";
+            return nullptr;
+        }
+
+        std::string sessionToken = response.value("session_token", "");
+        std::string challenge = response.value("challenge", "");
+
+        if(sessionToken.empty()) {
+            std::cerr << "Friend code sharing response missing session token\n";
+            return nullptr;
+        }
+        if(challenge.empty()) {
+            std::cerr << "Friend code sharing response missing challenge\n";
+            return nullptr;
+        }
+
+        lastSessionToken = sessionToken;
+        lastChallenge = challenge;
+        return lastChallenge.c_str();
+
+    }  catch (const json::exception& e) {
+        std::cerr << "Failed to parse response from shared account login: " << e.what() << "\n";
+        return nullptr;
+    }
+}
+
+bool YummyLife::FriendCodeSharing::complete(const char* email, const char* hashedChallenge) {
+    if(!hashedChallenge || strlen(hashedChallenge) == 0) {
+        std::cerr << "Friend token is required\n";
+        return false;
+    }
+    if(!email || strlen(email) == 0) {
+        std::cerr << "Email is required\n";
+        return false;
+    }
+    if(lastSessionToken.length() == 0) {
+        std::cerr << "No active friend code sharing session\n";
+        return false;
+    }
+    std::string sessionToken = lastSessionToken;
+    lastSessionToken = ""; // Clear session token regardless of outcome to prevent reuse
+
+    httplib::Client cli("http://yummy.antinoid.com");
+    cli.set_connection_timeout(5);
+    json body;
+    body["session_token"] = sessionToken;
+    body["email"] = email;
+    body["account_key_hash"] = hashedChallenge;
+    auto res = cli.Post("/friendscode/complete", body.dump(), "application/json");
+
+    if(!res || res->status < 200 || res->status >= 300) {
+        std::string msg = res ? getResponseMessage(res->body) : "";
+        std::cerr << "Failed to complete friend code sharing (status " << (res ? res->status : -1) << ")"
+                  << (msg.empty() ? "" : ": " + msg) << "\n";
+        return false;
+    }
+
+    try {
+        json response = json::parse(res->body);
+        bool success = response.value("success", false);
+        if (!success) {
+            std::cerr << "Failed to complete friend code sharing: " << response.value("error", response.value("message", "No message provided")) << "\n";
+            return false;
+        }
+
+        printf("Friend code sharing complete\n");
+        return true;
+
+    }  catch (const json::exception& e) {
+        std::cerr << "Failed to parse response from shared account login: " << e.what() << "\n";
+        return false;
+    }
+}
+
 
 
 // ============================================================

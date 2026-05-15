@@ -128,6 +128,17 @@ class YummyLife {
                 static int loginSharedAccountIndex;
         };
 
+        class FriendCodeSharing {
+
+            static std::string lastSessionToken;
+            static std::string lastChallenge;
+
+            public:
+                static bool isSharedFriendToken(const char* twinCode);
+                static const char* begin(const char* friendToken); // Sends API request and returns the challenge hash
+                static bool complete(const char* email, const char* hashedChallenge); // Completes the login process with the challenge response
+        };
+
         static void cleanUp();
         static void takingScreenshot();
 
