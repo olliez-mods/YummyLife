@@ -33,6 +33,7 @@ class TwinPage : public GamePage, public ActionListener {
         TextField mCodeField;
 
         TextButton mGenerateButton;
+        TextButton mOpenFriendCodeShareButton;
 
         TextButton mCopyButton;
         TextButton mPasteButton;

@@ -36,6 +36,7 @@ TwinPage::TwinPage()
                 NULL,
                 NULL ),
     mGenerateButton( mainFont, 0, 49, translate( "generate") ),
+    mOpenFriendCodeShareButton( mainFont, -235, 49, translateWithDefault( "yummyOpenFriendShared", "SHARE CODES" ) ),
     mCopyButton( mainFont, 400, 170, translate( "copy" ) ),
     mPasteButton( mainFont, 400, 86, translate( "paste" ) ),
     mLoginButton( mainFont, 400, -280, translate( "loginButton" ) ),
@@ -45,12 +46,14 @@ TwinPage::TwinPage()
     
 
     setButtonStyle( &mGenerateButton );
+    setButtonStyle( &mOpenFriendCodeShareButton );
     setButtonStyle( &mCopyButton );
     setButtonStyle( &mPasteButton );
     setButtonStyle( &mLoginButton );
     setButtonStyle( &mCancelButton );
     
     addComponent( &mGenerateButton );
+    addComponent( &mOpenFriendCodeShareButton );
     addComponent( &mCopyButton );
     addComponent( &mPasteButton );
     addComponent( &mLoginButton );
@@ -61,6 +64,7 @@ TwinPage::TwinPage()
     addComponent( &mCodeField );
     
     mGenerateButton.addActionListener( this );
+    mOpenFriendCodeShareButton.addActionListener( this );
     mCopyButton.addActionListener( this );
     mPasteButton.addActionListener( this );
     mLoginButton.addActionListener( this );
@@ -72,6 +76,7 @@ TwinPage::TwinPage()
     mCodeField.setFireOnAnyTextChange( true );
     
     mLoginButton.setVisible( false );
+    mOpenFriendCodeShareButton.setVisible( false );
     
 
     const char *choiceList[4] = { translate( "twins" ),
@@ -192,6 +197,10 @@ void TwinPage::actionPerformed( GUIComponent *inTarget ) {
         actionPerformed( &mCodeField );
         delete [] code;
         }
+    else if( inTarget == &mOpenFriendCodeShareButton ) {
+        char url[] = "http://phex.antinoid.com/friendscode/";
+        launchURL( url );
+        }
     else if( inTarget == &mCopyButton ) {
         char *text = mCodeField.getText();
         setClipboardText( text );
@@ -270,6 +279,8 @@ void TwinPage::draw( doublePair inViewCenter,
     drawMessage( translate( "twinTip" ), pos );
 
     int pickedItem = mPlayerCountRadioButtonSet->getSelectedItem();
+
+    mOpenFriendCodeShareButton.setVisible( pickedItem == 3 );
 
     if( pickedItem == 3 ) {
         pos.y = -280;
