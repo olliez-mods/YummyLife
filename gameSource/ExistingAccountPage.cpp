@@ -138,7 +138,7 @@ ExistingAccountPage::ExistingAccountPage()
                          translate( "postReviewButton" ) ),
           mRetryButton( mainFont, -100, 198, translate( "retryButton" ) ),
           mRedetectButton( mainFont, 100, 198, translate( "redetectButton" ) ),
-          mViewAccountButton( mainFont, 300, 150, translate( "view" ) ),
+          mViewAccountButton( mainFont, 300, 60, translate( "view" ) ),
           mTutorialButton( mainFont, 205, -280, translate( "tutorial" ) ),
           mTutOneButton( mainFont, 165, -220, translateWithDefault( "yummyLifeTutOneButton", "T#1" ) ),
           mTutTwoButton( mainFont, 245, -220, translateWithDefault( "yummyLifeTutTwoButton", "T#2" ) ),

@@ -35,7 +35,7 @@ SettingsPage::SettingsPage()
           mEditAccountButton( mainFont, -463, 129, translate( "editAccount" ) ),
           mRestartButton( mainFont, 128, 128, translate( "restartButton" ) ),
           mRedetectButton( mainFont, 173, 249, translate( "redetectButton" ) ),
-          mDeleteCacheButton( mainFont, -463, 100, translateWithDefault( "deleteCacheButton", "Delete Cache" ) ),
+          mDeleteCacheButton( mainFont, -495, 30, translateWithDefault( "deleteCacheButton", "Delete Cache" ) ),
           mVsyncBox( 0, 208, 4 ),
           mFullscreenBox( 0, 128, 4 ),
           mBorderlessBox( 0, 168, 4 ),
