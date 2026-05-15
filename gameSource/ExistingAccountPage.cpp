@@ -436,17 +436,10 @@ ExistingAccountPage::ExistingAccountPage()
     if(true) {
         YummyLife::AccountManager::loadSavedAccounts();
     }
-
-    mTimedTipMessage = NULL;
-    mTimedTipR = mTimedTipG = mTimedTipB = 1.0f;
-    mTimedTipExpireTime = 0;
 }
           
         
 ExistingAccountPage::~ExistingAccountPage() {
-    if( mTimedTipMessage != NULL ) {
-        delete [] mTimedTipMessage;
-        }
     }
 
 
@@ -758,32 +751,6 @@ void ExistingAccountPage::onAccountDeleteStarted() {
 }
 
 
-void ExistingAccountPage::setToolTip( const char *inTip ) {
-    // suppress hover tooltips while a timed message is showing
-    if( mTimedTipMessage != NULL && inTip != NULL ) return;
-    GamePage::setToolTip( inTip );
-    }
-
-
-void ExistingAccountPage::displayTipMessage( const char *message, const char *color, int durationMs ) {
-    if( mTimedTipMessage != NULL ) {
-        delete [] mTimedTipMessage;
-        }
-    // clear any current tip and suppress its fade-out
-    GamePage::setToolTip( NULL );
-    mLastTipFade = 0;
-    mTimedTipMessage = stringDuplicate( message );
-    mTimedTipExpireTime = game_getCurrentTime() + durationMs / 1000.0;
-
-    mTimedTipR = 1; mTimedTipG = 1; mTimedTipB = 1;
-    if(      strcmp( color, "red" )    == 0 ) { mTimedTipR = 1;    mTimedTipG = 0;    mTimedTipB = 0;    }
-    else if( strcmp( color, "green" )  == 0 ) { mTimedTipR = 0;    mTimedTipG = 1;    mTimedTipB = 0;    }
-    else if( strcmp( color, "blue" )   == 0 ) { mTimedTipR = 0.2f; mTimedTipG = 0.6f; mTimedTipB = 1;    }
-    else if( strcmp( color, "yellow" ) == 0 ) { mTimedTipR = 1;    mTimedTipG = 1;    mTimedTipB = 0;    }
-    else if( strcmp( color, "orange" ) == 0 ) { mTimedTipR = 1;    mTimedTipG = 0.5f; mTimedTipB = 0;    }
-    }
-
-
 void ExistingAccountPage::step() {
     mPasteButton.setVisible( isClipboardSupported() &&
                              mKeyField.isFocused() );
@@ -794,11 +761,6 @@ void ExistingAccountPage::step() {
     shouldAcntPasteButtonBeVisable = isClipboardSupported() && !inSaveAccountProcess && showEditAccountWindow && 
                                   (mAcntEmailField.isFocused() || mAcntKeyField.isFocused() || mAcntNotesField.isFocused());
     mAcntPasteButton.setVisible( shouldAcntPasteButtonBeVisable );
-
-    if( mTimedTipMessage != NULL && game_getCurrentTime() > mTimedTipExpireTime ) {
-        delete [] mTimedTipMessage;
-        mTimedTipMessage = NULL;
-        }
     
         // Handle save account process
     if( inSaveAccountProcess ) {
@@ -1664,12 +1626,6 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
                 delete [] secondsStr;
             }
         }
-
-        if( mTimedTipMessage != NULL ) {
-            doublePair tipPos = { 0, mUsingCustomTipHeight ? (double)mCustomTipHeight : -300.0 };
-            setDrawColor( mTimedTipR, mTimedTipG, mTimedTipB, 1.0f );
-            mainFont->drawString( mTimedTipMessage, tipPos, alignCenter );
-            }
 
         if(showChangeAccountWindow) {
 

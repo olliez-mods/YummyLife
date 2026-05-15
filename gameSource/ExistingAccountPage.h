@@ -151,16 +151,5 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         
         void processLogin( char inStore, const char *inSignal );
 
-        // YummyLife: Display a temporary colored message at the tip position
-        // color: "white", "red", "green", "blue", "yellow", "orange"
-        // durationMs: how long to show the message in milliseconds
-        void displayTipMessage( const char *message, const char *color, int durationMs );
-
-        virtual void setToolTip( const char *inTip );
-
-        char *mTimedTipMessage;
-        float mTimedTipR, mTimedTipG, mTimedTipB;
-        double mTimedTipExpireTime;
-
     };
 

@@ -34,6 +34,11 @@ class GamePage : public PageComponent {
 
         // YummyLife: Set a custom tip y position
         void setCustomTipHeight( int inHeight );
+
+        // YummyLife: Display a temporary colored message at the tip position.
+        // color: "white", "red", "green", "blue", "yellow", "orange"
+        // durationMs: how long to show the message in milliseconds
+        void displayTipMessage( const char *message, const char *color, int durationMs );
         
         
         // override these from PageComponent to actually SHOW
@@ -210,6 +215,11 @@ class GamePage : public PageComponent {
         // YummyLife: vals for custom tip position
         char mUsingCustomTipHeight;
         int mCustomTipHeight;
+
+        // YummyLife: timed notification shown at the tip position
+        char *mTimedTipMessage;
+        float mTimedTipR, mTimedTipG, mTimedTipB;
+        double mTimedTipExpireTime;
 
         char *mSignal;
         

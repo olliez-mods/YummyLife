@@ -2,6 +2,10 @@
 
 #include "message.h"
 
+#include "minorGems/game/Font.h"
+
+extern Font *mainFont;
+
 #include "serialWebRequests.h"
 
 #include "whiteSprites.h"
@@ -48,6 +52,9 @@ GamePage::GamePage()
           mTipAtTopOfScreen( false ),
           mStatusAtTopOfScreen( false ),
           mUsingCustomTipHeight( false ),
+          mTimedTipMessage( NULL ),
+          mTimedTipR( 1 ), mTimedTipG( 1 ), mTimedTipB( 1 ),
+          mTimedTipExpireTime( 0 ),
           mSignal( NULL ),
           mResponseWarningTipShowing( false ) {
 
@@ -73,6 +80,9 @@ GamePage::~GamePage() {
         }
     if( mLastTip != NULL ) {
         delete [] mLastTip;
+        }
+    if( mTimedTipMessage != NULL ) {
+        delete [] mTimedTipMessage;
         }
     
     clearSignal();
@@ -137,6 +147,9 @@ char GamePage::isStatusShowing() {
 
 
 void GamePage::setToolTip( const char *inTip ) {
+    // suppress hover tooltips while a timed message is showing
+    if( mTimedTipMessage != NULL && inTip != NULL ) return;
+
     if( mTip != NULL && inTip == NULL ) {
         // tip disappearing, save it as mLastTip
         if( mLastTip != NULL ) {
@@ -193,6 +206,26 @@ void GamePage::setCustomTipHeight( int inHeight) {
     mCustomTipHeight = inHeight;
     mUsingCustomTipHeight = true;
 }
+
+
+// YummyLife
+void GamePage::displayTipMessage( const char *message, const char *color, int durationMs ) {
+    if( mTimedTipMessage != NULL ) {
+        delete [] mTimedTipMessage;
+        }
+    // clear any current tip and suppress its fade-out
+    GamePage::setToolTip( NULL );
+    mLastTipFade = 0;
+    mTimedTipMessage = stringDuplicate( message );
+    mTimedTipExpireTime = game_getCurrentTime() + durationMs / 1000.0;
+
+    mTimedTipR = 1; mTimedTipG = 1; mTimedTipB = 1;
+    if(      strcmp( color, "red" )    == 0 ) { mTimedTipR = 1;    mTimedTipG = 0;    mTimedTipB = 0;    }
+    else if( strcmp( color, "green" )  == 0 ) { mTimedTipR = 0;    mTimedTipG = 1;    mTimedTipB = 0;    }
+    else if( strcmp( color, "blue" )   == 0 ) { mTimedTipR = 0.2f; mTimedTipG = 0.6f; mTimedTipB = 1;    }
+    else if( strcmp( color, "yellow" ) == 0 ) { mTimedTipR = 1;    mTimedTipG = 1;    mTimedTipB = 0;    }
+    else if( strcmp( color, "orange" ) == 0 ) { mTimedTipR = 1;    mTimedTipG = 0.5f; mTimedTipB = 0;    }
+    }
 
 
 void GamePage::base_draw( doublePair inViewCenter, 
@@ -253,7 +286,12 @@ void GamePage::base_draw( doublePair inViewCenter,
             tipPosition.y = mCustomTipHeight;
         }
         
-        if( mTip != NULL ) {
+        // YummyLife: timed notification takes priority over regular tooltip
+        if( mTimedTipMessage != NULL ) {
+            setDrawColor( mTimedTipR, mTimedTipG, mTimedTipB, 1.0f );
+            mainFont->drawString( mTimedTipMessage, tipPosition, alignCenter );
+            }
+        else if( mTip != NULL ) {
             drawMessage( mTip, tipPosition );
             }
         else if( mLastTip != NULL && mLastTipFade > 0 ) {
@@ -347,6 +385,12 @@ void GamePage::base_step() {
     mLastTipFade -= 0.025 * frameRateFactor;
     if( mLastTipFade < 0 ) {
         mLastTipFade = 0;
+        }
+
+    // YummyLife: expire timed notification
+    if( mTimedTipMessage != NULL && game_getCurrentTime() > mTimedTipExpireTime ) {
+        delete [] mTimedTipMessage;
+        mTimedTipMessage = NULL;
         }
     
 
