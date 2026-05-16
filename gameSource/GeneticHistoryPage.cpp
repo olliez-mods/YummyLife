@@ -158,7 +158,7 @@ void GeneticHistoryPage::draw( doublePair inViewCenter,
 
     // YummyLife: Copied from ExistingAccountPage.cpp
     const char *leaderboardName = getLeaderboardName();
-    if (leaderboardName != NULL && !HetuwMod::privateModeEnabled) {
+    if (leaderboardName != NULL) {
         mOholCurseButton.setVisible( true );
     }
     }

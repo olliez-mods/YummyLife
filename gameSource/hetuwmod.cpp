@@ -87,8 +87,6 @@ int HetuwMod::magnetMoveDir = -1;
 int HetuwMod::magnetWrongMoveDir = -1;
 int HetuwMod::magnetMoveCount = 0;
 
-bool HetuwMod::privateModeEnabled = false;
-
 unsigned char HetuwMod::charKey_Up = 'w';
 unsigned char HetuwMod::charKey_Down = 's';
 unsigned char HetuwMod::charKey_Left = 'a';
@@ -165,7 +163,6 @@ vector<int> HetuwMod::filteredSprites;
 bool HetuwMod::bShowDangerTilesWhenRiding;
 int HetuwMod::iAfkHungerThreshold;
 bool HetuwMod::bRequestLifeProfiles;
-bool HetuwMod::bIdentifyMyself;
 bool HetuwMod::bAllowPhexMessageSending;
 bool HetuwMod::bAllowPhexGameDataSending;
 bool HetuwMod::bAllowLiveResources;
@@ -435,7 +432,6 @@ void HetuwMod::init() {
 	bShowDangerTilesWhenRiding = false;
 	iAfkHungerThreshold = 6;
 	bRequestLifeProfiles = true;
-	bIdentifyMyself = false;
 	bAllowPhexMessageSending = true;
 	bAllowPhexGameDataSending = true;
 	bAllowLiveResources = true;
@@ -856,24 +852,10 @@ static void validateFilteredIDs(std::vector<std::string>& ids) {
 }
 
 void HetuwMod::initSettings() {
-	const int cfgVersionLatest = 8;
+	const int cfgVersionLatest = 9;
 	static int cfgVersionActive = cfgVersionLatest;
 
 	yumConfig::registerSetting("cfg_version", cfgVersionActive, {preComment: "// this file will be created whenever you start the mod\n// if you want to reset this file, just delete it\n\n"});
-	
-	const char *privateModeInstructions =
-		"\n"
-		"// Disable all features that connect to third-party services to prevent\n"
-		"// leakage of any account info or IPs to anyone but Jason's servers or\n"
-		"// any custom server you choose to connect to. This currently includes:\n"
-		"//\n"
-		"//  - The Phex chat system\n"
-		"//  - The OHOLCurse button\n"
-		"//  - The Services button\n"
-		"//\n"
-		"// Any future opt-out networked features in the official selb/YumLife\n"
-		"// distribution will respect this option.\n";
-	yumConfig::registerSetting("private_mode", privateModeEnabled, {preComment: privateModeInstructions});
 
 	yumConfig::registerSetting("key_up", charKey_Up, {preComment: "\n"});
 	yumConfig::registerSetting("key_down", charKey_Down);
@@ -922,37 +904,74 @@ void HetuwMod::initSettings() {
 		"// 3. Press the key again to make the photo, it will be saved in the screenshots folder\n"
 		"// 4. If you want to upload it make an image with the camera in game, the last photo you took will be uploaded\n"
 		"//    Hold a camera and rightclick on a 'Protected Stack of Photo Paper'\n"
-		"//    Place the camera on the ground and rightlick it while it is rewinding\n";
+		"//    Place the camera on the ground and rightclick it while it is rewinding\n";
 	yumConfig::registerSetting("key_takephoto", charKey_MakePhoto, {preComment: photoInstructions});
 
 	yumConfig::registerSetting("font_filename", fontFilename, {preComment: "\n// filename of the main font (in the graphics directory)\n"});
 
-	// YummyLife: from here...
+
+	// Phex settings, from here...
+	const char* phexGroupComment1 = "\n// ======== Phex Config ========\n";
+	const char* phexGroupComment2 =   "\n// ^^^^^^^^ Phex Config ^^^^^^^^\n\n";
+	yumConfig::registerSetting("phex_start_offline", phexStartOffline, {preComment: phexGroupComment1, postComment: " // Phex will start offline (recommended if you don't want to use Phex)"});
+	static bool phexIsEnabledAsConfigured = phexIsEnabled;
+	yumConfig::registerSetting("phex_enabled", phexIsEnabledAsConfigured, {postComment: " // Completely disabling ALL Phex functionality may cause issues"});
+	yumConfig::registerSetting("phex_ip", phexIp);
+	yumConfig::registerSetting("phex_port", phexPort, {postComment: "\n"});
+
 	static std::map<std::string, int> drawPhexNameMap = {
 		{"none", 0},
 		{"flash", 1},
 		{"always", 2}
 	};
-	yumConfig::registerMappedSetting("init_show_phex_names", iDrawPhexNames, drawPhexNameMap, {preComment: "\n// ======== YummyLife ========\n", postComment: " // none, flash, always"});
+	yumConfig::registerMappedSetting("init_show_phex_names", iDrawPhexNames, drawPhexNameMap, {postComment: " // none, flash, always"});
+	yumConfig::registerSetting("enable_phex_accessories", bAllowPhexAccessories, {postComment: " // Enable Phex to load and show accessories on players and yourself"});
 	yumConfig::registerSetting("init_display_leaderboard_names", bDrawLeaderboardNames, {postComment: " // Draw leaderboard names given by PhexPlus server"});
-	yumConfig::registerSetting("init_store_eaten_yums", bStoreEatenYums, {postComment: " // Store the eaten foods in 'lastYums.txt' so findYum works accross restarts"});
+	yumConfig::registerSetting("request_life_profiles", bRequestLifeProfiles, {postComment: " // Request to receive data about other lives when on BS2\n"});
+
+	static std::map<std::string, int> phexSideMap = {
+		{"auto", PHEX_AUTO_SIDE},
+		{"left", PHEX_ON_LEFT},
+		{"right", PHEX_ON_RIGHT}
+	};
+	yumConfig::registerMappedSetting("phex_side", phexSide, phexSideMap, {postComment: " // auto = avoid minitech, left = always left, right = always right"});
+	yumConfig::registerSetting("phex_skip_tos", phexSkipTOS, {postComment: " // skip auto /tos (terms of service) on connect\n"});
+
+	yumConfig::registerSetting("allow_phex_message_sending", bAllowPhexMessageSending, {postComment: " // Let Phex decide how to handle messages (disabling may prevent Phex from working)"});
+	yumConfig::registerSetting("allow_phex_gamedata_sending", bAllowPhexGameDataSending, {postComment: " // Let Phex handle game data (such as position), this is required for PhexPlus features\n"});
+
+	yumConfig::registerSetting("request_grave_info_from_phex", bRequestGraveInfoFromPhex, {postComment: " // Request grave life info from Phex (on mouse hover)"});
+	yumConfig::registerSetting("request_all_graves", bRequestAllGraves, {postComment: " // Auto-request grave info for all visible graves without hover"});
+	yumConfig::registerSetting("render_grave_leaderboards", bRenderGraveLeaderboards, {postComment: " // Render received profile leaderboard names on graves\n"});
+
+	yumConfig::registerSetting("send_keyevents", sendKeyEvents, {savePredicate: []() { return sendKeyEvents; }});
+	yumConfig::registerSetting("drawbiomeinfo", bDrawBiomeInfo, {savePredicate: []() { return bDrawBiomeInfo; }});
+	yumConfig::registerSetting("phex_debug", debugPhex, {savePredicate: []() { return debugPhex; }});
+
+	const char *phexSendEmailComment =
+		"// Permit sending your email address to the Phex server so that it can\n"
+		"// authenticate your account with the OHOL service.\n"
+		"// (Fake Steam 12345@steamgames.com addresses are sent regardless.)\n"
+		"//\n"
+		"// [!] WARNING: DO NOT enable this unless you trust the Phex server\n"
+		"//              administrator with your email address!\n";
+	yumConfig::registerSetting("phex_send_email", phexSendEmail, {preComment: phexSendEmailComment, postComment: phexGroupComment2});
+	// ... to here
+
+
+	// YummyLife: from here...
+	const char *yummyGroupComment1 = "\n// ======== YummyLife Config ========\n";
+	const char *yummyGroupComment2 =   "// ^^^^^^^^ YummyLife Config ^^^^^^^^\n\n";
+	yumConfig::registerSetting("init_store_eaten_yums", bStoreEatenYums, {preComment: yummyGroupComment1, postComment: " // Store the eaten foods in 'lastYums.txt' so findYum works accross restarts"});
 	yumConfig::registerSetting("init_enable_gallery", bGalleryEnabled, {postComment: " // Should the main menu gallery be enabled"});
 	yumConfig::registerSetting("init_check_github", bCheckGitHubForUpdates, {postComment: " // Automatically check for updates on GitHub"});
 	yumConfig::registerSetting("sprite_ids_to_filter", vFilteredSprites, {preComment: "\n//Sprite IDs that will be skipped when drawing each frame\n"});
 	yumConfig::registerSetting("enable_sprite_filter", bFilterSprites, {postComment: " // Filtering enabled - can be toggled in settings menu"});
 	yumConfig::registerSetting("render_all_danger_tiles_while_riding", bShowDangerTilesWhenRiding, {postComment: " // Always render red box over danger tiles even when riding a vehicle"});
 	yumConfig::registerSetting("AFK_auto_eat_hunger_threshold", iAfkHungerThreshold, {postComment: " // How many pips below max food triggers eating. We always eat if below 2 pips"});
-	yumConfig::registerSetting("request_life_profiles", bRequestLifeProfiles, {preComment:"\n", postComment: " // Request to receive data about lives when on BS2"});
-	yumConfig::registerSetting("identify_myself", bIdentifyMyself, {postComment: " // Let Phex identify my profile to others"});
-	yumConfig::registerSetting("allow_phex_message_sending", bAllowPhexMessageSending, {postComment: " // Let Phex decide how to handle messages (disabling may prevent Phex from working)"});
-	yumConfig::registerSetting("allow_phex_gamedata_sending", bAllowPhexGameDataSending, {postComment: " // Let Phex handle game data (such as position), this is required for PhesPlus features"});
-	yumConfig::registerSetting("allow_live_resources", bAllowLiveResources, {postComment: " // Allow live resources to be downloaded from the repo (such as custom menu backgrounds, fonts, etc)"});
+	yumConfig::registerSetting("enable_live_resources", bAllowLiveResources, {postComment: " // Enable live resources - to be downloaded from the repo (such as custom menu backgrounds, fonts, etc)"});
 	yumConfig::registerSetting("display_ghosts_as_separate_family", bDisplayGhostsAsSeparateFamily, {postComment: " // Display ghosts as a separate family in the family list"});
 	yumConfig::registerSetting("enable_gps", bGPSEnabled, {postComment: " // Enable GPS functionality if available on your server"});
-	yumConfig::registerSetting("allow_phex_accessories", bAllowPhexAccessories, {postComment: " // Allow Phex to load and show accessories on players and yourself"});
-	yumConfig::registerSetting("request_all_graves", bRequestAllGraves, {postComment: " // Auto-request grave info for all visible graves without hover"});
-	yumConfig::registerSetting("render_grave_leaderboards", bRenderGraveLeaderboards, {postComment: " // Render profile leaderboard names on graves"});
-	yumConfig::registerSetting("request_grave_info_from_phex", bRequestGraveInfoFromPhex, {postComment: " // Request grave life info from Phex"});
 	static std::map<std::string, int> showObjectTimersMap = {
 		{"none", 0},
 		{"always", 1},
@@ -967,7 +986,7 @@ void HetuwMod::initSettings() {
 		{"first", 1},
 		{"full", 2}
 	};
-	yumConfig::registerMappedSetting("init_show_names", iDrawNames, drawNamesMap, {preComment: "// ^^^^^^^^ YummyLife ^^^^^^^^\n\n", postComment: " // none, first, or full"});
+	yumConfig::registerMappedSetting("init_show_names", iDrawNames, drawNamesMap, {preComment: yummyGroupComment2, postComment: " // none, first, or full"});
 	yumConfig::registerSetting("init_show_selectedplayerinfo", bDrawSelectedPlayerInfo, {postComment: " // draw names bigger and show age when hovering over a player"});
 	yumConfig::registerSetting("init_show_cords", bDrawCords);
 	static std::map<std::string, int> drawPlayersInRangePanelMap = {
@@ -980,38 +999,6 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("init_show_deathmessages", bDrawDeathMessages);
 	yumConfig::registerSetting("init_show_homecords", bDrawHomeCords);
 	yumConfig::registerSetting("init_show_hostiletiles", bDrawHostileTiles);
-
-	static bool phexIsEnabledAsConfigured = phexIsEnabled;
-	yumConfig::registerSetting("phex_enabled", phexIsEnabledAsConfigured, {preComment: "\n"});
-	yumConfig::registerSetting("phex_ip", phexIp);
-	yumConfig::registerSetting("phex_port", phexPort);
-	yumConfig::registerSetting("phex_coords", Phex::allowServerCoords);
-	yumConfig::registerSetting("phex_channel", Phex::forceChannel, {savePredicate: []() { return !Phex::forceChannel.empty(); }});
-	yumConfig::registerSetting("phex_send_fake_life", Phex::bSendFakeLife, {savePredicate: []() { return Phex::bSendFakeLife; }});
-	yumConfig::registerSetting("phex_debug", debugPhex, {savePredicate: []() { return debugPhex; }});
-
-	static std::map<std::string, int> phexSideMap = {
-		{"auto", PHEX_AUTO_SIDE},
-		{"left", PHEX_ON_LEFT},
-		{"right", PHEX_ON_RIGHT}
-	};
-	yumConfig::registerMappedSetting("phex_side", phexSide, phexSideMap, {postComment: " // auto = avoid minitech, left = always left, right = always right"});
-	yumConfig::registerSetting("phex_start_offline", phexStartOffline, {postComment: " // disable auto connect to phex"});
-	yumConfig::registerSetting("phex_skip_tos", phexSkipTOS, {postComment: " // skip auto /tos (terms of service) on connect"});
-	const char *phexSendEmailComment =
-		"\n"
-		"// Permit sending your email address to the Phex server so that it can\n"
-		"// authenticate your account with the OHOL service.\n"
-		"//\n"
-		"// To allow you to protect your anonymity, this is off by default.\n"
-		"// (Fake Steam 12345@steamgames.com addresses are sent regardless.)\n"
-		"//\n"
-		"// [!] WARNING: DO NOT enable this unless you trust the Phex server\n"
-		"//              administrator with your email address!\n";
-	yumConfig::registerSetting("phex_send_email", phexSendEmail, {preComment: phexSendEmailComment});
-
-	yumConfig::registerSetting("send_keyevents", sendKeyEvents, {savePredicate: []() { return sendKeyEvents; }});
-	yumConfig::registerSetting("drawbiomeinfo", bDrawBiomeInfo, {savePredicate: []() { return bDrawBiomeInfo; }});
 
 	yumConfig::registerSetting("keep_button_pressed_to_fixcamera", bHoldDownTo_FixCamera, {preComment: "\n"});
 	yumConfig::registerSetting("keep_button_pressed_to_findyum", bHoldDownTo_FindYum);
@@ -1097,6 +1084,13 @@ void HetuwMod::initSettings() {
 	if(cfgVersionActive < 8) {
 		phexSkipTOS = true;
 	}
+	if(cfgVersionActive < 9) {
+		// If Phex was disabled, re-enable it and set it to start offline
+		if(!phexIsEnabledAsConfigured) {
+			phexIsEnabledAsConfigured = true;
+			phexStartOffline = true;
+		}
+	}
 	if (compatPhexForceLeft) {
 		phexSide = PHEX_ON_LEFT;
 	}
@@ -1115,12 +1109,7 @@ void HetuwMod::initSettings() {
 	validateNames(autoFemaleNames);
 	yumRebirthComponent::registerDefaults(defaultAutoDieOptions);
 
-	// private mode overrides
-	if (privateModeEnabled) {
-		phexIsEnabled = false;
-	} else {
-		phexIsEnabled = phexIsEnabledAsConfigured;
-	}
+	phexIsEnabled = phexIsEnabledAsConfigured;
 
 	validateFilteredIDs(vFilteredSprites);
 	filterSprites = bFilterSprites;

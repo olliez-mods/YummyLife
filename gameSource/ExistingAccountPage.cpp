@@ -1474,9 +1474,7 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
         //drawSprite( instructionsSprite, pos ); // YummyLife: Disable for testing
     }
 
-    if (HetuwMod::privateModeEnabled) {
-        mServicesButton.setVisible( false );
-    }
+    mServicesButton.setVisible( false );
 
     if( ! mEmailField.isVisible() ) {
         char *email = mEmailField.getText();

@@ -1727,9 +1727,6 @@ void Phex::joinChannel(std::string inChannelName) {
 	if(HetuwMod::bRequestLifeProfiles){
 		tcp.send("GET_LIFE_PROFILES "+channelName+" 1");
 	}
-	if(HetuwMod::bIdentifyMyself){
-		tcp.send("USER_CMD identify");
-	}
 	if(HetuwMod::bGPSEnabled){
 		// If GPS is enabled, first send success message if we have the global birth, otherwise ask PhexPlus to send us well info to start the process
 		int global_x, global_y;

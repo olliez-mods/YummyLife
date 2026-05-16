@@ -273,8 +273,6 @@ public:
 	static int tutMessageOffsetX;
 	static int tutMessageOffsetX2;
 
-	static bool privateModeEnabled;
-
 	static unsigned char charKey_Up;
 	static unsigned char charKey_Down;
 	static unsigned char charKey_Left;
@@ -336,7 +334,6 @@ public:
 	static bool bShowDangerTilesWhenRiding;
 	static int iAfkHungerThreshold;
 	static bool bRequestLifeProfiles;
-	static bool bIdentifyMyself;
 	static bool bAllowPhexMessageSending;
 	static bool bAllowPhexGameDataSending;
 	static bool bAllowLiveResources;
