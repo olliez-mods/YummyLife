@@ -345,6 +345,7 @@ public:
 	static bool bRequestGraveInfoFromPhex;
 	static int iShowObjectTimers; // 0=none, 1=always, 2=hover
 	static bool bEnableSharedAccountFeatures;
+	static bool bBBSpeechMushEnabled;
 	// <-
 
 	static int iDrawNames;

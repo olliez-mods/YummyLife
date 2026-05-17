@@ -174,6 +174,7 @@ bool HetuwMod::bRenderGraveLeaderboards;
 bool HetuwMod::bRequestGraveInfoFromPhex;
 int HetuwMod::iShowObjectTimers = 2; // 0=none, 1=always, 2=hover
 bool HetuwMod::bEnableSharedAccountFeatures;
+bool HetuwMod::bBBSpeechMushEnabled;
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -442,6 +443,7 @@ void HetuwMod::init() {
 	bRenderGraveLeaderboards = true;
 	bRequestGraveInfoFromPhex = true;
 	bEnableSharedAccountFeatures = true;
+	bBBSpeechMushEnabled = true;
 
 	iDrawNames = 1;
 	bDrawCords = true;
@@ -978,6 +980,7 @@ void HetuwMod::initSettings() {
 		{"hover", 2}
 	};
 	yumConfig::registerMappedSetting("init_show_object_timers", iShowObjectTimers, showObjectTimersMap, {postComment: " // none, always, hover"});
+	yumConfig::registerSetting("enable_bb_speech_mush", bBBSpeechMushEnabled);
 	yumConfig::registerSetting("enable_shared_account_features", bEnableSharedAccountFeatures, {postComment: " // Enable features that allow you to share your account with others"});
 	// ... to here
 

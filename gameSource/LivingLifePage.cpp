@@ -21281,22 +21281,38 @@ void LivingLifePage::step() {
 
 
                             if( firstSpace != NULL ) {
-                                
-                                if( existing->currentSpeech != NULL ) {
-                                    delete [] existing->currentSpeech;
-                                    existing->currentSpeech = NULL;
-                                    }
-                                
-                                existing->currentSpeech = 
-                                    stringDuplicate( &( firstSpace[1] ) );
-                                HetuwMod::decodeDigits( existing->currentSpeech );  // YumLife mod
 
                                 if( ourObject != NULL) // ourObject is not always initialized
                                     Phex::handlePlayerSays(existing->id, existing->currentSpeech, curseFlag, ourObject->xServer, ourObject->yServer, existing->xServer, existing->yServer); // YummyLife
 
+                                // YummyLife: Pulled directly from YumLife mod, full credit to Selb
+                                // YumLife: append instead of replacing for bbs.
+                                // This isn't a very clean implementation yet,
+                                // but it's kind of useful if you can stand it.
+                                // TODO: avoid server forced say messages
+                                // TODO: add spaces or something for short
+                                //       pauses?
+                                double fadeMultiplier = 1.0;
+                                if (existing->age < 3.0) {
+                                    char *old = existing->currentSpeech;
+                                    existing->currentSpeech = autoSprintf( "%s%s", old == NULL ? "" : old, &( firstSpace[1] ) );
+                                    fadeMultiplier = 5.0;
+                                    if (old) delete [] old;
+                                } else {
+                                    if( existing->currentSpeech != NULL ) {
+                                        delete [] existing->currentSpeech;
+                                        existing->currentSpeech = NULL;
+                                        }
+
+                                    existing->currentSpeech =
+                                        stringDuplicate( &( firstSpace[1] ) );
+                                    HetuwMod::decodeDigits( existing->currentSpeech );  // YumLife mod
+                                }
+                                // ^^^^^^^^^^^^^^^^^^^^
+
                                 double curTime = game_getCurrentTime();
                                 
-                                existing->speechFade = 1.0;
+                                existing->speechFade = 1.0*fadeMultiplier;
                                 
                                 existing->speechIsSuccessfulCurse = curseFlag;
 
