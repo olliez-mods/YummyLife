@@ -40,7 +40,7 @@ extern doublePair lastScreenViewCenter;
 int YummyLife::AFK::numCycles = 0;
 bool YummyLife::AFK::is_afk = false;
 bool YummyLife::AFK::bIsWaiting = false;
-int YummyLife::AFK::waitingForNotID = -1;
+float YummyLife::AFK::waitingSeconds = 0;
 bool YummyLife::AFK::is_enabled = false;
 const char* YummyLife::AFK::statusMessage = nullptr;
 time_t YummyLife::AFK::waitStartTime = 0;
@@ -542,9 +542,9 @@ void YummyLife::API::parseVersionTag(const char* versionTag, int* major, int* mi
 }
 
 // Sets flags to wait until item we're holding has changed
-void YummyLife::AFK::wait(){
-    waitingForNotID = HetuwMod::ourLiveObject->holdingID;
+void YummyLife::AFK::wait(float seconds){
     waitStartTime = HetuwMod::curStepSecondsSince1970;
+    waitingSeconds = seconds;
     bIsWaiting = true;
 }
 
@@ -556,11 +556,10 @@ void YummyLife::AFK::stopWaiting(){
     bIsWaiting = false;
 }
 
-// Check and update waiting status based on held item
+// Check and update waiting status based on Ms timeout
 bool YummyLife::AFK::updateWaitingStatus(){
     if(!bIsWaiting) return false; // Return early to prevent redundant checks
-    if(waitingForNotID != HetuwMod::ourLiveObject->holdingID)
-        bIsWaiting = false;
+    if(HetuwMod::curStepSecondsSince1970 - waitStartTime >= waitingSeconds) bIsWaiting = false;
     return bIsWaiting;
 }
 
@@ -568,13 +567,11 @@ void YummyLife::AFK::step(){
     if(!is_enabled || !is_afk) return;
     if(startAfkPos != HetuwMod::ourLiveObject->currentPos) setAFK(false, "Moved, AFK stopped");
     if (HetuwMod::curStepSecondsSince1970 - startAfkTime > (6000)) setEnabled(false, "AFK timeout after 100 minutes"); // 6000 seconds = 100 minutes
-    if (updateWaitingStatus()) {
-        if (secondsWaited() > 2) setEnabled(false, "Use backpack timeout");
-        return; // Return early if we're waiting for an item to change
-    }
+    if(updateWaitingStatus()) return; // If we're still waiting, skip the rest of the AFK logic
     if(!is_enabled || !is_afk) return;
 
     LiveObject *ourLiveObject = HetuwMod::ourLiveObject;
+    if(!ourLiveObject) return setEnabled(false, "ERROR: No live object");
 
     // If we don't need to eat, nothing more needs to be done
     if(ourLiveObject->foodStore > ourLiveObject->maxFoodCapacity - HetuwMod::iAfkHungerThreshold && ourLiveObject->foodStore > 1) return;
@@ -595,33 +592,31 @@ void YummyLife::AFK::step(){
         HetuwMod::useOnSelf();
         timesEaten++;
         numCycles = 0;
-        wait();
+        wait(5); // Wait 5 seconds before checking again to give time for the food to be eaten and hunger to update
         return;
     }
 
-    if (!HetuwMod::weAreWearingABackpack()){
-        // Not wearing a backpack, so can't put item away, stop AFK
-        setEnabled(false, "No backpack");
+    if (!HetuwMod::weAreWearingABackpack()){ // Not wearing a backpack, so can't put item away, stop AFK
+        setEnabled(false, "No backpack, can't cycle items");
         return;
     }
 
     ObjectRecord *backpackItem = ourLiveObject->clothing.backpack;
-    if(numCycles > backpackItem->numSlots){
-        // We've cycled through all backpack slots, stop AFK
+    if(numCycles > (backpackItem->numSlots*2)){ // We've tried cycling through all backpack slots twice (just to be safe), stop AFK
         setEnabled(false, "Cycled through all backpack slots, no food found");
         return;
     }
 
     if(itemSize > backpackItem->slotSize){
         // Item is too big for backpack, stop AFK
-        setEnabled(false, "Item too big for backpack");
+        setEnabled(false, "Item cannot fit in backpack");
         return;
     }
 
-    // Note: I don't know how to check what items are in our backpack, so I just cycle through them all for now
+    // Cycle to the next item, hopefully it's food!
     HetuwMod::useBackpack(true, -1);
     numCycles++;
-    wait();
+    wait(5);
 }
 
 void YummyLife::AFK::setAFK(bool afk, const char* msg){

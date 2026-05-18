@@ -57,9 +57,9 @@ class YummyLife {
 
 
             static time_t waitStartTime;
+            static float waitingSeconds;
             static bool bIsWaiting;
-            static int waitingForNotID;
-            static void wait();
+            static void wait(float seconds);
             static void stopWaiting();
             static bool updateWaitingStatus();
             static int secondsWaited();
