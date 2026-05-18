@@ -574,7 +574,7 @@ void YummyLife::AFK::step(){
     if(!ourLiveObject) return setEnabled(false, "ERROR: No live object");
 
     // If we don't need to eat, nothing more needs to be done
-    if(ourLiveObject->foodStore > ourLiveObject->maxFoodCapacity - HetuwMod::iAfkHungerThreshold && ourLiveObject->foodStore > 1) return;
+    if(ourLiveObject->foodStore > ourLiveObject->foodCapacity - HetuwMod::iAfkHungerThreshold && ourLiveObject->foodStore >= 2) return;
 
     bool holdingItem = (ourLiveObject->holdingID > 0);
     bool edibleItem = false;
