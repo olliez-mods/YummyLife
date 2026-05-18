@@ -21282,9 +21282,6 @@ void LivingLifePage::step() {
 
                             if( firstSpace != NULL ) {
 
-                                if( ourObject != NULL) // ourObject is not always initialized
-                                    Phex::handlePlayerSays(existing->id, existing->currentSpeech, curseFlag, ourObject->xServer, ourObject->yServer, existing->xServer, existing->yServer); // YummyLife
-
                                 // YummyLife: Pulled directly from YumLife mod, full credit to Selb
                                 // YumLife: append instead of replacing for bbs.
                                 // This isn't a very clean implementation yet,
@@ -21293,7 +21290,7 @@ void LivingLifePage::step() {
                                 // TODO: add spaces or something for short
                                 //       pauses?
                                 double fadeMultiplier = 1.0;
-                                if (existing->age < 3.0) {
+                                if (HetuwMod::bBBSpeechMushEnabled && existing->age < 3.0) {
                                     char *old = existing->currentSpeech;
                                     existing->currentSpeech = autoSprintf( "%s%s", old == NULL ? "" : old, &( firstSpace[1] ) );
                                     fadeMultiplier = 5.0;
@@ -21309,6 +21306,13 @@ void LivingLifePage::step() {
                                     HetuwMod::decodeDigits( existing->currentSpeech );  // YumLife mod
                                 }
                                 // ^^^^^^^^^^^^^^^^^^^^
+
+                                if( ourObject != NULL) { // ourObject is not always initialized
+                                    char *phexSpeech = stringDuplicate( &(firstSpace[1]) );
+                                    HetuwMod::decodeDigits( phexSpeech );
+                                    Phex::handlePlayerSays(existing->id, phexSpeech, curseFlag, ourObject->xServer, ourObject->yServer, existing->xServer, existing->yServer); // YummyLife
+                                    delete [] phexSpeech;
+                                    }
 
                                 double curTime = game_getCurrentTime();
                                 
