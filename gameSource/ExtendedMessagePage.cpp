@@ -22,14 +22,19 @@ extern char *accountKey;
 ExtendedMessagePage::ExtendedMessagePage()
         : mOKButton( mainFont, 0, -128, 
                      translate( "okay" ) ),
+          mMenuButton( mainFont, 0, -210,
+                       "MAIN MENU" ),
           mMessageKey( "" ),
           mSubMessage( NULL ) {
 
     addComponent( &mOKButton );
-    
     setButtonStyle( &mOKButton );
-    
     mOKButton.addActionListener( this );
+
+    addComponent( &mMenuButton );
+    setButtonStyle( &mMenuButton );
+    mMenuButton.addActionListener( this );
+    mMenuButton.setVisible( false );
     }
 
 
@@ -53,12 +58,19 @@ void ExtendedMessagePage::setSubMessage( const char *inMessage ) {
     mSubMessage = stringDuplicate( inMessage );
     }
 
+void ExtendedMessagePage::showMenuButton( char inShow ) {
+    mMenuButton.setVisible( inShow );
+    }
+
 
 
         
 void ExtendedMessagePage::actionPerformed( GUIComponent *inTarget ) {
     if( inTarget == &mOKButton ) {
         setSignal( "done" );
+        }
+    else if( inTarget == &mMenuButton ) {
+        setSignal( "menu" );
         }
     }
 

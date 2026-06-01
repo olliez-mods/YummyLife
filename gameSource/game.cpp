@@ -1403,6 +1403,7 @@ void showDiedPage() {
     currentGamePage = extendedMessagePage;
     
     extendedMessagePage->setMessageKey( "youDied" );
+    extendedMessagePage->showMenuButton( false );
     
     char *reason = livingLifePage->getDeathReason();
     
@@ -1434,6 +1435,8 @@ void showReconnectPage() {
 
     extendedMessagePage->setSubMessage( translate( "willTryReconnect" ) );
     
+    extendedMessagePage->showMenuButton( true );
+
     userReconnect = true;
     
     // don't reconnect as twin
@@ -2674,6 +2677,7 @@ void drawFrame( char inUpdate ) {
             if( extendedMessagePage->checkSignal( "done" ) ) {
                 
                 extendedMessagePage->setSubMessage( "" );
+                extendedMessagePage->showMenuButton( false );
                 
                 if( userReconnect ) {
                     currentGamePage = livingLifePage;
@@ -2681,6 +2685,14 @@ void drawFrame( char inUpdate ) {
                 else {
                     currentGamePage = pollPage;
                     }
+                currentGamePage->base_makeActive( true );
+                }
+            else if( extendedMessagePage->checkSignal( "menu" ) ) {
+                extendedMessagePage->setSubMessage( "" );
+                extendedMessagePage->showMenuButton( false );
+                userReconnect = false;
+                existingAccountPage->setStatus( NULL, false );
+                currentGamePage = existingAccountPage;
                 currentGamePage->base_makeActive( true );
                 }
             }

@@ -19,7 +19,8 @@ class ExtendedMessagePage : public GamePage, public ActionListener {
         
         // destroyed by caller
         void setSubMessage( const char *inMessage );
-        
+
+        void showMenuButton( char inShow );
 
         virtual void actionPerformed( GUIComponent *inTarget );
 
@@ -29,6 +30,7 @@ class ExtendedMessagePage : public GamePage, public ActionListener {
     protected:
         
         TextButton mOKButton;
+        TextButton mMenuButton; // YummyLife
 
         const char *mMessageKey;
         char *mSubMessage;
