@@ -1474,8 +1474,6 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
         //drawSprite( instructionsSprite, pos ); // YummyLife: Disable for testing
     }
 
-    mServicesButton.setVisible( false );
-
     if( ! mEmailField.isVisible() ) {
         char *email = mEmailField.getText();
         
