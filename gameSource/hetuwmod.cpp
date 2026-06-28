@@ -942,9 +942,10 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("allow_phex_message_sending", bAllowPhexMessageSending, {postComment: " // Let Phex decide how to handle messages (disabling may prevent Phex from working)"});
 	yumConfig::registerSetting("allow_phex_gamedata_sending", bAllowPhexGameDataSending, {postComment: " // Let Phex handle game data (such as position), this is required for PhexPlus features\n"});
 
-	yumConfig::registerSetting("request_grave_info_from_phex", bRequestGraveInfoFromPhex, {postComment: " // Request grave life info from Phex (on mouse hover)"});
-	yumConfig::registerSetting("request_all_graves", bRequestAllGraves, {postComment: " // Auto-request grave info for all visible graves without hover"});
-	yumConfig::registerSetting("render_grave_leaderboards", bRenderGraveLeaderboards, {postComment: " // Render received profile leaderboard names on graves\n"});
+	// Disabled for now, as it's not working - so locked behind debug testing
+	yumConfig::registerSetting("request_grave_info_from_phex", bRequestGraveInfoFromPhex, {postComment: " // DISABLED Request grave life info from Phex (on mouse hover)"});
+	yumConfig::registerSetting("request_all_graves", bRequestAllGraves, {postComment: " // DISABLED Auto-request grave info for all visible graves without hover"});
+	yumConfig::registerSetting("render_grave_leaderboards", bRenderGraveLeaderboards, {postComment: " // DISABLED Render received profile leaderboard names on graves\n"});
 
 	yumConfig::registerSetting("send_keyevents", sendKeyEvents, {savePredicate: []() { return sendKeyEvents; }});
 	yumConfig::registerSetting("drawbiomeinfo", bDrawBiomeInfo, {savePredicate: []() { return bDrawBiomeInfo; }});
@@ -1097,6 +1098,21 @@ void HetuwMod::initSettings() {
 	if (compatPhexForceLeft) {
 		phexSide = PHEX_ON_LEFT;
 	}
+
+
+	// To Force disable / enable options when in/out of DEBUG mode
+
+	// When in DEBUG mode
+	#ifdef TEST_BUILD
+	#endif
+
+	// When in RELEASE mode
+	#ifndef TEST_BUILD
+		bRequestGraveInfoFromPhex = false;
+		bRequestAllGraves = false;
+		bRenderGraveLeaderboards = false;
+	#endif
+
 
 	// value clamping/validation
 	delayReduction = std::max(0, std::min(100, delayReduction));
