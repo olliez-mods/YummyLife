@@ -3069,6 +3069,9 @@ void LivingLifePage::hetuwSetNextActionMessage(const char* msg, int x, int y) {
 
 	playerActionTargetX = x;
 	playerActionTargetY = y;
+
+    applyReceiveOffset(&playerActionTargetX, &playerActionTargetY);
+
 	playerActionTargetNotAdjacent = true;
 	nextActionEating = false;
 	nextActionMessageToSend = autoSprintf( "%s", msg );
