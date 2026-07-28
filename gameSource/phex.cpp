@@ -122,9 +122,6 @@ bool Phex::sendAllPlayerPosActive;
 HetuwMod::IntervalTimed Phex::intervalSendAllPlayerPos = HetuwMod::IntervalTimed(5.0);
 std::unordered_map<int, doublePair> Phex::lastSentPlayerPositions;
 
-bool Phex::sendFoundWellsActive;
-HetuwMod::IntervalTimed Phex::intervalSendFoundWells = HetuwMod::IntervalTimed(15.0);
-
 bool Phex::doSendPS = false;
 
 std::string Phex::lastSayString = "";
@@ -175,8 +172,6 @@ void Phex::initVariables() {
 
 	sendAllPlayerPosActive = false;
 	lastSentPlayerPositions.clear();
-
-	sendFoundWellsActive = false;
 
 	doSendPS = false;
 
@@ -444,10 +439,6 @@ void Phex::initServerCommands() {
 	serverCommands["SEND_CURSENAMES"].minWords = 2;
 
 	// YummyLife: v11
-	serverCommands["GPS_WELLS"].func = serverCmdGPS_WELLS;
-	serverCommands["GPS_WELLS"].minWords = 2;
-	serverCommands["SEND_FOUND_WELLS"].func = serverCmdSEND_FOUND_WELLS;
-	serverCommands["SEND_FOUND_WELLS"].minWords = 2;
 	serverCommands["URL_OPEN"].func = serverCmdURL_OPEN;
 	serverCommands["URL_OPEN"].minWords = 2;
 	serverCommands["SAY_INGME"].func = serverCmdSAY_INGME;
@@ -612,7 +603,6 @@ HANDLE_SEND_COMMAND(SEND_BIOMES, sendBiomeDataActive, {
 HANDLE_SEND_COMMAND(SEND_POSITION, sendPositionActive, { lastPositionSentX = -9999; lastPositionSentY = -9999; })
 HANDLE_SEND_COMMAND(SEND_CURSENAMES, sendCurseNamesActive, { curseNamesSentPlayerIDs.clear(); })
 HANDLE_SEND_COMMAND(SEND_ALL_PLAYER_POS, sendAllPlayerPosActive, { lastSentPlayerPositions.clear(); })
-HANDLE_SEND_COMMAND(SEND_FOUND_WELLS, sendFoundWellsActive, { })
 
 #undef HANDLE_SEND_COMMAND
 
@@ -696,22 +686,6 @@ void Phex::serverCmdGET_LEADERBOARD_NAME(std::vector<std::string> input) {
 	freeFitnessScore(); // Reset LBN
 	initFitnessScore();
 	triggerFitnessScoreUpdate();
-}
-
-// GPS_WELLS <numWells> [x1 y1] [x2 y2] ...
-void Phex::serverCmdGPS_WELLS(std::vector<std::string> input) {
-	int numWells = 0;
-	try {
-		numWells = stoi(input[1]);
-		GPS::globalWells.clear();
-		for (int i = 0; i < numWells; ++i) {
-			int baseIndex = 2 + i * 2;
-			int x = stoi(input[baseIndex]);
-			int y = stoi(input[baseIndex + 1]);
-			GPS::Well well(x, y);
-			GPS::globalWells.push_back(well);
-		}
-	} CATCH_SERVER_COMMAND(GPS_WELLS)
 }
 
 // URL_OPEN <url> [promptText]
@@ -1727,13 +1701,6 @@ void Phex::joinChannel(std::string inChannelName) {
 	if(HetuwMod::bRequestLifeProfiles){
 		tcp.send("GET_LIFE_PROFILES "+channelName+" 1");
 	}
-	if(HetuwMod::bGPSEnabled){
-		// If GPS is enabled, first send success message if we have the global birth, otherwise ask PhexPlus to send us well info to start the process
-		int global_x, global_y;
-		bool hasG = GPS::getGlobalBirth(global_x, global_y);
-		if(hasG) onGlobalBirthSet(global_x, global_y);
-		else tcp.send("GET_WELLS");
-	}
 }
 
 void Phex::sendServerLife(int life) {
@@ -1754,7 +1721,6 @@ void Phex::draw() {
 	if (sendPositionActive && intervalSendPosition.step()) sendPosition();
 	if(sendCurseNamesActive && intervalSendCurseNames.step()) sendNewCurseNames();
 	if (sendAllPlayerPosActive && intervalSendAllPlayerPos.step()) sendAllNewPlayerPositions();
-	if (sendFoundWellsActive && intervalSendFoundWells.step()) sendFoundWells();
 
 	if (isMinimized) drawMinimized();
 	else drawNormal();
@@ -2211,27 +2177,6 @@ void Phex::sendAllNewPlayerPositions() {
 	}
 
 	if(found == 0) return; // nothing new to send
-	tcp.send(str);
-}
-
-void Phex::sendFoundWells() {
-	if (!GPS::enabled) return;
-	int birthX, birthY;
-	if (!GPS::getGlobalBirth(birthX, birthY)) return;
-	printf("Phex sending found wells\n");
-
-	int count = 0;
-	std::string wellStr = "";
-	for (auto& well : GPS::foundWells) {
-		printf("Phex checking well at %d,%d sent=%d\n", well.x, well.y, well.sentToServer);
-		if(well.sentToServer) continue; // already sent
-		wellStr += " "+to_string(birthX + well.x)+" "+to_string(birthY + well.y);
-		well.sentToServer = true;
-		count++;
-	}
-	if(count == 0) return; // nothing new to send
-	std::string str = "REPORT_WELLS " + to_string(count) + wellStr;
-	printf("Phex %s\n", str.c_str());
 	tcp.send(str);
 }
 

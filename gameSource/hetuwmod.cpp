@@ -1162,8 +1162,7 @@ static void shuffle(vector<T> &vec) {
 void HetuwMod::initOnBirth() { // will be called from LivingLifePage.cpp
 	ourLiveObject = livingLifePage->getOurLiveObject();
 
-	GPS::onBirth(livingLifePage);
-	GPS::enabled = true;
+	GPS::onBirth(livingLifePage); 
 	if(livingLifePage->getTutorialNumber() > 0 || !connectedToMainServer) {
 		GPS::enabled = false; // disable gps if not on main server or in tutorial
 	}
@@ -1226,6 +1225,7 @@ void HetuwMod::initOnBirth() { // will be called from LivingLifePage.cpp
 
 void HetuwMod::onDonkeyTown() {
 	GPS::enabled = false;
+	bDrawGPSStatus = false;
 }
 
 void HetuwMod::initOnServerJoin() { // will be called from LivingLifePage.cpp and hetuwmod.cpp
@@ -4859,7 +4859,7 @@ void HetuwMod::onCurseUpdate(LiveObject* o) {
 }
 
 void HetuwMod::onStatueResponse(int birthRelX, int birthRelY, int displayID, const char* name, const char* clothing, const char* finalWords) {
-	GPS::onStatueReceived(birthRelX, birthRelY, displayID, name, clothing, finalWords);
+	// GPS::onStatueReceived(birthRelX, birthRelY, displayID, name, clothing, finalWords); STATUE SCANNING REMOVED
 }
 
 void HetuwMod::drawDeathMessages() {

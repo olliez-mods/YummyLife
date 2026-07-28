@@ -407,8 +407,6 @@ public:
 	static void serverCmdSEND_ALL_PLAYER_POS(std::vector<std::string> input);
 	static void serverCmdSEND_CURSENAMES(std::vector<std::string> input);
 	// Phex v11...
-	static void serverCmdGPS_WELLS(std::vector<std::string> input);
-	static void serverCmdSEND_FOUND_WELLS(std::vector<std::string> input);
 	static void serverCmdURL_OPEN(std::vector<std::string> input);
 	static void serverCmdSAY_INGME(std::vector<std::string> input);
 	// Phex v12...
@@ -531,11 +529,6 @@ private:
 	static HetuwMod::IntervalTimed intervalSendCurseNames;
 	static void sendNewCurseNames();
 	static std::unordered_set<int> curseNamesSentPlayerIDs;
-
-	static bool sendFoundWellsActive;
-	static HetuwMod::IntervalTimed intervalSendFoundWells;
-	static void sendFoundWells();
-	// GPS keeps track of a flag for sent wells
 
 	static bool sendAllPlayerPosActive;
 	static HetuwMod::IntervalTimed intervalSendAllPlayerPos;

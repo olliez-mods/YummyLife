@@ -9,39 +9,13 @@
 
 #include <sstream>
 
-#define STATUE_TEST_TIMEOUT_SECONDS 3
-#define SCAN_WORLD_RADIUS 32
-
 #define STEPS_PER_SAVE_CHECK 600 // Every 600 steps, check if we need to save coords
 
 #define WORLD_GRID_SIZE 40
-#define STATUE_GRID_OFFSET 3 // Statues are offset a bit from the grid markers
-
-#define SECONDS_BEGIN_TIMEOUT 10 // Wait X seconds before we attempt to start scanning (give time for Phex)
 
 #define STEPS_PER_SCAN 200 // Based on FPS, so not exact time
 
-#define MAX_X_SCAN_TILES 1000000
-
 #define SAVED_COORDS_FILENAME "yummyGPSCoords.txt"
-
-// Damn terminology is hard - I'm sorry
-static const double GPS_STATUE_SCAN_INTERVAL_SLOW = 1.0 / 6.0; // seconds between scans while Y pos is unknown
-static const double GPS_STATUE_SCAN_INTERVAL_FAST = 1.0 / 30.0; // seconds between scans once Y pos is known
-#define STATUE_SCAN_MULTIPLIER 5 // How many Y axis statue scan request bunches to send per scan
-
-// Statues built by me and friends in ghost town +200k east of Tarr
-// We have 4 statues in a square pattern meaning we can scan once in a 80x80 tile area to check for hits
-const GPS::StatueLocation KNOWN_STATUES[] = {
-    // Each statue is exactly one world grid (WORLD_GRID_SIZE tiles) apart, in a square pattern
-    { 210283, 43, "BABY_GHOST", "3211;0;0;0;0;0", "F" }, // Lower Left
-    { 210283, 83, "DADDY_GHOST", "3211;0;0;0;0;0", "MY_WIFE_AND_MY_DAUGHTERS_ARE_MY_EVERYTHING!" }, // Upper Left
-    { 210323, 43, "MAMA_GHOST", "3211;0;0;0;0;0", "I_LOVE_MY_LITTLE_GHOST_FAMILY!" }, // Lower Right
-    { 210323, 83, "SISTER_GHOST", "3211;0;0;0;0;0", "MY_BABY_SIS_KEEPS_TAKING_MY_TOYS!" }, // Upper Right
-};
-
-// These statues are only present on the official bigserver2.onehouronelife server
-const std::string SUPPORTED_SERVER = "bigserver2.onehouronelife";
 
 // Biome boundary constants (global Y)
 const int ARCTIC_MIN_Y = 220;
@@ -59,8 +33,6 @@ const int BIOME_DESERT_ID = 5;
 bool GPS::enabled = false;
 LivingLifePage* GPS::livingLifePage = NULL;
 
-std::vector<GPS::Well> GPS::foundWells;
-std::vector<GPS::Well> GPS::globalWells;
 std::vector<GPS::SavedCoord> GPS::savedCoords;
 bool GPS::triggerSaveProcess = false;
 
@@ -79,11 +51,7 @@ bool GPS::foundGlobalBirth = false;
 int GPS::globalBirthX = 0;
 int GPS::globalBirthY = 0;
 
-int GPS::xScanCount = 0;
 int GPS::stepCount = 0;
-static double sLastStatueScanTime = 0.0;
-
-time_t GPS::birthTimeoutStart = 0;
 
 
 // Align coordinate down to world grid (assume coord is globaly aligned)
@@ -131,48 +99,6 @@ void GPS::createGPSHomeMarker(){
     HetuwMod::bDrawHomeCords = true; // Enable coords when we find GPS
 }
 
-void GPS::sendStatueRequest(int relX, int relY){
-    if(livingLifePage == NULL) return;
-    char msg[128];
-    int transformedX = livingLifePage->sendX(relX);
-    int transformedY = livingLifePage->sendY(relY);
-    snprintf(msg, sizeof(msg), "STATUE %d %d#", transformedX, transformedY);
-    livingLifePage->sendToServerSocket(msg);
-}
-
-void GPS::onStatueReceived(int relX, int relY, int displayID, const char* name, const char* clothing, const char* finalWords){
-    // Process any statue response (we're actively scanning)
-    printf("GPS Statue Location Received: (%d, %d), Name: %s, Clothing: %s, Final Words: %s\n", relX, relY, name, clothing, finalWords);
-    if(foundGlobalBirth) return; // Already found it
-    // Check if this matches any known statue
-    for(const StatueLocation& statue : KNOWN_STATUES) {
-        if(strcmp(statue.name, name) == 0 && strcmp(statue.finalWords, finalWords) == 0) {
-            // Match found!
-            int globalX = statue.x - relX;
-            int globalY = statue.y - relY;
-            printf("GPS Found Known Statue out Global birth is (%d, %d)!\n", globalX, globalY);
-            setGlobalBirth(globalX, globalY);
-            return;
-        }
-    }
-}
-
-
-GPS::Well* GPS::getFoundWell(int x, int y){
-    for (int i = 0; i < foundWells.size(); i++) {
-        if(foundWells[i].x == x && foundWells[i].y == y){
-            return &foundWells[i];
-        }
-    }
-    return nullptr; // Not found
-}
-void GPS::checkNewFoundWell(int x, int y){
-    Well newWell(x, y);
-    for (int i = 0; i < foundWells.size(); i++)
-    if(foundWells[i] == newWell) return; // Already found
-    foundWells.push_back(newWell);
-}
-
 // All wells are on the world grid, but not all world grid markers are wells
 // Find both here
 void GPS::checkObject(int &obj, int x, int y) {
@@ -209,7 +135,7 @@ void GPS::checkObject(int &obj, int x, int y) {
     }
 
     if(result == 1) {
-        checkNewFoundWell(x, y);
+        // No longer keep track of wells, maybe again later
         printf("GPS Found Well at (%d, %d)\n", x, y);
     }
 }
@@ -317,9 +243,9 @@ void GPS::createYRange() {
 }
 
 void GPS::step() {
-    stepCount++;
     if(!enabled) return;
     if(livingLifePage == NULL) return;
+    stepCount++;
 
     // Periodically scan the world for new wells and biome data
     if(stepCount % STEPS_PER_SCAN == 0) {
@@ -335,57 +261,7 @@ void GPS::step() {
 
     if(foundGlobalBirth) return; // Already know position
 
-    // Proccess global wells sent by server
-    if(!globalWells.empty()){
-        for(Well &well: foundWells){
-            if(well.checkedAgainstGlobal) continue;
-            printf("GPS Testing Found Well at (%d, %d) against global wells\n", well.x, well.y);
-            testWellLocation(well.x, well.y);
-            well.checkedAgainstGlobal = true;
-        }
-    }
-
-    if(!foundGridOffset) return; // Can't scan without grid offset
-    if(!hasYRange) return; // No Y range data yet
-    if(xScanCount * WORLD_GRID_SIZE * 2 > MAX_X_SCAN_TILES) return; // Scanned max distance
-    if(HetuwMod::curStepSecondsSince1970 - birthTimeoutStart < SECONDS_BEGIN_TIMEOUT) return; // Still in timeout period
-
-    const int GROUP_STEP = WORLD_GRID_SIZE * 2; // 80 tiles apart
-    double interval = knowsYPosition ? GPS_STATUE_SCAN_INTERVAL_FAST : GPS_STATUE_SCAN_INTERVAL_SLOW;
-    double now = game_getCurrentTime();
-    if( now - sLastStatueScanTime < interval ) return;
-    sLastStatueScanTime = now;
-    int numRequestsSent = 0;
-    for(int i = 0; i < STATUE_SCAN_MULTIPLIER; i++) {
-        // We can push starting point out by this far, since we assume everyone is west of 0,0
-        int baseScanX = KNOWN_STATUES[0].x + (xScanCount * GROUP_STEP); // This moves us along by 80 tiles each time
-        int scanX = baseScanX - gridOffsetX; // Align to the grid
-
-        for(int potentialGlobalY = minGlobalYPosition; potentialGlobalY <= maxGlobalYPosition; potentialGlobalY++) {
-            int scanY = KNOWN_STATUES[0].y - potentialGlobalY;
-            int potentialGridOffsetY = snapToGrid((scanY - STATUE_GRID_OFFSET));
-            if(gridOffsetY != potentialGridOffsetY) continue; // Not aligned properly
-            sendStatueRequest(scanX, scanY);
-            numRequestsSent++;
-        }
-        xScanCount++;
-    }
-    if(numRequestsSent > 0) {
-        printf("GPS Sent %d Statue Requests at X Scan Count %d\n", numRequestsSent, xScanCount);
-    }
-}
-
-// Test a potential well location by checking if we have found it already
-void GPS::testWellLocation(int x, int y){
-    if(!enabled) return;
-    for(Well &gWell: globalWells){
-        int potentialGlobalX = gWell.x - x;
-        int potentialGlobalY = gWell.y - y;
-        // Claculate the statue relative location based on our potential global position
-        int statueX = KNOWN_STATUES[0].x - potentialGlobalX;
-        int statueY = KNOWN_STATUES[0].y - potentialGlobalY;
-        sendStatueRequest(statueX, statueY);
-    }
+    // GPS logic would go here
 }
 
 // Load saved coords from file
@@ -414,6 +290,7 @@ void GPS::onHomeLocationChange(int type){
     if(!enabled || !foundGlobalBirth) return;
     triggerSaveProcess = true; // Trigger save process on next step lined up with save check
 }
+
 void GPS::saveCoordsFromHomePosStack() {
     if(!foundGlobalBirth) {
         printf("GPS Cannot save coords before finding global birth\n");
@@ -437,6 +314,7 @@ void GPS::saveCoordsFromHomePosStack() {
     }
     writeSavedCoords();
 }
+
 void GPS::writeSavedCoords(){
     try {
         int num = 0;
@@ -464,41 +342,21 @@ std::string GPS::getStatusString() {
         return ss.str();
     }
 
-    if(xScanCount * WORLD_GRID_SIZE * 2 > MAX_X_SCAN_TILES) return "GPS SCAN LIMIT REACHED";
-
     if(!hasYRange) return "FIND SPECIAL BIOMES";
     if(!foundGridOffset) return "SEARCHING FOR WORLD GRID";
 
-    std::string status = "SCANNING (SLOW)";
-    if(knowsYPosition) status = "SCANNING (FAST)";
-
-    int numTilesScanned = xScanCount * WORLD_GRID_SIZE * 2;
-
-    // Convert to K or MIL
-    std::ostringstream ss;
-    if(numTilesScanned >= 1000000) {
-        double milTiles = numTilesScanned / 1000000.0;
-        ss.precision(2);
-        ss << std::fixed << milTiles << "M";
-    } else if(numTilesScanned >= 1000) {
-        double kTiles = numTilesScanned / 1000.0;
-        ss.precision(1);
-        ss << std::fixed << kTiles << "K";
-    } else {
-        ss << numTilesScanned;
-    }
-
-    // Hardcoded max 1MIL for now
-    status += " - " + ss.str() + "/1M TILES";
-    return status;
+    return "GPS NOT IMPLEMENTED";
 }
 
 // Acts as a reset and init
 void GPS::onBirth(LivingLifePage* inLivingLifePage){
     livingLifePage = inLivingLifePage;
     stepCount = 0;
-    sLastStatueScanTime = 0.0;
     enabled = HetuwMod::bGPSEnabled;
+
+    // Disabled for now until further notice
+    enabled = false; // GPS is disabled for now
+    printf("GPS is currently disabled\n");
 
     for (int i = 0; i < BIOME_COUNT; i++) {
         biomeBounds[i].hasMin = false;
@@ -506,9 +364,6 @@ void GPS::onBirth(LivingLifePage* inLivingLifePage){
         biomeBounds[i].minY = 0;
         biomeBounds[i].maxY = 0;
     }
-
-    xScanCount = 0;
-    birthTimeoutStart = HetuwMod::curStepSecondsSince1970;
 
     foundGridOffset = false;
     gridOffsetX = 0;

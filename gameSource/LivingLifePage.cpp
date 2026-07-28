@@ -1447,10 +1447,7 @@ static double timeLastMessageSent = 0;
 void LivingLifePage::sendToServerSocket( char *inMessage ) {
     timeLastMessageSent = game_getCurrentTime();
     
-    // GPS sends thousands of STATUE messages per minute, don't spam log with them
-    if (!HIDE_STATUE_LOGS || strncmp(inMessage, "STATUE", 6) != 0) {
-        printf( "Sending message to server: %s\n", inMessage );
-    }
+    printf( "Sending message to server: %s\n", inMessage );
 
     if( mServerSocket == -1 ) {
         printf( "Server socket already closed, skipping sending message: %s\n",
