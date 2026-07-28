@@ -28139,15 +28139,6 @@ void LivingLifePage::keyDown( unsigned char inASCII ) {
                                         }
                                     }
                                 }
-                            else if( commandTyped( typedText, "/SUICIDE" ) ) {
-                                // YummyLife mod - server allows us to use 'kill' on ourselves
-                                char * killMessage = autoSprintf( "KILL %d %d %d#",
-                                    sendX( ourLiveObject->id ),
-                                    sendY( ourLiveObject->id ),
-                                    ourLiveObject->id );
-                                sendToServerSocket( killMessage );
-                                delete [] killMessage;
-                                }
                             else if (commandTyped( typedText, "/GPS" ) ) {
                                 GPS::createGPSHomeMarker(); // recreate marker if deleted
                             }
