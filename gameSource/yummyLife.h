@@ -139,6 +139,33 @@ class YummyLife {
                 static bool complete(const char* email, const char* hashedChallenge); // Completes the login process with the challenge response
         };
 
+        // Chat scrollback: history of recent nearby speech, toggled with a
+        // key. Lines that mention our first name are highlighted.
+        class ChatLog {
+            struct Entry {
+                enum Kind { SPEECH, MENTION };
+                Kind kind;
+                std::string name;
+                std::string text;
+            };
+            static std::vector<Entry> entries;
+            static int scrollPos;   // -1 = stuck to bottom; >= 0 = index of top visible line
+            // whole-word match of our first name in (all-caps) speech
+            static bool mentionsUs(const char* speech);
+
+            public:
+                static bool bShow;
+                static bool bLogToFile;
+                static void add(const char* speakerName, const char* text, bool isSelf);
+                // wheel scrolling while the panel is open; dir +1 = up (back
+                // in time), -1 = down
+                static void scroll(int dir);
+                // snap back to the newest lines
+                static void resetScroll();
+                static void draw();     // call from livingLifeDraw when bShow
+                static void newLife();
+        };
+
         static void cleanUp();
         static void takingScreenshot();
 
