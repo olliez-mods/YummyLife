@@ -150,12 +150,13 @@ class YummyLife {
                 doublePair pos; // Position associated with this entry
                 float distanceToUs; // Distance from our character to this entry
                 time_t timestamp; // When this entry was added
-
             };
             static std::vector<Entry> entries;
             static int scrollPos;   // -1 = stuck to bottom; >= 0 = index of top visible line
+            static doublePair lastDistanceCalcPos;
             // whole-word match of our first name in (all-caps) speech
             static bool mentionsUs(const char* speech);
+            static void refreshDistancesForCurrentPosition();
 
             public:
                 static int filterLevel; // inf, 5, 10, 15

@@ -128,6 +128,7 @@ static const int chatLogMaxEntries = 500;
 std::vector<YummyLife::ChatLog::Entry> YummyLife::ChatLog::entries;
 int YummyLife::ChatLog::filterLevel = 0; // 0 = all messages
 int YummyLife::ChatLog::scrollPos = -1;
+doublePair YummyLife::ChatLog::lastDistanceCalcPos = {0, 0};
 
 // Checks if the given speech mentions our character's first name as a whole word
 bool YummyLife::ChatLog::mentionsUs(const char* speech) {
@@ -149,6 +150,24 @@ bool YummyLife::ChatLog::mentionsUs(const char* speech) {
         pos += 1;
     }
     return false;
+}
+
+void YummyLife::ChatLog::refreshDistancesForCurrentPosition() {
+    LiveObject *us = HetuwMod::ourLiveObject;
+    if (us == NULL) return;
+
+    doublePair currentPos = { us->xd, us->yd };
+    if (lastDistanceCalcPos.x == currentPos.x &&
+        lastDistanceCalcPos.y == currentPos.y) {
+        return;
+    }
+
+    for (Entry &e : entries) {
+        e.distanceToUs = sqrt((e.pos.x - currentPos.x) * (e.pos.x - currentPos.x) +
+                             (e.pos.y - currentPos.y) * (e.pos.y - currentPos.y));
+    }
+
+    lastDistanceCalcPos = currentPos;
 }
 
 void YummyLife::ChatLog::add(const char* speakerName, const char* text, bool isSelf,  time_t timestamp, const doublePair& pos) {
@@ -175,8 +194,10 @@ void YummyLife::ChatLog::add(const char* speakerName, const char* text, bool isS
 
     e.pos = pos; // Position of the speaker when this entry was added
     LiveObject *us = HetuwMod::ourLiveObject;
-    if (us != NULL) e.distanceToUs = sqrt((e.pos.x - us->xd) * (e.pos.x - us->xd) + (e.pos.y - us->yd) * (e.pos.y - us->yd));
-    else  e.distanceToUs = -1; // Unknown distance
+    if (us != NULL) {
+        e.distanceToUs = sqrt((e.pos.x - us->xd) * (e.pos.x - us->xd) +
+                             (e.pos.y - us->yd) * (e.pos.y - us->yd));
+    } else e.distanceToUs = -1; // Unknown distance
 
     // own speech may still carry trailing map metadata at this point
     size_t meta = e.text.find(" *map");
@@ -219,6 +240,8 @@ void YummyLife::ChatLog::resetScroll() {
 
 void YummyLife::ChatLog::draw() {
     if (!HetuwMod::bShowChatLog) return;
+
+    refreshDistancesForCurrentPosition();
 
     HetuwFont *customFont = HetuwMod::customFont;
     double scale = customFont->hetuwGetScaleFactor();
@@ -330,6 +353,7 @@ void YummyLife::ChatLog::draw() {
 void YummyLife::ChatLog::newLife() {
     entries.clear();
     scrollPos = -1;
+    lastDistanceCalcPos = {0, 0};
 }
 
 
