@@ -177,6 +177,8 @@ bool HetuwMod::bRequestGraveInfoFromPhex;
 int HetuwMod::iShowObjectTimers = 2; // 0=none, 1=always, 2=hover
 bool HetuwMod::bEnableSharedAccountFeatures;
 bool HetuwMod::bBBSpeechMushEnabled;
+bool HetuwMod::bShowChatLog;
+bool HetuwMod::bPrintChatLogToFile;
 
 int HetuwMod::iDrawNames;
 bool HetuwMod::bDrawSelectedPlayerInfo = false;
@@ -446,6 +448,8 @@ void HetuwMod::init() {
 	bRequestGraveInfoFromPhex = true;
 	bEnableSharedAccountFeatures = true;
 	bBBSpeechMushEnabled = true;
+	bShowChatLog = false;
+	bPrintChatLogToFile = false;
 
 	iDrawNames = 1;
 	bDrawCords = true;
@@ -986,6 +990,8 @@ void HetuwMod::initSettings() {
 	yumConfig::registerMappedSetting("init_show_object_timers", iShowObjectTimers, showObjectTimersMap, {postComment: " // none, always, hover"});
 	yumConfig::registerSetting("enable_bb_speech_mush", bBBSpeechMushEnabled);
 	yumConfig::registerSetting("enable_shared_account_features", bEnableSharedAccountFeatures, {postComment: " // Enable features that allow you to share your account with others"});
+	yumConfig::registerSetting("log_chat", HetuwMod::bPrintChatLogToFile, {postComment: " // write speech to " hetuwLogFileName});
+	yumConfig::registerScaledSetting("qol_text_scale", qolTextScale, 10, {postComment: " // text size of the chat log overlay, 10 = full size, default 7"});
 	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {
@@ -1006,8 +1012,6 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("init_show_deathmessages", bDrawDeathMessages);
 	yumConfig::registerSetting("init_show_homecords", bDrawHomeCords);
 	yumConfig::registerSetting("init_show_hostiletiles", bDrawHostileTiles);
-	yumConfig::registerSetting("log_chat", YummyLife::ChatLog::bLogToFile, {postComment: " // write speech to " hetuwLogFileName});
-	yumConfig::registerScaledSetting("qol_text_scale", qolTextScale, 10, {postComment: " // text size of the chat log overlay, 10 = full size, default 7"});
 
 	yumConfig::registerSetting("keep_button_pressed_to_fixcamera", bHoldDownTo_FixCamera, {preComment: "\n"});
 	yumConfig::registerSetting("keep_button_pressed_to_findyum", bHoldDownTo_FindYum);
@@ -1577,7 +1581,8 @@ void HetuwMod::stepHttpRequests() {
 void HetuwMod::onScroll(int dir) {
 	if (Phex::onScroll(dir)) return;
 
-	if (YummyLife::ChatLog::bShow) {
+	// ChatLog is open, and not holding shift
+	if (HetuwMod::bShowChatLog && !isShiftKeyDown()) {
 		YummyLife::ChatLog::scroll(dir);
 		return;
 	}
@@ -3693,8 +3698,19 @@ bool HetuwMod::livingLifeKeyDown(unsigned char inASCII) {
 		return true;
 	}
 	if (!commandKey && isCharKey(inASCII, charKey_ShowChatLog)) {
-		YummyLife::ChatLog::bShow = !YummyLife::ChatLog::bShow;
-		if (YummyLife::ChatLog::bShow) YummyLife::ChatLog::resetScroll();
+		// Message levels go; off -> all -> 5 -> 10 -> 15
+		if(!HetuwMod::bShowChatLog) HetuwMod::bShowChatLog = true;
+		else {
+			// Increase the filter level by 5 each time the chat log is already shown, turn off when it exceeds 15
+
+			YummyLife::ChatLog::filterLevel += shiftKey? -5 : 5;
+
+			if (YummyLife::ChatLog::filterLevel < 0 || YummyLife::ChatLog::filterLevel > 15) {
+				YummyLife::ChatLog::filterLevel = 0;
+				HetuwMod::bShowChatLog = false;
+			}
+		}
+		if (HetuwMod::bShowChatLog) YummyLife::ChatLog::resetScroll();
 		return true;
 	}
 	if (!commandKey && !shiftKey && isCharKey(inASCII, charKey_ShowCords)) {
@@ -5427,7 +5443,7 @@ void HetuwMod::drawHelp() {
 	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
 	drawPos.y -= lineHeight;
 
-	if (YummyLife::ChatLog::bShow) setHelpColorSpecial();
+	if (HetuwMod::bShowChatLog) setHelpColorSpecial();
 	else setHelpColorNormal();
 	snprintf(str, sizeof(str), "%c TOGGLE CHAT LOG", toupper(charKey_ShowChatLog));
 	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );

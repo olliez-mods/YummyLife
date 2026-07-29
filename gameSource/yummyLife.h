@@ -147,6 +147,10 @@ class YummyLife {
                 Kind kind;
                 std::string name;
                 std::string text;
+                doublePair pos; // Position associated with this entry
+                float distanceToUs; // Distance from our character to this entry
+                time_t timestamp; // When this entry was added
+
             };
             static std::vector<Entry> entries;
             static int scrollPos;   // -1 = stuck to bottom; >= 0 = index of top visible line
@@ -154,9 +158,9 @@ class YummyLife {
             static bool mentionsUs(const char* speech);
 
             public:
-                static bool bShow;
-                static bool bLogToFile;
-                static void add(const char* speakerName, const char* text, bool isSelf);
+                static int filterLevel; // inf, 5, 10, 15
+
+                static void add(const char* speakerName, const char* text, bool isSelf,  time_t timestamp, const doublePair& pos);
                 // wheel scrolling while the panel is open; dir +1 = up (back
                 // in time), -1 = down
                 static void scroll(int dir);

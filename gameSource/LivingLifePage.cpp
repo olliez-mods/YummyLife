@@ -21282,6 +21282,16 @@ void LivingLifePage::step() {
 
                             if( firstSpace != NULL ) {
 
+                                // YummyLife: chat scrollback
+                                doublePair player_pos = { existing->xd, existing->yd };
+                                time_t timestamp = time(NULL);
+                                YummyLife::ChatLog::add(
+                                    existing->name,
+                                    stringDuplicate( &(firstSpace[1]) ),
+                                    existing->id == ourID,
+                                    timestamp,
+                                    player_pos );
+
                                 // YummyLife: Pulled directly from YumLife mod, full credit to Selb
                                 // YumLife: append instead of replacing for bbs.
                                 // This isn't a very clean implementation yet,
@@ -21289,6 +21299,7 @@ void LivingLifePage::step() {
                                 // TODO: avoid server forced say messages
                                 // TODO: add spaces or something for short
                                 //       pauses?
+                                // TODO: Remove '+' from trusted players
                                 double fadeMultiplier = 1.0;
                                 if (HetuwMod::bBBSpeechMushEnabled && existing->age < 3.0) {
                                     char *old = existing->currentSpeech;
@@ -21313,12 +21324,6 @@ void LivingLifePage::step() {
                                     Phex::handlePlayerSays(existing->id, phexSpeech, curseFlag, ourObject->xServer, ourObject->yServer, existing->xServer, existing->yServer); // YummyLife
                                     delete [] phexSpeech;
                                     }
-
-                                // YummyLife: chat scrollback
-                                YummyLife::ChatLog::add(
-                                    existing->name,
-                                    existing->currentSpeech,
-                                    existing->id == ourID );
 
                                 double curTime = game_getCurrentTime();
                                 

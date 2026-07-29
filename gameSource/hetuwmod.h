@@ -347,6 +347,10 @@ public:
 	static int iShowObjectTimers; // 0=none, 1=always, 2=hover
 	static bool bEnableSharedAccountFeatures;
 	static bool bBBSpeechMushEnabled;
+
+	// Chat log
+	static bool bShowChatLog;
+	static bool bPrintChatLogToFile;
 	// <-
 
 	static int iDrawNames;
@@ -768,6 +772,7 @@ private:
 // YummyLife: Make this public
 public:
 	static bool bDrawHomeCords;
+	static std::vector<char*> searchWordList;
 private:
 	static void drawHomeCords();
 	static void setDrawColorToCoordType(homePosType type);
@@ -790,7 +795,6 @@ private:
 	static void drawSearchTiles();
 	static void drawSearchTilesLoop(bool drawText);
 	static int getSearchInput;
-	static std::vector<char*> searchWordList;
 	static bool bDrawSearchList;
 	static int drawSearchListTopY;
 	static std::vector<doublePair*> searchWordStartPos;

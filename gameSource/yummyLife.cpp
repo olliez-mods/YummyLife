@@ -126,10 +126,10 @@ static const int chatLogMaxLines = 16;
 static const int chatLogMaxEntries = 500;
 
 std::vector<YummyLife::ChatLog::Entry> YummyLife::ChatLog::entries;
-bool YummyLife::ChatLog::bShow = false;
-bool YummyLife::ChatLog::bLogToFile = true;
+int YummyLife::ChatLog::filterLevel = 0; // 0 = all messages
 int YummyLife::ChatLog::scrollPos = -1;
 
+// Checks if the given speech mentions our character's first name as a whole word
 bool YummyLife::ChatLog::mentionsUs(const char* speech) {
     LiveObject *us = HetuwMod::ourLiveObject;
     if (us == NULL || us->name == NULL || speech == NULL) return false;
@@ -151,8 +151,12 @@ bool YummyLife::ChatLog::mentionsUs(const char* speech) {
     return false;
 }
 
-void YummyLife::ChatLog::add(const char* speakerName, const char* text, bool isSelf) {
+void YummyLife::ChatLog::add(const char* speakerName, const char* text, bool isSelf,  time_t timestamp, const doublePair& pos) {
     if (text == NULL || text[0] == '\0') return;
+
+    // If message starts with '+' with no space after it, mark it as a forced message
+    bool isForcedMesages = (text[0] == '+' && (text[1] == '\0' || text[1] != ' '));
+    if(isForcedMesages) return; // Skip adding forced messages to the chat log for now
 
     Entry e;
     e.kind = (!isSelf && mentionsUs(text)) ? Entry::MENTION : Entry::SPEECH;
@@ -167,11 +171,18 @@ void YummyLife::ChatLog::add(const char* speakerName, const char* text, bool isS
         e.name = "???";
     }
     e.text = text;
+    e.timestamp = timestamp;
+
+    e.pos = pos; // Position of the speaker when this entry was added
+    LiveObject *us = HetuwMod::ourLiveObject;
+    if (us != NULL) e.distanceToUs = sqrt((e.pos.x - us->xd) * (e.pos.x - us->xd) + (e.pos.y - us->yd) * (e.pos.y - us->yd));
+    else  e.distanceToUs = -1; // Unknown distance
+
     // own speech may still carry trailing map metadata at this point
     size_t meta = e.text.find(" *map");
     if (meta != std::string::npos) e.text = e.text.substr(0, meta);
     if (e.text.empty()) return;
-    if (bLogToFile) {
+    if (HetuwMod::bPrintChatLogToFile) {
         HetuwMod::writeLineToLogs(isSelf ? "say_self" : "say",
                 e.name + hetuwLogSeperator + e.text);
     }
@@ -207,7 +218,7 @@ void YummyLife::ChatLog::resetScroll() {
 }
 
 void YummyLife::ChatLog::draw() {
-    if (!bShow) return;
+    if (!HetuwMod::bShowChatLog) return;
 
     HetuwFont *customFont = HetuwMod::customFont;
     double scale = customFont->hetuwGetScaleFactor();
@@ -236,21 +247,81 @@ void YummyLife::ChatLog::draw() {
                 start + 1, end, size);
         drawPos = HetuwMod::drawLeftTextWithBckgr(drawPos, header, 1, 1, 0.4);
 
+        char filterInfo[128];
+        snprintf(filterInfo, sizeof(filterInfo), "FILTER DIST.  %s  %s  %s  %s",
+                YummyLife::ChatLog::filterLevel == 0 ? "[ALL]" : "ALL",
+                YummyLife::ChatLog::filterLevel == 5 ? "[5]" : "5",
+                YummyLife::ChatLog::filterLevel == 10 ? "[10]" : "10",
+                YummyLife::ChatLog::filterLevel == 15 ? "[15]" : "15");
+        drawPos = HetuwMod::drawLeftTextWithBckgr(drawPos, filterInfo, 0.7, 0.7, 0.7);
+
         char line[128];
-        for (int i=start; i<end; i++) {
+        int visibleCount = 0;
+        for (int i = start; i < size && visibleCount < chatLogMaxLines; i++) {
             const Entry &e = entries[i];
+
+            // Filter by distance
+            if (YummyLife::ChatLog::filterLevel > 0 &&
+                e.distanceToUs > YummyLife::ChatLog::filterLevel) {
+                continue;
+            }
+
+            // Filter by search word
+            if(HetuwMod::searchWordList.size() > 0) {
+                bool isMatch = false;
+                for (const auto& word : HetuwMod::searchWordList) {
+                    // Lowercase for case-insensitive comparison
+                    // TODO: Optimize by caching lowercase conversions if needed?
+                    std::string strWord = word;
+                    std::string strName = e.name;
+                    std::string strText = e.text;
+                    std::transform(strName.begin(), strName.end(), strName.begin(), ::tolower);
+                    std::transform(strWord.begin(), strWord.end(), strWord.begin(), ::tolower);
+                    std::transform(strText.begin(), strText.end(), strText.begin(), ::tolower);
+
+                    if (strWord.empty() || strName.empty() || strText.empty()) continue;
+
+                    // Word ends with ':' match against name only
+
+                    bool onlyCheckAgainstName = false;
+                    if (strWord.back() == ':') {
+                        onlyCheckAgainstName = true;
+                        strWord = strWord.substr(0, strWord.size() - 1); // Remove ':' for further processing
+                    }
+
+                    bool matchesName = strName.find(strWord) != std::string::npos;
+                    bool matchesText = strText.find(strWord) != std::string::npos;
+
+                    // Check if the word matches either the name or the text (depending on onlyCheckAgainstName)
+                    if(matchesName || ( !onlyCheckAgainstName && matchesText)) {
+                        isMatch = true;
+                        break;
+                    }
+                }
+                if (!isMatch) continue;
+            }
+
+            char distanceStr[32];
+            time_t secondsAgo = HetuwMod::curStepSecondsSince1970 - e.timestamp;
+            if (secondsAgo >= 0) {
+                if (secondsAgo < 60) snprintf(distanceStr, sizeof(distanceStr), "(< 1m) ");
+                else snprintf(distanceStr, sizeof(distanceStr), "(%ldm) ", secondsAgo / 60);
+            } else snprintf(distanceStr, sizeof(distanceStr), "(?t) ");
+
             if (e.kind == Entry::MENTION) {
-                snprintf(line, sizeof(line), "> %s: %s",
-                        e.name.c_str(), e.text.c_str());
+                snprintf(line, sizeof(line), "> %s %s: %s",
+                        distanceStr, e.name.c_str(), e.text.c_str());
                 drawPos = HetuwMod::drawLeftTextWithBckgr(drawPos, line,
                         1, 0.9, 0.2);
             } else {
-                snprintf(line, sizeof(line), "  %s: %s",
-                        e.name.c_str(), e.text.c_str());
+                snprintf(line, sizeof(line), "  %s %s: %s",
+                        distanceStr, e.name.c_str(), e.text.c_str());
                 bool self = e.name == "YOU";
                 drawPos = HetuwMod::drawLeftTextWithBckgr(drawPos, line,
                         1, self ? 0.9 : 1, self ? 0.4 : 1);
             }
+
+            visibleCount++;
         }
     }
     customFont->hetuwSetScaleFactor(scale);
