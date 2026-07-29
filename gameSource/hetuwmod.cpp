@@ -69,6 +69,7 @@ static const int maxZoomLevel = sizeof(zoomScales)/sizeof(zoomScales[0]) - 1;
 float HetuwMod::zoomScale;
 float HetuwMod::guiScaleRaw;
 float HetuwMod::guiScale;
+float HetuwMod::qolTextScale = 0.7f;
 int HetuwMod::panelOffsetX;
 int HetuwMod::panelOffsetY;
 int HetuwMod::tutMessageOffsetX;
@@ -105,6 +106,7 @@ unsigned char HetuwMod::charKey_ShowPlayersInRange = 'p';
 unsigned char HetuwMod::charKey_ShowDeathMessages = 254;
 unsigned char HetuwMod::charKey_ShowHomeCords = 'g';
 unsigned char HetuwMod::charKey_ShowHostileTiles = 'u';
+unsigned char HetuwMod::charKey_ShowChatLog = 'i';
 unsigned char HetuwMod::charKey_xRay = 'x';
 unsigned char HetuwMod::charKey_Search = 'j';
 unsigned char HetuwMod::charKey_TeachLanguage = 'l';
@@ -878,6 +880,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("key_show_deathmessages", charKey_ShowDeathMessages);
 	yumConfig::registerSetting("key_show_homecords", charKey_ShowHomeCords);
 	yumConfig::registerSetting("key_show_hostiletiles", charKey_ShowHostileTiles);
+	yumConfig::registerSetting("key_show_chatlog", charKey_ShowChatLog);
 
 	yumConfig::registerSetting("key_remembercords", charKey_CreateHome, {preComment: "\n"});
 	yumConfig::registerSetting("key_fixcamera", charKey_FixCamera);
@@ -1003,6 +1006,8 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("init_show_deathmessages", bDrawDeathMessages);
 	yumConfig::registerSetting("init_show_homecords", bDrawHomeCords);
 	yumConfig::registerSetting("init_show_hostiletiles", bDrawHostileTiles);
+	yumConfig::registerSetting("log_chat", YummyLife::ChatLog::bLogToFile, {postComment: " // write speech to " hetuwLogFileName});
+	yumConfig::registerScaledSetting("qol_text_scale", qolTextScale, 10, {postComment: " // text size of the chat log overlay, 10 = full size, default 7"});
 
 	yumConfig::registerSetting("keep_button_pressed_to_fixcamera", bHoldDownTo_FixCamera, {preComment: "\n"});
 	yumConfig::registerSetting("keep_button_pressed_to_findyum", bHoldDownTo_FindYum);
@@ -1161,6 +1166,8 @@ static void shuffle(vector<T> &vec) {
 
 void HetuwMod::initOnBirth() { // will be called from LivingLifePage.cpp
 	ourLiveObject = livingLifePage->getOurLiveObject();
+
+	YummyLife::ChatLog::newLife();
 
 	GPS::onBirth(livingLifePage); 
 	if(livingLifePage->getTutorialNumber() > 0 || !connectedToMainServer) {
@@ -1569,6 +1576,11 @@ void HetuwMod::stepHttpRequests() {
 
 void HetuwMod::onScroll(int dir) {
 	if (Phex::onScroll(dir)) return;
+
+	if (YummyLife::ChatLog::bShow) {
+		YummyLife::ChatLog::scroll(dir);
+		return;
+	}
 
 	if (dir == -1)
 		zoomIncrease();
@@ -3680,6 +3692,11 @@ bool HetuwMod::livingLifeKeyDown(unsigned char inASCII) {
 		if (iDrawNames >= 3) iDrawNames = 0;
 		return true;
 	}
+	if (!commandKey && isCharKey(inASCII, charKey_ShowChatLog)) {
+		YummyLife::ChatLog::bShow = !YummyLife::ChatLog::bShow;
+		if (YummyLife::ChatLog::bShow) YummyLife::ChatLog::resetScroll();
+		return true;
+	}
 	if (!commandKey && !shiftKey && isCharKey(inASCII, charKey_ShowCords)) {
 		bDrawCords = !bDrawCords;
 		return true;
@@ -5317,6 +5334,20 @@ string HetuwMod::getArcTimeStr() {
 	}
 }
 
+doublePair HetuwMod::drawLeftTextWithBckgr(doublePair pos, const char* text, float r, float g, float b) {
+	float textWidth = customFont->measureString(text);
+	float lineHeight = customFont->getFontHeight() * 1.1;
+	float spaceWidth = customFont->hetuwGetSpaceWidth();
+	doublePair recPos = pos;
+	recPos.x += textWidth/2;
+	setDrawColor( 0, 0, 0, 0.75 );
+	drawRect( recPos, (textWidth/2) + spaceWidth*2, lineHeight/2 );
+	setDrawColor( r, g, b, 1 );
+	customFont->drawString( text, pos, alignLeft );
+	pos.y -= lineHeight;
+	return pos;
+}
+
 void HetuwMod::setHelpColorNormal() {
 	setDrawColor( 1.0f, 1.0f, 1.0f, 1 );
 }
@@ -5393,6 +5424,12 @@ void HetuwMod::drawHelp() {
 	if (iDrawNames > 0) setHelpColorSpecial();
 	else setHelpColorNormal();
 	snprintf(str, sizeof(str), "%c TOGGLE SHOW NAMES", toupper(charKey_ShowNames));
+	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
+	drawPos.y -= lineHeight;
+
+	if (YummyLife::ChatLog::bShow) setHelpColorSpecial();
+	else setHelpColorNormal();
+	snprintf(str, sizeof(str), "%c TOGGLE CHAT LOG", toupper(charKey_ShowChatLog));
 	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
 	drawPos.y -= lineHeight;
 

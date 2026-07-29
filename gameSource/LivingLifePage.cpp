@@ -21314,6 +21314,12 @@ void LivingLifePage::step() {
                                     delete [] phexSpeech;
                                     }
 
+                                // YummyLife: chat scrollback
+                                YummyLife::ChatLog::add(
+                                    existing->name,
+                                    existing->currentSpeech,
+                                    existing->id == ourID );
+
                                 double curTime = game_getCurrentTime();
                                 
                                 existing->speechFade = 1.0*fadeMultiplier;

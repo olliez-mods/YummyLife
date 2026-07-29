@@ -292,6 +292,7 @@ public:
 	static unsigned char charKey_ShowDeathMessages;
 	static unsigned char charKey_ShowHomeCords;
 	static unsigned char charKey_ShowHostileTiles;
+	static unsigned char charKey_ShowChatLog;
 	static unsigned char charKey_xRay;
 	static unsigned char charKey_Search;
 	static unsigned char charKey_TeachLanguage;
@@ -418,6 +419,18 @@ public:
 	static bool bWriteLogs;
 	static void createNewLogFile();
 	static void writeLineToLogs(string name, string str);
+
+	// draws one left-aligned text line over a dark backing strip and
+	// returns the position one line further down
+	static doublePair drawLeftTextWithBckgr(doublePair pos, const char* text, float r, float g, float b);
+
+	// YummyLife: text scale for the newer overlays (chat log)
+	static float qolTextScale;
+	static float getQolTextScale() {
+		if (qolTextScale < 0.3f) return 0.3f;
+		if (qolTextScale > 2.0f) return 2.0f;
+		return qolTextScale;
+	}
 
 	static void init();
 	static void initHelpText();

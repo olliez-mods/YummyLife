@@ -1,6 +1,7 @@
 #include "yummyLife.h"
 
 #include <stdio.h>
+#include <ctype.h>
 #include <fstream>
 #include <string>
 using std::string;
@@ -114,12 +115,160 @@ void YummyLife::gameStep() {
 }
 
 // Called every frame during living life
+// ---------------------------------------------------------------------------
+// YummyLife::ChatLog — scrollback of recent nearby speech
+// ---------------------------------------------------------------------------
+
+// visible lines in the panel; shared by draw() and scroll()
+static const int chatLogMaxLines = 16;
+// oldest entries are dropped past this so a long, chatty life cannot grow
+// the log without bound
+static const int chatLogMaxEntries = 500;
+
+std::vector<YummyLife::ChatLog::Entry> YummyLife::ChatLog::entries;
+bool YummyLife::ChatLog::bShow = false;
+bool YummyLife::ChatLog::bLogToFile = true;
+int YummyLife::ChatLog::scrollPos = -1;
+
+bool YummyLife::ChatLog::mentionsUs(const char* speech) {
+    LiveObject *us = HetuwMod::ourLiveObject;
+    if (us == NULL || us->name == NULL || speech == NULL) return false;
+
+    char firstName[64];
+    snprintf(firstName, sizeof(firstName), "%s", us->name);
+    char *space = strchr(firstName, ' ');
+    if (space) *space = '\0';
+    size_t nameLen = strlen(firstName);
+    if (nameLen < 2) return false; // 1-letter names give too many false hits
+
+    const char *pos = speech;
+    while ((pos = strstr(pos, firstName)) != NULL) {
+        bool startOk = (pos == speech) || !isalpha((unsigned char)pos[-1]);
+        bool endOk = !isalpha((unsigned char)pos[nameLen]);
+        if (startOk && endOk) return true;
+        pos += 1;
+    }
+    return false;
+}
+
+void YummyLife::ChatLog::add(const char* speakerName, const char* text, bool isSelf) {
+    if (text == NULL || text[0] == '\0') return;
+
+    Entry e;
+    e.kind = (!isSelf && mentionsUs(text)) ? Entry::MENTION : Entry::SPEECH;
+    if (isSelf) {
+        e.name = "YOU";
+    } else if (speakerName != NULL && speakerName[0] != '\0') {
+        // first name only
+        e.name = speakerName;
+        size_t space = e.name.find(' ');
+        if (space != std::string::npos) e.name = e.name.substr(0, space);
+    } else {
+        e.name = "???";
+    }
+    e.text = text;
+    // own speech may still carry trailing map metadata at this point
+    size_t meta = e.text.find(" *map");
+    if (meta != std::string::npos) e.text = e.text.substr(0, meta);
+    if (e.text.empty()) return;
+    if (bLogToFile) {
+        HetuwMod::writeLineToLogs(isSelf ? "say_self" : "say",
+                e.name + hetuwLogSeperator + e.text);
+    }
+    if (e.text.size() > 48) e.text = e.text.substr(0, 46) + "..";
+
+    entries.push_back(e);
+    if ((int)entries.size() > chatLogMaxEntries) {
+        entries.erase(entries.begin());
+        // keep the same lines visible while scrolled back
+        if (scrollPos > 0) scrollPos--;
+    }
+}
+
+void YummyLife::ChatLog::scroll(int dir) {
+    int size = (int)entries.size();
+    if (size <= chatLogMaxLines) return;    // nothing to scroll
+
+    if (dir > 0) {
+        // wheel up = back in time
+        if (scrollPos < 0) scrollPos = size - chatLogMaxLines;
+        scrollPos--;
+        if (scrollPos < 0) scrollPos = 0;
+    } else {
+        // wheel down = forward in time
+        if (scrollPos < 0) return;          // already at the bottom
+        scrollPos++;
+        if (scrollPos + chatLogMaxLines >= size) scrollPos = -1;   // re-stick
+    }
+}
+
+void YummyLife::ChatLog::resetScroll() {
+    scrollPos = -1;
+}
+
+void YummyLife::ChatLog::draw() {
+    if (!bShow) return;
+
+    HetuwFont *customFont = HetuwMod::customFont;
+    double scale = customFont->hetuwGetScaleFactor();
+    customFont->hetuwSetScaleFactor(scale * HetuwMod::guiScale * HetuwMod::getQolTextScale());
+
+    doublePair drawPos = lastScreenViewCenter;
+    drawPos.x -= HetuwMod::viewWidth/2 - 40*HetuwMod::guiScale;
+    drawPos.y += HetuwMod::viewHeight/2 - 300*HetuwMod::guiScale;
+
+    if (entries.empty()) {
+        drawPos = HetuwMod::drawLeftTextWithBckgr(drawPos, "CHAT LOG", 1, 1, 0.4);
+        HetuwMod::drawLeftTextWithBckgr(drawPos, "(NOTHING SAID YET)", 0.7, 0.7, 0.7);
+    } else {
+        int size = (int)entries.size();
+        // clamp defensively: a stale scrollPos must never index out of range
+        int start = scrollPos;
+        if (start < 0 || start > size - chatLogMaxLines) {
+            start = size > chatLogMaxLines ? size - chatLogMaxLines : 0;
+        }
+        if (start < 0) start = 0;
+        int end = start + chatLogMaxLines;
+        if (end > size) end = size;
+
+        char header[64];
+        snprintf(header, sizeof(header), "CHAT LOG [%d-%d of %d]",
+                start + 1, end, size);
+        drawPos = HetuwMod::drawLeftTextWithBckgr(drawPos, header, 1, 1, 0.4);
+
+        char line[128];
+        for (int i=start; i<end; i++) {
+            const Entry &e = entries[i];
+            if (e.kind == Entry::MENTION) {
+                snprintf(line, sizeof(line), "> %s: %s",
+                        e.name.c_str(), e.text.c_str());
+                drawPos = HetuwMod::drawLeftTextWithBckgr(drawPos, line,
+                        1, 0.9, 0.2);
+            } else {
+                snprintf(line, sizeof(line), "  %s: %s",
+                        e.name.c_str(), e.text.c_str());
+                bool self = e.name == "YOU";
+                drawPos = HetuwMod::drawLeftTextWithBckgr(drawPos, line,
+                        1, self ? 0.9 : 1, self ? 0.4 : 1);
+            }
+        }
+    }
+    customFont->hetuwSetScaleFactor(scale);
+}
+
+void YummyLife::ChatLog::newLife() {
+    entries.clear();
+    scrollPos = -1;
+}
+
+
 void YummyLife::livingLifeStep(){
     AFK::step();
     stepActiveRequest();
 }
 
 void YummyLife::livingLifeDraw(){
+    ChatLog::draw();
     if(AFK::isAFK()){
         HetuwFont *customFont = HetuwMod::customFont;
         double scale = customFont->hetuwGetScaleFactor();
