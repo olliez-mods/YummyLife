@@ -157,7 +157,7 @@ void YummyLife::ChatLog::refreshDistancesForCurrentPosition() {
     LiveObject *us = HetuwMod::ourLiveObject;
     if (us == NULL) return;
 
-    doublePair currentPos = { us->xd, us->yd };
+    doublePair currentPos = { (double)us->xd, (double)us->yd };
     if (lastDistanceCalcPos.x == currentPos.x &&
         lastDistanceCalcPos.y == currentPos.y) {
         return;
