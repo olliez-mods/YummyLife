@@ -199,6 +199,50 @@ if(WIN32)
     target_compile_options(YummyLife_windows PRIVATE ${CLIENT_COMPILE_OPTIONS})
     target_link_libraries(YummyLife_windows opengl32 glu32 mingw32 SDLmain SDL wsock32 winmm ssl crypto ws2_32 crypt32)
     target_link_options(YummyLife_windows PRIVATE -mwindows -static-libstdc++ -static-libgcc)
+elseif(APPLE)
+    # enable_language(OBJC) needs CMake 3.16; only the mac build requires it
+    if(CMAKE_VERSION VERSION_LESS 3.16)
+        message(FATAL_ERROR "The macOS build requires CMake >= 3.16 (for Objective-C support)")
+    endif()
+
+    # __mac__ activates the existing Mac code paths in minorGems (working
+    # directory handling, <OpenGL/gl.h> headers, <SDL.h> includes).
+    # LINUX must stay undefined here or #ifdef LINUX / #elif __mac__
+    # chains take the wrong branch.
+    add_definitions(-D__mac__ -DBSD -DGL_SILENCE_DEPRECATION -DCPPHTTPLIB_OPENSSL_SUPPORT)
+
+    enable_language(OBJC)
+    add_executable(YummyLife_mac ${CLIENT_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES}
+        minorGems/game/platforms/SDL/mac/MenuBarHelper.m)
+    target_compile_options(YummyLife_mac PRIVATE ${CLIENT_COMPILE_OPTIONS})
+
+    # SDL 1.2 API provided by sdl12-compat (brew install sdl12-compat).
+    # FindSDL resolves it from the Homebrew prefix and adds SDLmain plus
+    # -framework Cocoa itself. Under __mac__ the code includes <SDL.h>
+    # directly, so SDL_INCLUDE_DIR (the .../include/SDL dir) is what the
+    # compile line needs.
+    find_package(SDL REQUIRED)
+    target_include_directories(YummyLife_mac PRIVATE ${SDL_INCLUDE_DIR})
+    target_link_libraries(YummyLife_mac ${SDL_LIBRARY})
+
+    # openssl@3 is keg-only in Homebrew, so it is not in the default
+    # search prefixes; ask brew where it lives (works for both the
+    # /opt/homebrew and /usr/local prefixes). An explicit
+    # -DOPENSSL_ROOT_DIR on the command line still wins.
+    if(NOT DEFINED OPENSSL_ROOT_DIR)
+        execute_process(COMMAND brew --prefix openssl@3
+            OUTPUT_VARIABLE BREW_OPENSSL_PREFIX
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE BREW_OPENSSL_RC
+            ERROR_QUIET)
+        if(BREW_OPENSSL_RC EQUAL 0)
+            set(OPENSSL_ROOT_DIR "${BREW_OPENSSL_PREFIX}")
+        endif()
+    endif()
+    find_package(OpenSSL REQUIRED)
+    target_link_libraries(YummyLife_mac OpenSSL::SSL OpenSSL::Crypto)
+
+    target_link_libraries(YummyLife_mac "-framework OpenGL")
 else()
     add_definitions(-DLINUX -DCPPHTTPLIB_OPENSSL_SUPPORT)
 

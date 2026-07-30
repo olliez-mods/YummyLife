@@ -1726,6 +1726,16 @@ int mainFunction( int inNumArgs, char **inArgs ) {
     #endif
         
 
+    #ifdef __mac__
+        // sdl12-compat's OpenGL-scaling FBO can become permanently
+        // incomplete after macOS window-server events (occlusion,
+        // display changes), leaving GL_INVALID_FRAMEBUFFER_OPERATION
+        // on every draw (frozen/black screen).  Render unscaled
+        // instead.  setenv with no overwrite so users can still force
+        // scaling back on from the environment.
+        setenv( "SDL12COMPAT_OPENGL_SCALING", "0", 0 );
+    #endif
+
     // check result below, after opening log, so we can log failure
     Uint32 flags = SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE;
     if( getUsesSound() ) {

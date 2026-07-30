@@ -5,6 +5,7 @@
 #include <vector>
 #include <fstream>
 #include <string>
+#include <sstream>
 #include <unordered_set>
 
 #include "LivingLifePage.h"
