@@ -307,6 +307,10 @@ const char *getWindowTitle() {
         strcat(title, " (TEST BUILD)");
         #endif
 
+        #ifdef PREVIEW_BUILD
+        strcat(title, " (PREVIEW BUILD)");
+        #endif
+
 		windowTitle = strdup(title);
 	}
     return windowTitle;

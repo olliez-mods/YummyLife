@@ -4,12 +4,17 @@ set -e
 rm -rf relbuild
 mkdir -p relbuild/{windows,linux}
 
+preview_flag=""
+if [ "${PREVIEW_BUILD:-false}" = "true" ]; then
+  preview_flag="-DPREVIEW_BUILD=ON"
+fi
+
 echo ----- Windows -----
-cmake -DCMAKE_TOOLCHAIN_FILE=mingw-cross-toolchain.cmake -B relbuild/windows -S .
+cmake -DCMAKE_TOOLCHAIN_FILE=mingw-cross-toolchain.cmake -B relbuild/windows -S . ${preview_flag}
 cmake --build relbuild/windows -j
 
 echo ----- Linux -----
-cmake -B relbuild/linux -S .
+cmake -B relbuild/linux -S . ${preview_flag}
 cmake --build relbuild/linux -j
 
 mv relbuild/linux/YummyLife_linux relbuild/
