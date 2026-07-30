@@ -128,6 +128,7 @@ static const int chatLogMaxEntries = 500;
 std::vector<YummyLife::ChatLog::Entry> YummyLife::ChatLog::entries;
 int YummyLife::ChatLog::filterLevel = 0; // 0 = all messages
 int YummyLife::ChatLog::scrollPos = -1;
+int YummyLife::ChatLog::indexChatHovered = -1;
 doublePair YummyLife::ChatLog::lastDistanceCalcPos = {0, 0};
 
 // Checks if the given speech mentions our character's first name as a whole word
@@ -168,6 +169,11 @@ void YummyLife::ChatLog::refreshDistancesForCurrentPosition() {
     }
 
     lastDistanceCalcPos = currentPos;
+}
+
+YummyLife::ChatLog::Entry* YummyLife::ChatLog::getHoveredEntry() {
+    if (indexChatHovered < 0 || indexChatHovered >= (int)entries.size()) return nullptr;
+    return &entries[indexChatHovered];
 }
 
 void YummyLife::ChatLog::add(const char* speakerName, const char* text, bool isSelf,  time_t timestamp, const doublePair& pos) {
@@ -239,6 +245,7 @@ void YummyLife::ChatLog::resetScroll() {
 }
 
 void YummyLife::ChatLog::draw() {
+    indexChatHovered = -1; // Always reset, even if the chat log is not drawn, prevent out-of-bounds hover index
     if (!HetuwMod::bShowChatLog) return;
 
     refreshDistancesForCurrentPosition();
@@ -280,6 +287,11 @@ void YummyLife::ChatLog::draw() {
 
         char line[128];
         int visibleCount = 0;
+
+        int mouseX = 0;
+        int mouseY = 0;
+        HetuwMod::getMouseXY(mouseX, mouseY);
+
         for (int i = start; i < size && visibleCount < chatLogMaxLines; i++) {
             const Entry &e = entries[i];
 
@@ -324,6 +336,20 @@ void YummyLife::ChatLog::draw() {
                 if (!isMatch) continue;
             }
 
+            doublePair linePos = drawPos;
+            float lineHeight = customFont->getFontHeight() * 1.1f;
+            float lineGap = lineHeight * 0.06f; // Add gap between lines
+
+            float lineWidth = 450.0f * HetuwMod::guiScale; // Hardcoded line width for chat log - I don't want to deal with dynamic width
+
+            bool thisLineHovered = false;
+
+            if (mouseY < linePos.y + lineHeight/2 - lineGap && mouseY > linePos.y - lineHeight/2 + lineGap &&
+                mouseX >= linePos.x && mouseX <= linePos.x + lineWidth) {
+                thisLineHovered = true;
+                indexChatHovered = i;
+            }
+
             char distanceStr[32];
             time_t secondsAgo = HetuwMod::curStepSecondsSince1970 - e.timestamp;
             if (secondsAgo >= 0) {
@@ -331,18 +357,31 @@ void YummyLife::ChatLog::draw() {
                 else snprintf(distanceStr, sizeof(distanceStr), "(%ldm) ", secondsAgo / 60);
             } else snprintf(distanceStr, sizeof(distanceStr), "(?t) ");
 
-            if (e.kind == Entry::MENTION) {
+            float r, g, b; r = g = b = 1.0f; // default color (white)
+
+            if(e.kind == Entry::MENTION) {
+                r = 1.0f;
+                g = 0.9f;
+                b = 0.2f;
                 snprintf(line, sizeof(line), "> %s %s: %s",
                         distanceStr, e.name.c_str(), e.text.c_str());
-                drawPos = HetuwMod::drawLeftTextWithBckgr(drawPos, line,
-                        1, 0.9, 0.2);
             } else {
+                if(e.name == "YOU") {
+                    r = 0.4f;
+                    g = 0.9f;
+                    b = 1.0f;
+                }
                 snprintf(line, sizeof(line), "  %s %s: %s",
                         distanceStr, e.name.c_str(), e.text.c_str());
-                bool self = e.name == "YOU";
-                drawPos = HetuwMod::drawLeftTextWithBckgr(drawPos, line,
-                        1, self ? 0.9 : 1, self ? 0.4 : 1);
             }
+
+            if(thisLineHovered) {
+                r = 0.9f * r;
+                g = 0.5f * g;
+                b = 0.5f * b;
+            }
+
+            drawPos = HetuwMod::drawLeftTextWithBckgr(drawPos, line, r, g, b);
 
             visibleCount++;
         }

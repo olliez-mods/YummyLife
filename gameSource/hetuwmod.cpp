@@ -2280,6 +2280,7 @@ void HetuwMod::livingLifeDraw() {
 	if (bDrawDeathMessages) drawDeathMessages();
 	if (bDrawHomeCords) drawHomeCords();
 	if (bDrawHostileTiles) drawHostileTiles();
+	if (true) drawHighlightedChatEntries(); // YummyLife: ChatLog: the function handles early exits itself
 	if (searchWordList.size() > 0) drawSearchTiles();
 	if (bDrawSelectedPlayerInfo && iDrawNames > 0 && !bHidePlayers) drawHighlightedPlayer();
 	if (iDrawNames > 0 && bRenderGraveLeaderboards) livingLifePage->hetuwDrawGraveProfiles();
@@ -2520,6 +2521,15 @@ void HetuwMod::drawHostileTiles() {
 			}
 		}
 	}
+}
+
+// YummyLife: ChatLog: Draw location of highlighted chat entries on the map
+void HetuwMod::drawHighlightedChatEntries() {
+	YummyLife::ChatLog::Entry* hoveredEntry = YummyLife::ChatLog::getHoveredEntry();
+	if (!hoveredEntry) return;
+	doublePair entryPos = hoveredEntry->pos; // Position of the hovered chat entry
+	setDrawColor( 1, 1, 0, 0.65 ); // Yellow color for highlighted chat entry
+	drawTileRect( (int)entryPos.x, (int)entryPos.y );
 }
 
 bool HetuwMod::charArrContainsCharArr(const char* arr1, const char* arr2) {

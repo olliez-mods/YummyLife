@@ -710,6 +710,8 @@ private:
 	static bool bDrawHostileTiles;
 	static void drawHostileTiles();
 
+	static void drawHighlightedChatEntries();
+
 	static bool bDrawMap;
 	static void drawMap();
 

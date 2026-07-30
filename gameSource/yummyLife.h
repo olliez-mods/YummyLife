@@ -142,15 +142,18 @@ class YummyLife {
         // Chat scrollback: history of recent nearby speech, toggled with a
         // key. Lines that mention our first name are highlighted.
         class ChatLog {
-            struct Entry {
-                enum Kind { SPEECH, MENTION };
-                Kind kind;
-                std::string name;
-                std::string text;
-                doublePair pos; // Position associated with this entry
-                float distanceToUs; // Distance from our character to this entry
-                time_t timestamp; // When this entry was added
-            };
+            public:
+                struct Entry {
+                    enum Kind { SPEECH, MENTION };
+                    Kind kind;
+                    std::string name;
+                    std::string text;
+                    doublePair pos; // Position associated with this entry
+                    float distanceToUs; // Distance from our character to this entry
+                    time_t timestamp; // When this entry was added
+                };
+            private:
+
             static std::vector<Entry> entries;
             static int scrollPos;   // -1 = stuck to bottom; >= 0 = index of top visible line
             static doublePair lastDistanceCalcPos;
@@ -160,8 +163,10 @@ class YummyLife {
 
             public:
                 static int filterLevel; // inf, 5, 10, 15
+                static int indexChatHovered; // index of the currently hovered chat entry, -1 if none
 
                 static void add(const char* speakerName, const char* text, bool isSelf,  time_t timestamp, const doublePair& pos);
+                static Entry* getHoveredEntry();
                 // wheel scrolling while the panel is open; dir +1 = up (back
                 // in time), -1 = down
                 static void scroll(int dir);
