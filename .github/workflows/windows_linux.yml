@@ -17,21 +17,6 @@ on:
         required: false
         default: false
         type: boolean
-      release_linux:
-        description: Upload Linux asset
-        required: false
-        default: true
-        type: boolean
-      release_windows:
-        description: Upload Windows asset
-        required: false
-        default: true
-        type: boolean
-      release_macos:
-        description: Upload macOS asset
-        required: false
-        default: true
-        type: boolean
       dev_patch_url:
         description: URL to a patch file for development builds
         required: false
@@ -108,7 +93,7 @@ jobs:
 
   release:
     needs: [build-linux, build-macos]
-    if: ${{ always() && (needs.build-linux.result == 'success' || needs.build-macos.result == 'success') && (inputs.release_linux || inputs.release_windows || inputs.release_macos) }}
+    if: ${{ always() && needs.build-linux.result == 'success' && needs.build-macos.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
@@ -128,7 +113,6 @@ jobs:
             ${{ inputs.preview_build && '' || 'Having issues: https://github.com/olliez-mods/YummyLife/#troubleshooting' }}
           prerelease: ${{ inputs.prerelease }}
       - name: Upload Linux
-        if: ${{ inputs.release_linux }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -138,7 +122,6 @@ jobs:
           asset_name: YummyLife_linux
           asset_content_type: application/octet-stream
       - name: Upload Windows
-        if: ${{ inputs.release_windows }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -148,7 +131,6 @@ jobs:
           asset_name: YummyLife_windows.exe
           asset_content_type: application/octet-stream
       - name: Upload macOS
-        if: ${{ inputs.release_macos }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
