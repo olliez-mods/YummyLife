@@ -1,4 +1,6 @@
-on: 
+name: Release Build
+
+on:
   workflow_dispatch:
     inputs:
       release_name:
@@ -15,21 +17,33 @@ on:
         required: false
         default: false
         type: boolean
+      release_linux:
+        description: Upload Linux asset
+        required: false
+        default: true
+        type: boolean
+      release_windows:
+        description: Upload Windows asset
+        required: false
+        default: true
+        type: boolean
+      release_macos:
+        description: Upload macOS asset
+        required: false
+        default: true
+        type: boolean
       dev_patch_url:
         description: URL to a patch file for development builds
         required: false
         type: string
+
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-      fail-fast: true
-    runs-on: ${{ matrix.os }}
+  build-linux:
+    runs-on: ubuntu-latest
     env:
-      PREVIEW_BUILD: ${{ github.event.inputs.preview_build }}
+      PREVIEW_BUILD: ${{ inputs.preview_build }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Packages
         run: |
           sudo apt-get update
@@ -52,13 +66,55 @@ jobs:
           mkdir -p ./nlohmann
           wget -O ./nlohmann/json.hpp https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp
       - name: Apply Dev Patch (if exist)
-        if: ${{ github.event.inputs.dev_patch_url != '' }}
+        if: ${{ inputs.dev_patch_url != '' }}
         run: |
-          wget -O dev_patch.patch "${{ github.event.inputs.dev_patch_url }}"
+          wget -O dev_patch.patch "${{ inputs.dev_patch_url }}"
           git apply --ignore-whitespace dev_patch.patch
       - name: Build Scripts
         run: |
           ./build-release.sh
+      - name: Upload Linux and Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-windows
+          path: |
+            ./relbuild/YummyLife_linux
+            ./relbuild/YummyLife_windows.exe
+          if-no-files-found: error
+
+  build-macos:
+    runs-on: macos-latest
+    env:
+      PREVIEW_BUILD: ${{ inputs.preview_build }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Packages
+        run: brew install cmake sdl12-compat openssl@3
+      - name: Vendored library headers
+        run: |
+          mkdir -p CPP-HTTPLib nlohmann
+          curl -L -o CPP-HTTPLib/httplib.h https://raw.githubusercontent.com/yhirose/cpp-httplib/v0.14.3/httplib.h
+          curl -L -o nlohmann/json.hpp https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp
+      - name: Build macOS
+        run: |
+          cmake -B relbuild/macos -S . -DCMAKE_BUILD_TYPE=Release
+          cmake --build relbuild/macos -j 3
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: ./relbuild/macos/YummyLife_mac
+          if-no-files-found: error
+
+  release:
+    needs: [build-linux, build-macos]
+    if: ${{ always() && (needs.build-linux.result == 'success' || needs.build-macos.result == 'success') && (inputs.release_linux || inputs.release_windows || inputs.release_macos) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -68,24 +124,36 @@ jobs:
           tag_name: ${{ inputs.release_name }}
           release_name: ${{ inputs.release_name }}
           body: |
-            ${{ github.event.inputs.preview_build == 'true' && 'WARNING PREVIEW BUILD - MAY BE UNSTABLE' || 'How to install: https://github.com/olliez-mods/YummyLife/#installing-and-updating
-            Having issues: https://github.com/olliez-mods/YummyLife/#troubleshooting' }}
+            ${{ inputs.preview_build && 'WARNING PREVIEW BUILD - MAY BE UNSTABLE' || 'How to install: https://github.com/olliez-mods/YummyLife/#installing-and-updating' }}
+            ${{ inputs.preview_build && '' || 'Having issues: https://github.com/olliez-mods/YummyLife/#troubleshooting' }}
           prerelease: ${{ inputs.prerelease }}
-      - name: Upload Linux #LINUX
+      - name: Upload Linux
+        if: ${{ inputs.release_linux }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: ./relbuild/YummyLife_linux
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/release-linux-windows/YummyLife_linux
           asset_name: YummyLife_linux
-          asset_content_type: application/zip
-      - name: Upload Windows #WINDOWS
+          asset_content_type: application/octet-stream
+      - name: Upload Windows
+        if: ${{ inputs.release_windows }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: ./relbuild/YummyLife_windows.exe
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/release-linux-windows/YummyLife_windows.exe
           asset_name: YummyLife_windows.exe
-          asset_content_type: application/zip
+          asset_content_type: application/octet-stream
+      - name: Upload macOS
+        if: ${{ inputs.release_macos }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/release-macos/YummyLife_mac
+          asset_name: YummyLife_mac
+          asset_content_type: application/octet-stream
