@@ -21283,7 +21283,7 @@ void LivingLifePage::step() {
                             if( firstSpace != NULL ) {
 
                                 // YummyLife: chat scrollback
-                                doublePair player_pos = { existing->xd, existing->yd };
+                                doublePair player_pos = { (double)existing->xd, (double)existing->yd };
                                 time_t timestamp = time(NULL);
                                 YummyLife::ChatLog::add(
                                     existing->name,

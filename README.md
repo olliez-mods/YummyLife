@@ -60,7 +60,7 @@ Open a bug report using the Issues tab above.
 
 # Compiling
 
-Compiling on Linux is recommended for release builds, but a native build on Windows is possible for development use.
+Compiling on Linux is recommended for release builds, but a native build on Windows or macOS is possible for development use.
 
 ## Linux
 
@@ -160,6 +160,60 @@ YummyLife_windows.exe will be in that `build/` directory.
 You will need to copy the libwinpthread-1.dll from MSYS (typically at `C:\msys64\mingw32\bin\libwinpthread-1.dll`) to
 your OHOL directory to be able to use a .exe built in this way. Because of this additional dependency introduced by
 MSYS, distributing this .exe is not recommended.
+
+## macOS
+
+The mac build is source-only: it produces a bare `YummyLife_mac` binary linked against
+Homebrew libraries, not a distributable .app bundle.
+
+### Dependencies
+
+Install [Homebrew](https://brew.sh/), then:
+
+```
+brew install cmake sdl12-compat openssl@3
+```
+
+(SDL 1.2 itself is unmaintained and no longer builds on modern macOS;
+[sdl12-compat](https://github.com/libsdl-org/sdl12-compat) provides the same API on top of
+SDL2 and is what Homebrew ships.)
+
+Fetch the two vendored library headers into the repo root (the setup script in
+`yummyLifeBuildScripts/` uses wget, which stock macOS lacks):
+
+```
+mkdir -p CPP-HTTPLib nlohmann
+curl -L -o CPP-HTTPLib/httplib.h https://raw.githubusercontent.com/yhirose/cpp-httplib/v0.14.3/httplib.h
+curl -L -o nlohmann/json.hpp https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp
+```
+
+### Building for macOS
+
+```
+mkdir build
+cd build
+cmake .. && make -j8
+```
+
+`YummyLife_mac` will be in that `build/` directory.
+
+### Running
+
+Copy `YummyLife_mac` next to the game data folders (the mac OHOL distribution is a folder
+containing `animations/`, `objects/`, `sprites/`, etc. alongside the `OneLife_v###.app`)
+and launch it from Terminal:
+
+```
+cd /path/to/your/OneLife/folder
+./YummyLife_mac
+```
+
+The binary is not double-clickable: it expects the game data in the current working
+directory. If you don't own the Steam/mac version, the same data folders can be obtained
+from [OneLifeData7](https://github.com/jasonrohrer/OneLifeData7) (checkout the latest
+`OneLife_v*` tag), plus the `graphics/`, `otherSounds/`, `languages/`, `settings/`,
+`language.txt`, `us_english_60.txt`, `wordList.txt` and the two `*.aiff` files from this
+repo's `gameSource/`.
 
 # Merging upstream changes
 
