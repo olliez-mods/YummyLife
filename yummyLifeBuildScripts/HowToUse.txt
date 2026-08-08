@@ -6,6 +6,8 @@ Note: You do need to have docker already installed on your system for this to ru
 Note2: You only need to run the setup script once to download SDL
 Note3: Scripts in this folder expect to be run from a subdirectory of YummyLife
        (in this case 'yummyLifeBuildScripts/<you-are-here>')
+Note4: Docker builds Linux and Windows. macOS cannot be cross-compiled, see the
+       macOS section further down.
 
 How to use:
 1. Run setup script (This may take some minutes): "docker-compose run --rm setup"
@@ -16,6 +18,24 @@ Building for a specific OS:
 If you only want to build for Windows or Linux you can specify:
 - "docker-compose run --rm build_linux"
 - "docker-compose run --rm build_windows"
+
+Building for macOS:
+macOS builds can only be made on an actual Mac, no container or WSL can do it,
+so there is no docker-compose pattern for it. On a Mac, skip docker entirely:
+1. Install Homebrew if you don't have it: https://brew.sh
+2. Run the setup script natively from this folder:  "./setup-libs.sh"
+   (this installs cmake, sdl12-compat and openssl@3 through brew and downloads
+    the header-only libraries, it skips the Windows-only prebuilts)
+3. Run the build script from the YummyLife folder:  "cd .. && ./build-dev.sh"
+4. Done: The built app will be at '../devbuild/YummyLife_dev_mac.app'
+
+Unlike Windows and Linux, the mac build is an .app bundle rather than a single
+exacuteable. It carries its own copy of SDL and OpenSSL inside it, so it runs on
+a Mac that has no Homebrew installed. Drop it into the OHOL/AHAP game folder and
+double-click it, it works out its own working directory from where it sits.
+Use '../build-release.sh' instead for a release build, that one also zips the app
+into 'relbuild/YummyLife_mac.zip' (a .app is a folder, so it has to be zipped to
+be uploaded as a release asset).
 
 What are these commands I'm running?:
 'docker-compose run' Let's us specify a build pattern to use (defined in 'docker-compose.yml').

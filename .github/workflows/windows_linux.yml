@@ -80,15 +80,19 @@ jobs:
           mkdir -p CPP-HTTPLib nlohmann
           curl -L -o CPP-HTTPLib/httplib.h https://raw.githubusercontent.com/yhirose/cpp-httplib/v0.14.3/httplib.h
           curl -L -o nlohmann/json.hpp https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp
-      - name: Build macOS
+      - name: Apply Dev Patch (if exist)
+        if: ${{ inputs.dev_patch_url != '' }}
         run: |
-          cmake -B relbuild/macos -S . -DCMAKE_BUILD_TYPE=Release
-          cmake --build relbuild/macos -j 3
+          curl -L -o dev_patch.patch "${{ inputs.dev_patch_url }}"
+          git apply --ignore-whitespace dev_patch.patch
+      - name: Build Scripts
+        run: |
+          ./build-release.sh macos
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-macos
-          path: ./relbuild/macos/YummyLife_mac
+          path: ./relbuild/YummyLife_mac.zip
           if-no-files-found: error
 
   release:
@@ -136,6 +140,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts/release-macos/YummyLife_mac
-          asset_name: YummyLife_mac
-          asset_content_type: application/octet-stream
+          asset_path: ./artifacts/release-macos/YummyLife_mac.zip
+          asset_name: YummyLife_mac.zip
+          asset_content_type: application/zip
