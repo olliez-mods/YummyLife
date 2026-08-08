@@ -1766,11 +1766,38 @@ int mainFunction( int inNumArgs, char **inArgs ) {
         if( appNamePointer != NULL ) {
             // terminate full app path to get parent directory
             appNamePointer[0] = '\0';
-            
+
             chdir( appDirectoryPath );
             }
-                
-        
+        else {
+            // YummyLife ships as YummyLife.app, not OneLife_<version>.app,
+            // so the name above never matches.  Fall back to cutting the path
+            // at whatever .app we are running out of, which leaves the folder
+            // the bundle was dropped into (the OHOL/AHAP game folder).
+            char *bundlePointer = NULL;
+            char *searchPointer = strstr( appDirectoryPath, ".app/" );
+
+            // take the last .app/ in the path, in case the game folder itself
+            // happens to sit inside some other bundle
+            while( searchPointer != NULL ) {
+                bundlePointer = searchPointer;
+                searchPointer = strstr( &( searchPointer[1] ), ".app/" );
+                }
+
+            if( bundlePointer != NULL ) {
+                // walk back to the start of the bundle's own name
+                while( bundlePointer > appDirectoryPath &&
+                       bundlePointer[-1] != '/' ) {
+                    bundlePointer --;
+                    }
+
+                bundlePointer[0] = '\0';
+
+                chdir( appDirectoryPath );
+                }
+            }
+
+
         if( ! isSettingsFolderFound() ) {
             // first, try setting dir based on preferences file
             char *prefFilePath = getPrefFilePath();

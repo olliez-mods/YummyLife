@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.olliez-mods.YummyLife</string>
+    <key>CFBundleName</key>
+    <string>YummyLife</string>
+    <key>CFBundleExecutable</key>
+    <string>YummyLife</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleIconFile</key>
+    <string>mac_icon</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${MACOSX_BUNDLE_SHORT_VERSION_STRING}</string>
+    <key>CFBundleVersion</key>
+    <string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
+    <!-- The game reads held keys directly, the press-and-hold accent popup
+         swallows them and breaks movement. -->
+    <key>ApplePressAndHoldEnabled</key>
+    <false/>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>

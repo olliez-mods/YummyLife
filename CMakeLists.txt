@@ -15,6 +15,14 @@ if (PREVIEW_BUILD)
     add_compile_definitions(PREVIEW_BUILD=1)
 endif()
 
+# Read the version out of game.cpp so the mac bundle reports the same version
+# the window title does, rather than keeping a second copy of it in here.
+file(READ "${CMAKE_SOURCE_DIR}/gameSource/game.cpp" GAME_CPP_HEAD LIMIT 512)
+string(REGEX MATCH "versionNumber *= *([0-9]+)" _ "${GAME_CPP_HEAD}")
+set(YUMMYLIFE_VERSION "${CMAKE_MATCH_1}")
+string(REGEX MATCH "yumSubVersion *= *\"([^\"]*)\"" _ "${GAME_CPP_HEAD}")
+set(YUMMYLIFE_VERSION "${YUMMYLIFE_VERSION}${CMAKE_MATCH_1}")
+
 set(MINORGEMS_COMMON_SOURCE_FILES
     minorGems/graphics/openGL/ScreenGL_SDL.cpp
     minorGems/graphics/openGL/SingleTextureGL.cpp
@@ -212,9 +220,24 @@ elseif(APPLE)
     add_definitions(-D__mac__ -DBSD -DGL_SILENCE_DEPRECATION -DCPPHTTPLIB_OPENSSL_SUPPORT)
 
     enable_language(OBJC)
-    add_executable(YummyLife_mac ${CLIENT_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES}
+
+    # MACOSX_BUNDLE makes this YummyLife.app rather than a bare binary, so it
+    # can carry its own copy of SDL and an icon. The bundle is dropped into the
+    # OHOL/AHAP folder next to the vanilla OneLife_<version>.app and chdirs to
+    # the folder it sits in on startup (see the __mac__ block in gameSDL.cpp).
+    add_executable(YummyLife_mac MACOSX_BUNDLE
+        ${CLIENT_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES}
         minorGems/game/platforms/SDL/mac/MenuBarHelper.m)
     target_compile_options(YummyLife_mac PRIVATE ${CLIENT_COMPILE_OPTIONS})
+
+    # The target keeps the _mac suffix to stay consistent with the Linux and
+    # Windows targets, but the bundle players see is plain YummyLife.app.
+    set_target_properties(YummyLife_mac PROPERTIES
+        OUTPUT_NAME "YummyLife"
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/Info.plist.in"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${YUMMYLIFE_VERSION}"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${YUMMYLIFE_VERSION}"
+    )
 
     # SDL 1.2 API provided by sdl12-compat (brew install sdl12-compat).
     # FindSDL resolves it from the Homebrew prefix and adds SDLmain plus
@@ -243,6 +266,49 @@ elseif(APPLE)
     target_link_libraries(YummyLife_mac OpenSSL::SSL OpenSSL::Crypto)
 
     target_link_libraries(YummyLife_mac "-framework OpenGL")
+
+    # Build the .icns the bundle's CFBundleIconFile points at. macOS wants
+    # every size in one file, sips resizes and iconutil packs them.
+    set(MAC_ICON_PNG "${CMAKE_SOURCE_DIR}/mac_icon.png")
+    set(MAC_ICON_ICNS "${CMAKE_BINARY_DIR}/mac_icon.icns")
+    set(MAC_ICONSET_DIR "${CMAKE_BINARY_DIR}/mac_icon.iconset")
+    add_custom_command(OUTPUT ${MAC_ICON_ICNS}
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${MAC_ICONSET_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${MAC_ICONSET_DIR}"
+        COMMAND sips -z 16 16     "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_16x16.png"
+        COMMAND sips -z 32 32     "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_16x16@2x.png"
+        COMMAND sips -z 32 32     "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_32x32.png"
+        COMMAND sips -z 64 64     "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_32x32@2x.png"
+        COMMAND sips -z 128 128   "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_128x128.png"
+        COMMAND sips -z 256 256   "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_128x128@2x.png"
+        COMMAND sips -z 256 256   "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_256x256.png"
+        COMMAND sips -z 512 512   "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_256x256@2x.png"
+        COMMAND sips -z 512 512   "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_512x512.png"
+        COMMAND sips -z 1024 1024 "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_512x512@2x.png"
+        COMMAND iconutil -c icns "${MAC_ICONSET_DIR}" -o "${MAC_ICON_ICNS}"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${MAC_ICONSET_DIR}"
+        DEPENDS "${MAC_ICON_PNG}"
+        COMMENT "Generating mac_icon.icns"
+        VERBATIM
+    )
+    add_custom_target(mac_icon DEPENDS ${MAC_ICON_ICNS})
+    add_dependencies(YummyLife_mac mac_icon)
+
+    add_custom_command(TARGET YummyLife_mac POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_DIR:YummyLife_mac>/Contents/Resources"
+        COMMAND ${CMAKE_COMMAND} -E copy "${MAC_ICON_ICNS}" "$<TARGET_BUNDLE_DIR:YummyLife_mac>/Contents/Resources/"
+        COMMENT "Copying mac_icon.icns into the bundle"
+        VERBATIM
+    )
+
+    # Copy the Homebrew libraries the app needs into the bundle and re-sign it,
+    # so it runs on a machine with no Homebrew installed. Runs last, everything
+    # else that writes into the bundle has to happen before the signing.
+    add_custom_command(TARGET YummyLife_mac POST_BUILD
+        COMMAND "${CMAKE_SOURCE_DIR}/mac-bundle.sh" "$<TARGET_BUNDLE_DIR:YummyLife_mac>" "YummyLife"
+        COMMENT "Bundling libraries into YummyLife.app"
+        VERBATIM
+    )
 else()
     add_definitions(-DLINUX -DCPPHTTPLIB_OPENSSL_SUPPORT)
 

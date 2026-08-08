@@ -11,15 +11,18 @@ YummyLife (by OliverZ) was originally forked from YumLife (By Selb) to reintrodu
 
 1. Make sure the game is fully updated in Steam.
 2. Run the game from Steam once to ensure the Steam login details are properly set up.
-3. Download the latest version of the mod from [the Releases page](https://github.com/olliez-mods/YummyLife/releases). For Windows, this is YummyLife_windows.exe.
+3. Download the latest version of the mod from [the Releases page](https://github.com/olliez-mods/YummyLife/releases). For Windows this is YummyLife_windows.exe, for Linux YummyLife_linux, and for macOS YummyLife_mac.zip (unzip it to get YummyLife.app).
 4. Install the mod into the OHOL/AHAP installation folder (Steam users: right click game > Manage > Browse local files)
 5. Run the mod from the OHOL/AHAP installation folder.
 
 ## Direct download users:
 
-1. Download the latest version of the mod from [the Releases page](https://github.com/olliez-mods/YummyLife/releases). For Windows, this is YummyLife_windows.exe.
+1. Download the latest version of the mod from [the Releases page](https://github.com/olliez-mods/YummyLife/releases). For Windows this is YummyLife_windows.exe, for Linux YummyLife_linux, and for macOS YummyLife_mac.zip (unzip it to get YummyLife.app).
 2. Install the mod into the OHOL/AHAP installation folder (same folder as the vanilla `OneLife.exe`).
 3. Run the mod from the OHOL/AHAP installation folder.
+
+macOS note: the app is not notarized, so the first launch needs a right-click > Open
+instead of a double-click (or `xattr -dr com.apple.quarantine YummyLife.app`).
 
 # Usage
 
@@ -163,8 +166,10 @@ MSYS, distributing this .exe is not recommended.
 
 ## macOS
 
-The mac build is source-only: it produces a bare `YummyLife_mac` binary linked against
-Homebrew libraries, not a distributable .app bundle.
+The mac build produces `YummyLife.app`, a self-contained bundle: SDL and OpenSSL are
+copied into `Contents/Frameworks` and the icon is generated from `mac_icon.png`, so it
+runs on machines without Homebrew. `build-release.sh` zips it into `YummyLife_mac.zip`,
+which is what the Releases page carries.
 
 ### Dependencies
 
@@ -178,38 +183,40 @@ brew install cmake sdl12-compat openssl@3
 [sdl12-compat](https://github.com/libsdl-org/sdl12-compat) provides the same API on top of
 SDL2 and is what Homebrew ships.)
 
-Fetch the two vendored library headers into the repo root (the setup script in
-`yummyLifeBuildScripts/` uses wget, which stock macOS lacks):
+Then fetch the vendored library headers. The setup script handles this (on macOS it
+installs the Homebrew packages above and skips the Windows-only prebuilts):
 
 ```
-mkdir -p CPP-HTTPLib nlohmann
-curl -L -o CPP-HTTPLib/httplib.h https://raw.githubusercontent.com/yhirose/cpp-httplib/v0.14.3/httplib.h
-curl -L -o nlohmann/json.hpp https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp
+cd yummyLifeBuildScripts
+./setup-libs.sh
 ```
 
 ### Building for macOS
 
 ```
-mkdir build
-cd build
-cmake .. && make -j8
+./build-dev.sh          # devbuild/YummyLife_dev_mac.app, a test build
+./build-release.sh      # relbuild/YummyLife.app + relbuild/YummyLife_mac.zip
 ```
 
-`YummyLife_mac` will be in that `build/` directory.
+Both scripts default to the mac target when run on a Mac. To sign with a real Developer
+ID instead of the default ad-hoc signature, set `YUMMYLIFE_CODESIGN` to the identity name
+before building.
 
 ### Running
 
-Copy `YummyLife_mac` next to the game data folders (the mac OHOL distribution is a folder
+Copy `YummyLife.app` next to the game data folders (the mac OHOL distribution is a folder
 containing `animations/`, `objects/`, `sprites/`, etc. alongside the `OneLife_v###.app`)
-and launch it from Terminal:
+and double-click it. The app sets its working directory to the folder it sits in, so it
+finds the game data by itself.
+
+Because the release is not notarized, macOS will refuse to open it the first time. Either
+right-click the app and pick Open, or clear the quarantine flag:
 
 ```
-cd /path/to/your/OneLife/folder
-./YummyLife_mac
+xattr -dr com.apple.quarantine YummyLife.app
 ```
 
-The binary is not double-clickable: it expects the game data in the current working
-directory. If you don't own the Steam/mac version, the same data folders can be obtained
+If you don't own the Steam/mac version, the same data folders can be obtained
 from [OneLifeData7](https://github.com/jasonrohrer/OneLifeData7) (checkout the latest
 `OneLife_v*` tag), plus the `graphics/`, `otherSounds/`, `languages/`, `settings/`,
 `language.txt`, `us_english_60.txt`, `wordList.txt` and the two `*.aiff` files from this
