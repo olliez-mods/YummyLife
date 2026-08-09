@@ -35,6 +35,9 @@ Server Fixes:
   pages.  Bot nets are switching IP addresses constantly and not visiting the
   front page, so this should stop them while allowing real humans through.
 
+--Server now blocks accounts that have existed less than one year from taking
+  photos, and points the player toward a veteran player that can help them.
+
 
 
 

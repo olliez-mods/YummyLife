@@ -648,6 +648,8 @@ static void removePeaceTreaty( int inLineageAEveID, int inLineageBEveID ) {
 typedef struct PastLifeStats {
         int lifeCount;
         int lifeTotalSeconds;
+        int accountExistedDays;
+        
         char error;
     } PastLifeStats;
 
@@ -7023,7 +7025,7 @@ static void playerReadsStatue( LiveObject *inPlayer,
         makePlayerSay( inPlayer, (char*)":FORGOTTEN STATUE" );
         return;
         }
-    // fixme
+    
     double deltaSeconds = 
         Time::getCurrentTime() - statueTime;
     
@@ -17394,6 +17396,103 @@ char isHungryWorkBlocked( LiveObject *inPlayer,
     }
 
 
+
+char isPhotoBlocked( LiveObject *inPlayer ) {
+
+    return false;
+
+    if( inPlayer->error ||
+        inPlayer->isTutorial ||
+        inPlayer->curseStatus.curseLevel > 0 ) {
+
+        // no explanation for these being blocked from photos
+        return true;
+        }
+
+    /* next check if account is old enough */
+
+    // fixme
+
+    int minDays = SettingsManager::getIntSetting( "minDaysForPhotos", 365 );
+    
+
+    if( inPlayer->lifeStats.accountExistedDays < minDays ) {
+
+        // find closest photo-capable player
+
+        GridPos playerPos = getPlayerPos( inPlayer );
+
+        double minDist = DBL_MAX;
+        LiveObject *closestExpert = NULL;
+        
+        for( int i=0; i<players.size(); i++ ) {
+            LiveObject *p = players.getElement( i );
+            
+            if( p->id == inPlayer->id
+                ||
+                p->isTutorial
+                ||
+                p->curseStatus.curseLevel > 0
+                ||
+                p->isGhost ) {
+                // skip self
+                // skip tutorial or donkeytown players
+                // also skip ghosts
+                continue;
+                }
+
+            if( p->lifeStats.accountExistedDays < minDays ) {
+                // too new
+                continue;
+                }
+
+            
+            GridPos pos = getPlayerPos( p );
+            
+            double d = distance( pos, playerPos );
+                
+            
+            if( d < minDist ) {
+                minDist = d;
+                closestExpert = p;
+                }
+            }
+        
+        if( closestExpert != NULL ) {
+            // not found
+            // no arrow for them
+            sendGlobalMessage( (char*)"YOUR ACCOUNT IS TOO NEW TO TAKE PHOTOS.**"
+                               "SADLY, NO ONE IS AROUND TO HELP.",
+                               inPlayer );
+            }
+        else {
+            sendGlobalMessage( (char*)"YOUR ACCOUNT IS TOO NEW TO TAKE PHOTOS.**"
+                               "FOLLOW ARROW TO SOMEONE WHO CAN HELP.",
+                               inPlayer );
+
+            GridPos ePos = getPlayerPos( closestExpert );
+
+            char *message = autoSprintf( "PS\n"
+                                         "%d/0 PHOTO HELP "
+                                         "*expert %d *map %d %d\n#",
+                                         inPlayer->id,
+                                         closestExpert->id,
+                                         ePos.x - inPlayer->birthPos.x,
+                                         ePos.y - inPlayer->birthPos.y );
+
+            sendMessageToPlayer( inPlayer, message, strlen( message ) );
+            delete [] message;
+            }
+
+        return true;
+        }
+
+    return false;
+    }
+
+
+
+
 void applyHungryWorkCost( LiveObject *inPlayer, int inHungryWorkCost ) {
     if( inHungryWorkCost > 0 ) {
         if( inPlayer->yummyBonusStore > 0 ) {
@@ -20715,23 +20814,26 @@ int main( int inNumArgs, const char **inArgs ) {
                 // stats server
                 int statsResult = getPlayerLifeStats( nextConnection->email,
                     &( nextConnection->lifeStats.lifeCount ),
-                    &( nextConnection->lifeStats.lifeTotalSeconds ) );
+                    &( nextConnection->lifeStats.lifeTotalSeconds ),
+                    &( nextConnection->lifeStats.accountExistedDays ) );
                 
                 if( statsResult == -1 ) {
                     // error
                     // it's done now!
                     nextConnection->lifeStats.lifeCount = 0;
                     nextConnection->lifeStats.lifeTotalSeconds = 0;
+                    nextConnection->lifeStats.accountExistedDays = 0;
                     nextConnection->lifeStats.error = true;
                     }
                 else if( statsResult == 1 ) {
                     AppLog::infoF( 
                         "Got life stats for %s from stats server: "
-                        "%d lives, %d total seconds (%.2lf hours)",
+                        "%d lives, %d total seconds (%.2lf hours), %d days",
                         nextConnection->email,
                         nextConnection->lifeStats.lifeCount,
                         nextConnection->lifeStats.lifeTotalSeconds,
-                        nextConnection->lifeStats.lifeTotalSeconds / 3600.0 );
+                        nextConnection->lifeStats.lifeTotalSeconds / 3600.0,
+                        nextConnection->lifeStats.accountExistedDays );
                     }
                 }
             else if( nextConnection->email != NULL &&
@@ -21095,6 +21197,7 @@ int main( int inNumArgs, const char **inArgs ) {
 
                             nextConnection->lifeStats.lifeCount = -1;
                             nextConnection->lifeStats.lifeTotalSeconds = -1;
+                            nextConnection->lifeStats.accountExistedDays = -1;
                             nextConnection->lifeStats.error = false;
                             
                             // this will leave them as -1 if request pending
@@ -21104,13 +21207,16 @@ int main( int inNumArgs, const char **inArgs ) {
                                 &( nextConnection->
                                    lifeStats.lifeCount ),
                                 &( nextConnection->
-                                   lifeStats.lifeTotalSeconds ) );
+                                   lifeStats.lifeTotalSeconds ),
+                                &( nextConnection->
+                                   lifeStats.accountExistedDays ) );
 
                             if( statsResult == -1 ) {
                                 // error
                                 // it's done now!
                                 nextConnection->lifeStats.lifeCount = 0;
                                 nextConnection->lifeStats.lifeTotalSeconds = 0;
+                                nextConnection->lifeStats.accountExistedDays = 0;
                                 nextConnection->lifeStats.error = true;
                                 }
                                 
@@ -22690,6 +22796,13 @@ int main( int inNumArgs, const char **inArgs ) {
                         if( strstr( getObject( oID )->description,
                                     "+photo" ) != NULL ) {
                             photo = true;
+                            }
+                        }
+
+                    if( photo ) {
+
+                        if( ! isPhotoBlocked( nextPlayer ) ) {
+                            photo = false;
                             }
                         }
                     
