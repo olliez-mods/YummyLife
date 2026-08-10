@@ -17399,19 +17399,19 @@ char isHungryWorkBlocked( LiveObject *inPlayer,
 
 char isPhotoBlocked( LiveObject *inPlayer ) {
 
-    return false;
-
     if( inPlayer->error ||
         inPlayer->isTutorial ||
         inPlayer->curseStatus.curseLevel > 0 ) {
 
-        // no explanation for these being blocked from photos
+        // don't point these guys to a photo helper
+        
+        sendGlobalMessage( (char*)"PHOTOS DO NOT WORK FROM**"
+                           "DONKEYTOWN OR THE TUTORIAL.",
+                           inPlayer );
         return true;
         }
 
     /* next check if account is old enough */
-
-    // fixme
 
     int minDays = SettingsManager::getIntSetting( "minDaysForPhotos", 365 );
     
@@ -22801,7 +22801,30 @@ int main( int inNumArgs, const char **inArgs ) {
 
                     if( photo ) {
 
-                        if( ! isPhotoBlocked( nextPlayer ) ) {
+                        if( isPhotoBlocked( nextPlayer ) ) {
+                            
+                            TransRecord *takePhotoTrans =
+                                getTransProducing( 0,
+                                                   oID );
+
+                            int oldID = -1;
+
+                            if( takePhotoTrans->target > 0 ) {
+                                oldID = takePhotoTrans->target;
+                                }
+                            else if( takePhotoTrans->actor ) {
+                                oldID = takePhotoTrans->actor;
+                                }
+
+                            if( oldID != 1 ) {
+                                /* restore it to non-taking-photo
+                                   pre-state, so they don't waste photo paper
+                                   Otherwise, camera will transition to jammed
+                                   state after 10 seconds (in data7 content)
+                                   if photo fails client-side */
+                                setMapObject( m.x, m.y, oldID );
+                                }
+                            
                             photo = false;
                             }
                         }
