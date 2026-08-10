@@ -17458,7 +17458,7 @@ char isPhotoBlocked( LiveObject *inPlayer ) {
                 }
             }
         
-        if( closestExpert != NULL ) {
+        if( closestExpert == NULL ) {
             // not found
             // no arrow for them
             sendGlobalMessage( (char*)"YOUR ACCOUNT IS TOO NEW TO TAKE PHOTOS.**"
