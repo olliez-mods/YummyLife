@@ -24112,6 +24112,15 @@ int main( int inNumArgs, const char **inArgs ) {
                              Time::getCurrentTime() - 
                              nextPlayer->lastSayTimeSeconds > 
                              minSayGapInSeconds ) {
+
+                        FILE *sayLogFile = fopen( "sayLog.txt", "a" );
+
+                        if( sayLogFile != NULL ) {
+                            fprintf( sayLogFile, "%s %s\n",
+                                     nextPlayer->email,
+                                     m.saidText );
+                            fclose( sayLogFile );
+                            }
                         
                         
                         // for testing, allow a player to jump to a particular
