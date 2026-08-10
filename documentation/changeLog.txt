@@ -38,6 +38,8 @@ Server Fixes:
 --Server now blocks accounts that have existed less than one year from taking
   photos, and points the player toward a veteran player that can help them.
 
+--DULY NOTED now pops up above your head for you to see in addition to the DING
+  message.
 
 
 

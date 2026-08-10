@@ -24556,6 +24556,16 @@ int main( int inNumArgs, const char **inArgs ) {
                                 sendGlobalMessage(
                                     (char*)"DULY NOTED",
                                        nextPlayer );
+
+                                char *psMessage = 
+                                    autoSprintf( "PS\n"
+                                                 "%d/0 +DULY NOTED+\n#",
+                                                 nextPlayer->id );
+                            
+                                sendMessageToPlayer( nextPlayer, 
+                                                     psMessage, 
+                                                     strlen( psMessage ) );
+                                delete [] psMessage;
                                 }
                             }
                         
