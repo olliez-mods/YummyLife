@@ -993,7 +993,8 @@ void minitech::updateDrawTwoTech() {
 		
 		recWidth = paddingX + 7*iconSize + paddingX;
 		recHeight = paddingY/2 + lineHeight/2 + paddingY/2;
-		posLT.y = posLT.y + recHeight + (60); //panel height = 60
+		//sit above the vanilla HUD panel and any YummyLife readout drawn over it
+		posLT.y = posLT.y + recHeight + HetuwMod::getBottomHudClearance();
 		posLT.x = posLT.x - recWidth;
 		doublePair posCenter = {posLT.x + recWidth / 2, posLT.y - recHeight / 2};
 		doublePair posBR = {posLT.x + recWidth, posLT.y - recHeight};
@@ -1021,7 +1022,8 @@ void minitech::updateDrawTwoTech() {
 		
 		recWidth = paddingX + 7*iconSize + paddingX;
 		recHeight = paddingY + 1*iconSize + paddingY;
-		posLT.y = posLT.y + recHeight + (60); //panel height = 60
+		//sit above the vanilla HUD panel and any YummyLife readout drawn over it
+		posLT.y = posLT.y + recHeight + HetuwMod::getBottomHudClearance();
 		posLT.x = posLT.x - recWidth;
 		doublePair posCenter = {posLT.x + recWidth / 2, posLT.y - recHeight / 2};
 		setDrawColor( 0, 0, 0, 0.8 );
@@ -1047,7 +1049,8 @@ void minitech::updateDrawTwoTech() {
 		recWidth = paddingX + 7*iconSize + paddingX;
 		recHeight = paddingY + (numOfLines-1)*lineSpacing + numOfLines*iconSize + buttonHeight + paddingY;
 		
-		posLT.y = posLT.y + recHeight + (60); //panel height = 60
+		//sit above the vanilla HUD panel and any YummyLife readout drawn over it
+		posLT.y = posLT.y + recHeight + HetuwMod::getBottomHudClearance();
 		posLT.x = posLT.x - recWidth;
 		
 		doublePair posCenter = {posLT.x + recWidth / 2, posLT.y - recHeight / 2};

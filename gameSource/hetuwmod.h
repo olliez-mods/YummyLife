@@ -519,6 +519,11 @@ public:
 	static void drawTextWithBckgr( doublePair pos, const char* text, float rgba[] );
 	static doublePair drawCustomTextWithBckgr(doublePair pos, const char* text);
 
+	// YummyLife: height of the strip above the bottom of the view that the HUD
+	// panel and our own readouts drawn over it occupy. Panels anchored to the
+	// bottom of the screen (minitech's crafting guide) must clear this.
+	static float getBottomHudClearance();
+
 	static doublePair getFromMapToViewCoordsVec();
 	static doublePair getFromViewToMapCoordsVec();
 	static void pointFromPercentToMapCoords(float &x, float &y);
