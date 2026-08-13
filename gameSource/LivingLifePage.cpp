@@ -3124,6 +3124,21 @@ void LivingLifePage::hetuwGetContained( int tileX, int tileY,
 		}
 }
 
+// YummyLife: mirrors the hit-test that decides the white hover-highlight
+// outline (see drawMapCell's "highlight" condition), so hover tooltips only
+// show for the actual object under the cursor rather than anywhere in its tile's square
+int LivingLifePage::hetuwGetHoveredObjectID() {
+	if( mCurMouseOverID > 0 && ! mCurMouseOverSelf && ! mCurMouseOverBehind ) {
+		return mCurMouseOverID;
+		}
+	return -1;
+}
+
+void LivingLifePage::hetuwGetHoveredObjectTile( int &outTileX, int &outTileY ) {
+	outTileX = mCurMouseOverWorld.x;
+	outTileY = mCurMouseOverWorld.y;
+}
+
 static Image *expandToPowersOfTwoWhite( Image *inImage ) {
     
     int w = 1;

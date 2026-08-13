@@ -612,6 +612,12 @@ class LivingLifePage : public GamePage, public ActionListener {
 		// YummyLife: flat list of items inside the container on this tile
 		// (top-level and sub-contained), empty if none
 		void hetuwGetContained( int tileX, int tileY, SimpleVector<int> *out );
+		// YummyLife: id of the object under the accurate mouse hover hit-test
+		// (the same one that gets the white highlight outline), or -1 if
+		// nothing/self/another player is hovered
+		int hetuwGetHoveredObjectID();
+		// world tile coords of the object returned by hetuwGetHoveredObjectID()
+		void hetuwGetHoveredObjectTile( int &outTileX, int &outTileY );
 		void hetuwClickMove( float x, float y );
 		double hetuwGetAge( LiveObject *inObj );
 		void hetuwGetStringAge( char* str, LiveObject *inObj );

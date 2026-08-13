@@ -313,7 +313,7 @@ bool HetuwMod::addBabyCoordsToList = false;
 
 bool HetuwMod::bRemapStart = true;
 bool HetuwMod::bDrawHungerWarning = false;
-bool HetuwMod::bDrawContainerPeek = true;
+int HetuwMod::iContainerPeekMode = 1; // 0=never, 1=modifier, 2=hover
 bool HetuwMod::bDrawUsesRemaining = true;
 
 int HetuwMod::delayReduction = 0;
@@ -993,7 +993,12 @@ void HetuwMod::initSettings() {
 	yumConfig::registerMappedSetting("init_show_object_timers", iShowObjectTimers, showObjectTimersMap, {postComment: " // none, always, hover"});
 	yumConfig::registerSetting("enable_bb_speech_mush", bBBSpeechMushEnabled);
 	yumConfig::registerSetting("enable_shared_account_features", bEnableSharedAccountFeatures, {postComment: " // Enable features that allow you to share your account with others"});
-	yumConfig::registerSetting("show_container_peek", bDrawContainerPeek, {postComment: " // hovering a container lists its contents"});
+	static std::map<std::string, int> containerPeekModeMap = {
+		{"never", 0},
+		{"modifier", 1},
+		{"hover", 2}
+	};
+	yumConfig::registerMappedSetting("show_container_peek", iContainerPeekMode, containerPeekModeMap, {postComment: " // never, modifier (hold ctrl or shift while hovering), hover"});
 	yumConfig::registerSetting("show_uses_remaining", bDrawUsesRemaining, {postComment: " // hovering a multi-use object (tool, berry bush) shows uses left"});
 	yumConfig::registerSetting("log_chat", HetuwMod::bPrintChatLogToFile, {postComment: " // write speech to " hetuwLogFileName});
 	yumConfig::registerScaledSetting("qol_text_scale", qolTextScale, 10, {postComment: " // text size of the chat log overlay, 10 = full size, default 7"});
@@ -2320,7 +2325,7 @@ void HetuwMod::livingLifeDraw() {
 	}
 
 	if (bDrawBiomeInfo) drawBiomeIDs();
-	if (bDrawContainerPeek) drawContainerPeek();
+	if (iContainerPeekMode != 0) drawContainerPeek();
 	if (bDrawUsesRemaining) drawUsesRemaining();
 	if (bDrawHungerWarning) drawHungerWarning();
 }
@@ -5646,11 +5651,17 @@ void HetuwMod::drawHelp() {
 
 // YummyLife: hovering a container lists its contents next to the cursor
 void HetuwMod::drawContainerPeek() {
+	if (iContainerPeekMode == 1 && !isShiftKeyDown() && !isControlKeyDown()) {
+		return;
+	}
+
+	if (livingLifePage->hetuwGetHoveredObjectID() <= 0) return;
+
 	int mouseX, mouseY;
 	livingLifePage->hetuwGetMouseXY( mouseX, mouseY );
-	int tileX = round( mouseX/(float)CELL_D );
-	int tileY = round( mouseY/(float)CELL_D );
-	if (livingLifePage->hetuwGetObjId( tileX, tileY ) <= 0) return;
+
+	int tileX, tileY;
+	livingLifePage->hetuwGetHoveredObjectTile( tileX, tileY );
 
 	SimpleVector<int> contained;
 	livingLifePage->hetuwGetContained( tileX, tileY, &contained );
@@ -5701,19 +5712,19 @@ void HetuwMod::drawContainerPeek() {
 	for (unsigned k=0; k<lines.size(); k++) {
 		FloatColor *txtColor = lineIsMore[k] ? &grayColor : &whiteColor;
 		livingLifePage->drawChalkBackgroundString( pos, lines[k].c_str(), 1.0, 100000.0, NULL, -1, &bgColor, txtColor, true );
-		pos.y -= 34*guiScale;
+		pos.y -= 30*guiScale;
 	}
 }
 
 // YummyLife: hovering a multi-use object shows how many uses are left
 // (use-dummy index is client-side data that vanilla never displays)
 void HetuwMod::drawUsesRemaining() {
+	int objId = livingLifePage->hetuwGetHoveredObjectID();
+	if (objId <= 0) return;
+
 	int mouseX, mouseY;
 	livingLifePage->hetuwGetMouseXY( mouseX, mouseY );
-	int tileX = round( mouseX/(float)CELL_D );
-	int tileY = round( mouseY/(float)CELL_D );
-	int objId = livingLifePage->hetuwGetObjId( tileX, tileY );
-	if (objId <= 0) return;
+
 	ObjectRecord *o = getObject(objId);
 	if (o == NULL) return;
 

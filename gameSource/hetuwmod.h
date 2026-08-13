@@ -842,7 +842,7 @@ private:
 
 	static void drawHungerWarning();
 
-	static bool bDrawContainerPeek;
+	static int iContainerPeekMode; // 0=never, 1=modifier, 2=hover
 	static void drawContainerPeek();
 
 	static bool bDrawUsesRemaining;
