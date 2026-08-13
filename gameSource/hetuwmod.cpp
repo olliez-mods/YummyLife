@@ -313,12 +313,20 @@ bool HetuwMod::addBabyCoordsToList = false;
 
 bool HetuwMod::bRemapStart = true;
 bool HetuwMod::bDrawHungerWarning = false;
+bool HetuwMod::bDrawFoodAssistant = true;
+bool HetuwMod::bCravingAutoSearch = true;
+char* HetuwMod::cravingSearchWord = NULL;
+bool HetuwMod::bDrawBabyFeedTimers = true;
+
+// per-baby: time of last known feeding (nursed while held, ate, or born)
+static std::map<int,double> babyLastFedTime;
 
 int HetuwMod::delayReduction = 0;
 
 int HetuwMod::zoomLimit = 10;
 
 int HetuwMod::currentCravingFoodID = -1;
+int HetuwMod::currentCravingBonus = 0;
 
 std::vector<HetuwMod::HttpRequest*> HetuwMod::httpRequests;
 
@@ -991,6 +999,9 @@ void HetuwMod::initSettings() {
 	yumConfig::registerMappedSetting("init_show_object_timers", iShowObjectTimers, showObjectTimersMap, {postComment: " // none, always, hover"});
 	yumConfig::registerSetting("enable_bb_speech_mush", bBBSpeechMushEnabled);
 	yumConfig::registerSetting("enable_shared_account_features", bEnableSharedAccountFeatures, {postComment: " // Enable features that allow you to share your account with others"});
+	yumConfig::registerSetting("show_food_assistant", bDrawFoodAssistant, {postComment: " // Show pips restored/wasted by the held food above the hunger bar. Uses the authored food value; server-side scaling (if any) is not reflected"});
+	yumConfig::registerSetting("craving_auto_search", bCravingAutoSearch, {postComment: " // automatically highlight your craved food using the object search"});
+	yumConfig::registerSetting("show_baby_feed_timers", bDrawBabyFeedTimers, {postComment: " // show seconds-since-last-fed over babies so you can time pickups"});
 	yumConfig::registerSetting("log_chat", HetuwMod::bPrintChatLogToFile, {postComment: " // write speech to " hetuwLogFileName});
 	yumConfig::registerScaledSetting("qol_text_scale", qolTextScale, 10, {postComment: " // text size of the chat log overlay, 10 = full size, default 7"});
 	// ... to here
@@ -1173,8 +1184,14 @@ void HetuwMod::initOnBirth() { // will be called from LivingLifePage.cpp
 	ourLiveObject = livingLifePage->getOurLiveObject();
 
 	YummyLife::ChatLog::newLife();
+	babyLastFedTime.clear();
 
-	GPS::onBirth(livingLifePage); 
+	// craving does not carry across lives
+	currentCravingFoodID = -1;
+	currentCravingBonus = 0;
+	updateCravingSearch(-1);
+
+	GPS::onBirth(livingLifePage);
 	if(livingLifePage->getTutorialNumber() > 0 || !connectedToMainServer) {
 		GPS::enabled = false; // disable gps if not on main server or in tutorial
 	}
@@ -1637,8 +1654,10 @@ void HetuwMod::livingLifeStep() {
  	ourLiveObject = livingLifePage->getOurLiveObject();
 	if (!ourLiveObject) return;
 
-	if (stepCount % 10 == 0) 
+	if (stepCount % 10 == 0)
 		ourAge = livingLifePage->hetuwGetAge( ourLiveObject );
+
+	if (bDrawBabyFeedTimers) stepBabyFeedTimers();
 
 	move();
 
@@ -2247,9 +2266,43 @@ void HetuwMod::foodIsMeh(ObjectRecord *obj) {
 	YummyLife::yumEaten( objID, ourLiveObject->id );
 }
 
-// YummyLife: We want to know what our craving is
-void HetuwMod::onCravingReport(int foodID) {
+// YummyLife: We want to know what our craving is (and its bonus, for the food assistant)
+void HetuwMod::onCravingReport(int foodID, int bonus) {
 	currentCravingFoodID = foodID;
+	currentCravingBonus = bonus;
+	updateCravingSearch(foodID);
+}
+
+// YummyLife: keep an auto-managed object-search entry matching the current
+// craving, so craved food gets highlighted like a manual search would
+void HetuwMod::updateCravingSearch(int foodID) {
+	// drop the previous auto-added entry (marking it is enough; the
+	// search-list draw pass frees and removes it)
+	if (cravingSearchWord != NULL) {
+		for (unsigned i=0; i<searchWordList.size(); i++) {
+			if (searchWordList[i] == cravingSearchWord) {
+				searchWordListDelete[i] = true;
+				break;
+			}
+		}
+		cravingSearchWord = NULL;
+	}
+	if (!bCravingAutoSearch || foodID <= 0) return;
+	ObjectRecord *obj = getObject(foodID);
+	if (obj == NULL || obj->description == NULL) return;
+
+	char descr[64];
+	objGetDescrWithoutHashtag(obj->description, descr, sizeof(descr));
+	char upper[64];
+	strToUpper(descr, upper, sizeof(upper));
+	if (upper[0] == 0) return;
+
+	cravingSearchWord = stringDuplicate(upper);
+	searchWordList.push_back(cravingSearchWord);
+	searchWordStartPos.push_back(new doublePair());
+	searchWordEndPos.push_back(new doublePair());
+	searchWordListDelete.push_back(false);
+	setSearchArray();
 }
 
 // YummyLife: Edited to fit in YummyLife::yumEaten();
@@ -2316,6 +2369,8 @@ void HetuwMod::livingLifeDraw() {
 	}
 
 	if (bDrawBiomeInfo) drawBiomeIDs();
+	if (bDrawFoodAssistant) drawFoodAssistant();
+	if (bDrawBabyFeedTimers) drawBabyFeedTimers();
 	if (bDrawHungerWarning) drawHungerWarning();
 }
 
@@ -2422,6 +2477,59 @@ doublePair HetuwMod::drawCustomTextWithBckgr(doublePair pos, const char* text) {
 	customFont->drawString( text, pos, alignCenter );
 	pos.y -= lineHeight;
 	return pos;
+}
+
+// YummyLife: show how many pips the held food would restore and how many
+// would be wasted, right above the hunger bar (YumLife issue #45)
+void HetuwMod::drawFoodAssistant() {
+	if (ourLiveObject->holdingID <= 0) return;
+	if (ourLiveObject->foodCapacity <= 0) return; // no FX received yet
+	ObjectRecord *held = getObject( ourLiveObject->holdingID );
+	if (held == NULL || held->foodValue <= 0) return;
+
+	int space = ourLiveObject->foodCapacity - ourLiveObject->foodStore;
+	if (space < 0) space = 0;
+	int fill = held->foodValue < space ? held->foodValue : space;
+	int wasted = held->foodValue - fill;
+
+	bool yummy = isYummy( ourLiveObject->holdingID );
+	bool craved = currentCravingFoodID > 0 &&
+		becomesFoodID[ourLiveObject->holdingID] == currentCravingFoodID;
+
+	float ts = getQolTextScale();
+	char seg1[16], seg2[32], seg3[24];
+	snprintf(seg1, sizeof(seg1), "+%d", fill);
+	seg2[0] = '\0';
+	if (wasted > 0) snprintf(seg2, sizeof(seg2), " (%d WASTED)", wasted);
+	if (craved) snprintf(seg3, sizeof(seg3), " CRAVED +%d", currentCravingBonus);
+	else if (yummy) snprintf(seg3, sizeof(seg3), " YUM");
+	else snprintf(seg3, sizeof(seg3), " MEH");
+
+	float w1 = livingLifePage->hetuwMeasureScaledHandwritingFont(seg1, ts);
+	float w2 = seg2[0] ? livingLifePage->hetuwMeasureScaledHandwritingFont(seg2, ts) : 0;
+
+	// anchor just past the end of the vanilla hunger-box row (up to 20 boxes
+	// at center.x - 590 + i*30, see LivingLifePage.cpp)
+	doublePair drawPos = lastScreenViewCenter;
+	drawPos.x = lastScreenViewCenter.x - 590 + 20*30 + 15;
+	// 6 lower than the box row anchor so the text sits on the same
+	// horizontal line as the food pips
+	drawPos.y = lastScreenViewCenter.y - 340 - panelOffsetY;
+
+	// dark green: bright green is illegible on the panel's paper art
+	if (fill > 0) setDrawColor( 0.1, 0.4, 0.1, 1 );
+	else setDrawColor( 1, 0.4, 0.2, 1 );
+	livingLifePage->hetuwDrawScaledHandwritingFont(seg1, drawPos, ts);
+	drawPos.x += w1;
+	if (seg2[0]) {
+		setDrawColor( 1, 0.4, 0.2, 1 );
+		livingLifePage->hetuwDrawScaledHandwritingFont(seg2, drawPos, ts);
+		drawPos.x += w2;
+	}
+	if (craved) setDrawColor( 1, 0.3, 1, 1 );
+	else if (yummy) setDrawColor( 0.1, 0.4, 0.1, 1 );
+	else setDrawColor( 0.6, 0.6, 0.6, 1 );
+	livingLifePage->hetuwDrawScaledHandwritingFont(seg3, drawPos, ts);
 }
 
 // YummyLife: the vanilla HUD panel art is 60 tall, measured up from the bottom
@@ -5635,6 +5743,74 @@ void HetuwMod::drawHelp() {
 		drawPos.y += viewHeight/2 - 30*guiScale;
 		snprintf(str, sizeof(str), "MAP RUNNING SINCE: %s", getArcTimeStr().c_str());
 		livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
+	}
+}
+
+// YummyLife baby feed timers: the server never shares other players' hunger,
+// but feeding events ARE visible: justAte in PUs, nursing while held by a
+// fertile woman, and babies are born full. Track "seconds since last fed".
+
+// called from the PU handler whenever any player is seen eating
+void HetuwMod::onPlayerJustAte(int playerID) {
+	if (babyLastFedTime.find(playerID) != babyLastFedTime.end()) {
+		babyLastFedTime[playerID] = game_getCurrentTime();
+	}
+}
+
+void HetuwMod::stepBabyFeedTimers() {
+	if (!gameObjects) return;
+	if (stepCount % 15 != 0) return;
+	double now = game_getCurrentTime();
+	for (int i=0; i<gameObjects->size(); i++) {
+		LiveObject *o = gameObjects->getElement(i);
+		double age = livingLifePage->hetuwGetAge(o);
+		if (age >= 5 || o->finalAgeSet) {
+			babyLastFedTime.erase(o->id);
+			continue;
+		}
+		if (o->heldByAdultID > 0) {
+			LiveObject *holder = livingLifePage->getLiveObject(o->heldByAdultID);
+			if (holder != NULL) {
+				ObjectRecord *d = getObject(holder->displayID);
+				double hAge = livingLifePage->hetuwGetAge(holder);
+				if (d != NULL && !d->male && hAge >= 14 && hAge < 40) {
+					babyLastFedTime[o->id] = now; // being nursed
+					continue;
+				}
+			}
+		}
+		// first sighting: babies are born full
+		if (babyLastFedTime.find(o->id) == babyLastFedTime.end())
+			babyLastFedTime[o->id] = now;
+	}
+}
+
+void HetuwMod::drawBabyFeedTimers() {
+	if (babyLastFedTime.empty()) return;
+	double now = game_getCurrentTime();
+	float ts = getQolTextScale();
+	for (auto &p : babyLastFedTime) {
+		LiveObject *o = livingLifePage->getLiveObject(p.first);
+		if (o == NULL) continue;
+		if (o->heldByAdultID > 0) continue; // being carried right now
+		if (o->hide || o->outOfRange || !o->allSpritesLoaded) continue;
+
+		int secs = (int)(now - p.second);
+		if (secs < 0) secs = 0;
+		char sBuf[16];
+		if (secs > 99) snprintf(sBuf, sizeof(sBuf), "99+S");
+		else snprintf(sBuf, sizeof(sBuf), "%dS", secs);
+
+		doublePair pos;
+		pos.x = o->currentPos.x * CELL_D;
+		pos.y = o->currentPos.y * CELL_D - 30;
+		float w = livingLifePage->hetuwMeasureScaledHandwritingFont( sBuf, ts );
+		setDrawColor( 0, 0, 0, 0.7 );
+		drawRect( pos, w/2 + 4*ts, 13*ts );
+		if (secs < 20) setDrawColor( 0.3, 1, 0.3, 1 );
+		else if (secs < 40) setDrawColor( 1, 0.9, 0.3, 1 );
+		else setDrawColor( 1, 0.3, 0.3, 1 );
+		livingLifePage->hetuwDrawScaledHandwritingFont( sBuf, pos, ts, alignCenter );
 	}
 }
 

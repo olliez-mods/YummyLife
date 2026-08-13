@@ -15549,7 +15549,7 @@ void LivingLifePage::step() {
             
             if( numRead == 2 && foodID != -1 ) {
                 setNewCraving( foodID, bonus );
-                HetuwMod::onCravingReport(foodID);
+                HetuwMod::onCravingReport(foodID, bonus);
                 }
             }
         else if( type == GHOST ) {
@@ -19126,8 +19126,13 @@ void LivingLifePage::step() {
                         char groundSoundPlayed = false;
                         
 
-                        if( justAte && 
-                            o.id != ourID && 
+                        // YummyLife: feed times for the baby feed timers
+                        if( justAte ) {
+                            HetuwMod::onPlayerJustAte( existing->id );
+                            }
+
+                        if( justAte &&
+                            o.id != ourID &&
                             existing->holdingID == oldHeld ) {
                             // seems like this PU is about player being
                             // fed by someone else
