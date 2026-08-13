@@ -108,6 +108,7 @@ unsigned char HetuwMod::charKey_ShowDeathMessages = 254;
 unsigned char HetuwMod::charKey_ShowHomeCords = 'g';
 unsigned char HetuwMod::charKey_ShowHostileTiles = 'u';
 unsigned char HetuwMod::charKey_ShowChatLog = 'i';
+unsigned char HetuwMod::charKey_ShowKinTree = '.';
 unsigned char HetuwMod::charKey_xRay = 'x';
 unsigned char HetuwMod::charKey_Search = 'j';
 unsigned char HetuwMod::charKey_TeachLanguage = 'l';
@@ -313,6 +314,8 @@ bool HetuwMod::addBabyCoordsToList = false;
 
 bool HetuwMod::bRemapStart = true;
 bool HetuwMod::bDrawHungerWarning = false;
+bool HetuwMod::bDrawKinTree = false;
+bool HetuwMod::bShowCurseBadges = true;
 
 int HetuwMod::delayReduction = 0;
 
@@ -886,6 +889,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("key_show_homecords", charKey_ShowHomeCords);
 	yumConfig::registerSetting("key_show_hostiletiles", charKey_ShowHostileTiles);
 	yumConfig::registerSetting("key_show_chatlog", charKey_ShowChatLog);
+	yumConfig::registerSetting("key_show_kintree", charKey_ShowKinTree);
 
 	yumConfig::registerSetting("key_remembercords", charKey_CreateHome, {preComment: "\n"});
 	yumConfig::registerSetting("key_fixcamera", charKey_FixCamera);
@@ -991,6 +995,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerMappedSetting("init_show_object_timers", iShowObjectTimers, showObjectTimersMap, {postComment: " // none, always, hover"});
 	yumConfig::registerSetting("enable_bb_speech_mush", bBBSpeechMushEnabled);
 	yumConfig::registerSetting("enable_shared_account_features", bEnableSharedAccountFeatures, {postComment: " // Enable features that allow you to share your account with others"});
+	yumConfig::registerSetting("show_curse_badges", bShowCurseBadges, {postComment: " // red X badge above cursed players' names"});
 	yumConfig::registerSetting("log_chat", HetuwMod::bPrintChatLogToFile, {postComment: " // write speech to " hetuwLogFileName});
 	yumConfig::registerScaledSetting("qol_text_scale", qolTextScale, 10, {postComment: " // text size of the chat log overlay, 10 = full size, default 7"});
 	// ... to here
@@ -998,9 +1003,10 @@ void HetuwMod::initSettings() {
 	static std::map<std::string, int> drawNamesMap = {
 		{"none", 0},
 		{"first", 1},
-		{"full", 2}
+		{"full", 2},
+		{"hybrid", 3}
 	};
-	yumConfig::registerMappedSetting("init_show_names", iDrawNames, drawNamesMap, {preComment: yummyGroupComment2, postComment: " // none, first, or full"});
+	yumConfig::registerMappedSetting("init_show_names", iDrawNames, drawNamesMap, {preComment: yummyGroupComment2, postComment: " // none, first, full, or hybrid (first name for family, full name for others)"});
 	yumConfig::registerSetting("init_show_selectedplayerinfo", bDrawSelectedPlayerInfo, {postComment: " // draw names bigger and show age when hovering over a player"});
 	yumConfig::registerSetting("init_show_cords", bDrawCords);
 	static std::map<std::string, int> drawPlayersInRangePanelMap = {
@@ -2316,6 +2322,7 @@ void HetuwMod::livingLifeDraw() {
 	}
 
 	if (bDrawBiomeInfo) drawBiomeIDs();
+	if (bDrawKinTree) drawKinTree();
 	if (bDrawHungerWarning) drawHungerWarning();
 }
 
@@ -3135,6 +3142,32 @@ void HetuwMod::drawPlayerNames( LiveObject* player ) {
 		drawRect( playerNamePos, textWidth/2 + 6, 16 );
 		setDrawColor( playerNameColor[0], playerNameColor[1], playerNameColor[2], 1 );
 		livingLifePage->hetuwDrawWithHandwritingFont( playerName, playerNamePos, alignCenter );
+	// YummyLife: hybrid - first name for family, full name for others (YumLife issue #39)
+	} else if ( iDrawNames == 3 ) {
+		char playerName[48];
+		if ( isRelated( player ) ) {
+			removeLastName( playerName, player->name );
+		} else {
+			snprintf( playerName, sizeof(playerName), "%s", player->name );
+		}
+		float textWidth = livingLifePage->hetuwMeasureStringHandwritingFont( playerName );
+		drawRect( playerNamePos, textWidth/2 + 6, 16 );
+		setDrawColor( playerNameColor[0], playerNameColor[1], playerNameColor[2], 1 );
+		livingLifePage->hetuwDrawWithHandwritingFont( playerName, playerNamePos, alignCenter );
+	}
+
+	// YummyLife: persistent curse badge above the name of cursed players
+	if (bShowCurseBadges && iDrawNames > 0 && player->curseLevel > 0) {
+		float ts = getQolTextScale();
+		char cBuf[16];
+		snprintf(cBuf, sizeof(cBuf), "X%d", player->curseLevel);
+		doublePair cPos = playerNamePos;
+		cPos.y += 26;
+		float cWidth = livingLifePage->hetuwMeasureScaledHandwritingFont( cBuf, ts );
+		setDrawColor( 0, 0, 0, 0.8 );
+		drawRect( cPos, cWidth/2 + 4*ts, 13*ts );
+		setDrawColor( 1, 0.2, 0.2, 1 );
+		livingLifePage->hetuwDrawScaledHandwritingFont( cBuf, cPos, ts, alignCenter );
 	}
 
 	// YummyLife: Draw Phex Profile data on players it's available for
@@ -3719,7 +3752,11 @@ bool HetuwMod::livingLifeKeyDown(unsigned char inASCII) {
 	}
 	if (!commandKey && isCharKey(inASCII, charKey_ShowNames)) {
 		iDrawNames++;
-		if (iDrawNames >= 3) iDrawNames = 0;
+		if (iDrawNames >= 4) iDrawNames = 0;
+		return true;
+	}
+	if (!commandKey && isCharKey(inASCII, charKey_ShowKinTree)) {
+		bDrawKinTree = !bDrawKinTree;
 		return true;
 	}
 	if (!commandKey && isCharKey(inASCII, charKey_ShowChatLog)) {
@@ -4870,6 +4907,13 @@ void HetuwMod::onPlayerUpdate( LiveObject* inO, const char* line ) {
 
 	deathMsg->name = o->name;
 
+	// YummyLife: keep their last words for the hover text
+	if (o->currentSpeech != NULL && o->currentSpeech[0] != '\0') {
+		string lastWords(o->currentSpeech);
+		if (lastWords.size() > 64) lastWords = lastWords.substr(0, 62) + "..";
+		deathMsg->description += " - LAST WORDS: \"" + lastWords + "\"";
+	}
+
 	deathMsg->timeReci = time(NULL);
 
 	getRelationNameColor( o->relationName, deathMsg->nameColor );
@@ -5474,6 +5518,12 @@ void HetuwMod::drawHelp() {
 	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
 	drawPos.y -= lineHeight;
 
+	if (bDrawKinTree) setHelpColorSpecial();
+	else setHelpColorNormal();
+	snprintf(str, sizeof(str), "%c TOGGLE FAMILY TREE", toupper(charKey_ShowKinTree));
+	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
+	drawPos.y -= lineHeight;
+
 	if (iShowObjectTimers > 0) setHelpColorSpecial();
 	else setHelpColorNormal();
 	const char *timerModeStr = iShowObjectTimers == 2 ? "HOVER" : (iShowObjectTimers == 1 ? "ALWAYS" : "NONE");
@@ -5636,6 +5686,112 @@ void HetuwMod::drawHelp() {
 		snprintf(str, sizeof(str), "MAP RUNNING SINCE: %s", getArcTimeStr().c_str());
 		livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
 	}
+}
+
+// YummyLife: indented tree of living genetic family, linked by mother
+void HetuwMod::drawKinTree() {
+	if (!gameObjects || !ourLiveObject) return;
+
+	std::vector<LiveObject*> family;
+	for (int i=0; i<gameObjects->size(); i++) {
+		LiveObject *o = gameObjects->getElement(i);
+		if (o == ourLiveObject || o->isGeneticFamily || o->relationName != NULL)
+			family.push_back(o);
+	}
+	if (family.empty()) return;
+
+	// roots: members whose mother is not a living family member
+	std::vector<std::pair<LiveObject*,int>> stack; // player, depth
+	for (int i=(int)family.size()-1; i>=0; i--) {
+		LiveObject *o = family[i];
+		int motherID = o->lineage.size() > 0 ? o->lineage.getElementDirect(0) : -1;
+		bool motherAlive = false;
+		for (unsigned k=0; k<family.size(); k++) {
+			if (family[k]->id == motherID) { motherAlive = true; break; }
+		}
+		if (!motherAlive) stack.push_back(std::make_pair(o, 0));
+	}
+
+	// measure pass: collect lines/depths/colors so the sheet can be sized
+	// before drawing
+	std::vector<std::string> lines;
+	std::vector<int> depths;
+	std::vector<float> colors; // triplets, colors[k*3 .. k*3+2]
+
+	lines.push_back("FAMILY TREE");
+	depths.push_back(0);
+	colors.push_back(1);
+	colors.push_back(1);
+	colors.push_back(0.4);
+
+	int linesDrawn = 0;
+	const int maxLines = 28;
+	char line[96];
+	while (!stack.empty()) {
+		LiveObject *o = stack.back().first;
+		int depth = stack.back().second;
+		stack.pop_back();
+
+		if (linesDrawn >= maxLines) continue;
+		linesDrawn++;
+
+		char firstName[48];
+		if (o->name != NULL) removeLastName(firstName, o->name);
+		else snprintf(firstName, sizeof(firstName), "NAMELESS");
+		int age = (int)livingLifePage->hetuwGetAge(o);
+		if (o == ourLiveObject)
+			snprintf(line, sizeof(line), "%s %d (YOU)", firstName, age);
+		else
+			snprintf(line, sizeof(line), "%s %d", firstName, age);
+
+		lines.push_back(line);
+		depths.push_back(depth);
+		float color[3] = { 1, 1, 1 };
+		if (o != ourLiveObject) getRelationNameColor(o->relationName, color);
+		colors.push_back(color[0]);
+		colors.push_back(color[1]);
+		colors.push_back(color[2]);
+
+		// push children (their mother is this player), youngest drawn last
+		for (int k=(int)family.size()-1; k>=0; k--) {
+			LiveObject *c = family[k];
+			if (c->lineage.size() > 0 &&
+					c->lineage.getElementDirect(0) == o->id) {
+				stack.push_back(std::make_pair(c, depth+1));
+			}
+		}
+	}
+
+	float ts = guiScale * getQolTextScale();
+	double scale = customFont->hetuwGetScaleFactor();
+	customFont->hetuwSetScaleFactor(scale * ts);
+	float lineH = customFont->getFontHeight() * 1.1;
+	float maxW = 0;
+	for (unsigned k=0; k<lines.size(); k++) {
+		float w = depths[k] * 24 * ts + customFont->measureString(lines[k].c_str());
+		if (w > maxW) maxW = w;
+	}
+	float sheetH = lines.size() * lineH;
+
+	doublePair basePos = lastScreenViewCenter;
+	basePos.x -= viewWidth/2 - 40*guiScale;
+	basePos.y += viewHeight/2 - 160*guiScale;
+
+	doublePair sheetCenter = basePos;
+	sheetCenter.x += maxW/2;
+	sheetCenter.y -= sheetH/2 - lineH/2;
+	setDrawColor( 0, 0, 0, 0.75 );
+	drawRect( sheetCenter, maxW/2 + 8*guiScale, sheetH/2 + 6*guiScale );
+
+	doublePair linePos = basePos;
+	for (unsigned k=0; k<lines.size(); k++) {
+		setDrawColor( colors[k*3], colors[k*3+1], colors[k*3+2], 1 );
+		doublePair p = linePos;
+		p.x += depths[k] * 24 * ts;
+		customFont->drawString(lines[k].c_str(), p, alignLeft);
+		linePos.y -= lineH;
+	}
+	customFont->hetuwSetScaleFactor(scale);
 }
 
 void HetuwMod::drawHungerWarning() {
