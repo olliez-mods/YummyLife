@@ -205,7 +205,7 @@ if(WIN32)
 
     add_executable(YummyLife_windows ${CLIENT_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES} icon.rc)
     target_compile_options(YummyLife_windows PRIVATE ${CLIENT_COMPILE_OPTIONS})
-    target_link_libraries(YummyLife_windows opengl32 glu32 mingw32 SDLmain SDL wsock32 winmm ssl crypto ws2_32 crypt32)
+    target_link_libraries(YummyLife_windows opengl32 glu32 mingw32 SDLmain SDL wsock32 winmm ssl crypto ws2_32 crypt32 shell32)
     target_link_options(YummyLife_windows PRIVATE -mwindows -static-libstdc++ -static-libgcc)
 elseif(APPLE)
     # enable_language(OBJC) needs CMake 3.16; only the mac build requires it
