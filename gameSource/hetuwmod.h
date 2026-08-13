@@ -293,6 +293,7 @@ public:
 	static unsigned char charKey_ShowHomeCords;
 	static unsigned char charKey_ShowHostileTiles;
 	static unsigned char charKey_ShowChatLog;
+	static unsigned char charKey_ShowKinTree;
 	static unsigned char charKey_xRay;
 	static unsigned char charKey_Search;
 	static unsigned char charKey_TeachLanguage;
@@ -841,6 +842,11 @@ private:
 	static void initCustomFont();
 
 	static void drawHungerWarning();
+
+	static bool bDrawKinTree;
+	static void drawKinTree();
+
+	static bool bShowCurseBadges;
 
 	static void autoNameBB();
 
