@@ -2424,6 +2424,20 @@ doublePair HetuwMod::drawCustomTextWithBckgr(doublePair pos, const char* text) {
 	return pos;
 }
 
+// YummyLife: the vanilla HUD panel art is 60 tall, measured up from the bottom
+// of the view. The temp arrow is drawn at (centre.y - 319 - panelOffsetY), and
+// panelOffsetY is viewHeight/2 - 360, so the arrow sits 41 units above that
+// bottom edge -- inside the panel.
+static const float hudPanelHeight = 60;
+
+// YummyLife: everything we dock to the bottom strip lives INSIDE the
+// vanilla 60-unit panel art, so the strip minitech anchors to starts right
+// above the panel. If a future feature docks ABOVE the panel, its height
+// must be added here (this function is the bottom-strip clearance registry).
+float HetuwMod::getBottomHudClearance() {
+	return hudPanelHeight;
+}
+
 void HetuwMod::drawTextWithBckgr( doublePair pos, const char* text ) {
 	float textWidth = livingLifePage->hetuwMeasureScaledHandwritingFont( text, guiScale );
 	setDrawColor( 0, 0, 0, 0.8 );
