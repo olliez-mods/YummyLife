@@ -17497,8 +17497,22 @@ void LivingLifePage::step() {
                             mMapSubContainedStacks[mapI].deleteAll();
                             }
 
-                        // YummyLife: update world-coordinate decay timer
-                        yumOnMapChange( x, y, newID, old );
+                        // YummyLife: update world-coordinate decay timer.
+                        // Pass the responsible player's holding state so a
+                        // picked-up object can carry its ETA into their hand.
+                        int yumHoldingID = 0;
+                        if( responsiblePlayerID != -1 ) {
+                            int yumRID = responsiblePlayerID;
+                            if( yumRID < -1 ) {
+                                yumRID = -yumRID;
+                                }
+                            LiveObject *yumRObj = getLiveObject( yumRID );
+                            if( yumRObj != NULL && yumRObj->holdingID > 0 ) {
+                                yumHoldingID = yumRObj->holdingID;
+                                }
+                            }
+                        yumOnMapChange( x, y, newID, old,
+                                        responsiblePlayerID, yumHoldingID );
 
                         if( newID > 0 ) {
                             ObjectRecord *newObj = getObject( newID );
@@ -18979,7 +18993,12 @@ void LivingLifePage::step() {
                         
                         existing->lastHoldingID = oldHeld;
                         existing->holdingID = o.holdingID;
-                        
+
+                        // YummyLife: an object transformed in hand starts its
+                        // decay now, so the timer survives being set down
+                        yumOnPlayerHoldingChange( existing->id, oldHeld,
+                                                  o.holdingID );
+
                         if( o.id == ourID &&
                             existing->holdingID > 0 &&
                             existing->holdingID != oldHeld ) {
