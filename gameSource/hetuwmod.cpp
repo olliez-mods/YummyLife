@@ -313,6 +313,7 @@ bool HetuwMod::addBabyCoordsToList = false;
 
 bool HetuwMod::bRemapStart = true;
 bool HetuwMod::bDrawHungerWarning = false;
+int HetuwMod::lastFertileCount = -1;
 
 int HetuwMod::delayReduction = 0;
 
@@ -991,7 +992,15 @@ void HetuwMod::initSettings() {
 	yumConfig::registerMappedSetting("init_show_object_timers", iShowObjectTimers, showObjectTimersMap, {postComment: " // none, always, hover"});
 	yumConfig::registerSetting("enable_bb_speech_mush", bBBSpeechMushEnabled);
 	yumConfig::registerSetting("enable_shared_account_features", bEnableSharedAccountFeatures, {postComment: " // Enable features that allow you to share your account with others"});
-	yumConfig::registerSetting("log_chat", HetuwMod::bPrintChatLogToFile, {postComment: " // write speech to " hetuwLogFileName});
+	yumConfig::registerSetting("enable_attention_pings", YummyLife::Pings::bEnabled, {preComment: "\n// Attention pings: chime + screen flash when something needs your attention\n"});
+	yumConfig::registerSetting("ping_on_name_mention", YummyLife::Pings::bOnNameMention, {postComment: " // another player says your first name"});
+	yumConfig::registerSetting("ping_on_baby_born", YummyLife::Pings::bOnBabyBorn, {postComment: " // a baby is born to you"});
+	yumConfig::registerSetting("ping_on_cursed", YummyLife::Pings::bOnCursed, {postComment: " // you get cursed"});
+	yumConfig::registerSetting("ping_on_age_milestone", YummyLife::Pings::bOnAgeMilestone, {postComment: " // age 3 (can carry), 14/40 (fertility, female), 55 (elder)"});
+	yumConfig::registerSetting("ping_on_family_dying", YummyLife::Pings::bOnFamilyDying, {postComment: " // warn when your family is down to its last fertile woman"});
+	yumConfig::registerSetting("ping_flash_screen", YummyLife::Pings::bFlashScreen, {postComment: " // flash the screen edges as part of a ping (sound always plays)"});
+	yumConfig::registerSetting("afk_auto_reply", YummyLife::Pings::bAfkAutoReply, {postComment: " // while /AFK, auto-answer players who say your name"});
+	yumConfig::registerSetting("log_chat", HetuwMod::bPrintChatLogToFile, {postComment: " // write speech and pings to " hetuwLogFileName});
 	yumConfig::registerScaledSetting("qol_text_scale", qolTextScale, 10, {postComment: " // text size of the chat log overlay, 10 = full size, default 7"});
 	// ... to here
 
@@ -1172,9 +1181,11 @@ static void shuffle(vector<T> &vec) {
 void HetuwMod::initOnBirth() { // will be called from LivingLifePage.cpp
 	ourLiveObject = livingLifePage->getOurLiveObject();
 
+	YummyLife::Pings::newLife();
 	YummyLife::ChatLog::newLife();
+	lastFertileCount = -1;
 
-	GPS::onBirth(livingLifePage); 
+	GPS::onBirth(livingLifePage);
 	if(livingLifePage->getTutorialNumber() > 0 || !connectedToMainServer) {
 		GPS::enabled = false; // disable gps if not on main server or in tutorial
 	}
@@ -1637,8 +1648,10 @@ void HetuwMod::livingLifeStep() {
  	ourLiveObject = livingLifePage->getOurLiveObject();
 	if (!ourLiveObject) return;
 
-	if (stepCount % 10 == 0) 
+	if (stepCount % 10 == 0)
 		ourAge = livingLifePage->hetuwGetAge( ourLiveObject );
+
+	stepFamilySurvivalCheck();
 
 	move();
 
@@ -4902,6 +4915,11 @@ void HetuwMod::onNameUpdate(LiveObject* o) {
 }
 
 void HetuwMod::onCurseUpdate(LiveObject* o) {
+	// YummyLife: attention ping when OUR curse level rises
+	if ( ourLiveObject != NULL && o->id == ourLiveObject->id ) {
+		YummyLife::Pings::onSelfCurseLevel( o->curseLevel );
+	}
+
 	string type = "forgive";
 	if ( o->curseLevel ) {
 		type = "curse";
@@ -5636,6 +5654,52 @@ void HetuwMod::drawHelp() {
 		snprintf(str, sizeof(str), "MAP RUNNING SINCE: %s", getArcTimeStr().c_str());
 		livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
 	}
+}
+
+// YummyLife family-survival warning: scan our family every ~2s and raise an
+// attention ping when the count of fertile women drops to 1 or 0.
+void HetuwMod::stepFamilySurvivalCheck() {
+	if (!ourLiveObject || !gameObjects) return;
+	if (ourLiveObject->lineageEveID <= 0) return;
+	if (stepCount % 120 != 0) return;
+
+	int familyCount = 0;
+	int fertile = 0;
+	LiveObject *lastFertile = NULL;
+	for (int i=0; i<gameObjects->size(); i++) {
+		LiveObject *o = gameObjects->getElement(i);
+		if (o->lineageEveID != ourLiveObject->lineageEveID) continue;
+		if (o->finalAgeSet) continue; // dead
+		familyCount++;
+		ObjectRecord *d = getObject(o->displayID);
+		if (d != NULL && !d->male) {
+			double age = livingLifePage->hetuwGetAge(o);
+			if (age >= 14 && age < 40) {
+				fertile++;
+				lastFertile = o;
+			}
+		}
+	}
+	// solo Eve: nothing to announce
+	if (familyCount < 2) {
+		lastFertileCount = fertile;
+		return;
+	}
+	if (lastFertileCount != -1 && fertile < lastFertileCount && fertile <= 1) {
+		if (fertile == 0) {
+			YummyLife::Pings::familyAlert("NO FERTILE WOMEN LEFT IN YOUR FAMILY");
+		} else if (lastFertile == ourLiveObject) {
+			YummyLife::Pings::familyAlert("YOU ARE THE LAST FERTILE WOMAN");
+		} else {
+			char firstName[48];
+			if (lastFertile->name != NULL) removeLastName(firstName, lastFertile->name);
+			else snprintf(firstName, sizeof(firstName), "A NAMELESS WOMAN");
+			char msg[64];
+			snprintf(msg, sizeof(msg), "%s IS YOUR LAST FERTILE WOMAN", firstName);
+			YummyLife::Pings::familyAlert(msg);
+		}
+	}
+	lastFertileCount = fertile;
 }
 
 void HetuwMod::drawHungerWarning() {

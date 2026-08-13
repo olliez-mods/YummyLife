@@ -141,16 +141,19 @@ class YummyLife {
 
         // Chat scrollback: history of recent nearby speech, toggled with a
         // key. Lines that mention our first name are highlighted.
+        // Local fork extension: attention-ping EVENT entries (addEvent).
         class ChatLog {
             public:
                 struct Entry {
-                    enum Kind { SPEECH, MENTION };
+                    enum Kind { SPEECH, MENTION, EVENT };
                     Kind kind;
                     std::string name;
                     std::string text;
                     doublePair pos; // Position associated with this entry
                     float distanceToUs; // Distance from our character to this entry
                     time_t timestamp; // When this entry was added
+                    int age;            // EVENT only: our age when it happened
+                    float color[3];     // EVENT only
                 };
             private:
 
@@ -166,6 +169,9 @@ class YummyLife {
                 static int indexChatHovered; // index of the currently hovered chat entry, -1 if none
 
                 static void add(const char* speakerName, const char* text, bool isSelf,  time_t timestamp, const doublePair& pos);
+                // age-stamped ping event line (fork extension); never
+                // distance-filtered
+                static void addEvent(const char* text, float r, float g, float b);
                 static Entry* getHoveredEntry();
                 // wheel scrolling while the panel is open; dir +1 = up (back
                 // in time), -1 = down
@@ -174,6 +180,57 @@ class YummyLife {
                 static void resetScroll();
                 static void draw();     // call from livingLifeDraw when bShow
                 static void newLife();
+        };
+
+        // Attention pings: sound + screen flash when something needs the
+        // player's attention (name mentioned, baby born, got cursed)
+        class Pings {
+            static SoundSpriteHandle chimeSound;
+            static SoundSpriteHandle curseSound;
+
+            static double flashStartTime;   // <= 0 when no flash active
+            static float flashColor[3];
+            static double lastNamePingTime;
+            static double lastBabyPingTime;
+            static double lastCursePingTime;
+            static int lastOwnCurseLevel;   // -1 = unknown (no CU seen yet this life)
+            static double lastAgeSeen;      // -1 = unknown (first update records only)
+
+            static char milestoneMsg[64];   // on-screen label for age milestones
+            static double milestoneMsgTime;
+
+            static void cursePing();
+            static void agePing(const char* msg);
+            static void labelPing(const char* msg, bool curseSound,
+                    float r, float g, float b);
+
+            static double lastAfkReplyTime;
+
+            static bool speechMentionsUs(const char* speech);
+            static void playChime(bool curse);
+            static void flash(float r, float g, float b);
+
+            public:
+                static bool bEnabled;
+                static bool bOnNameMention;
+                static bool bOnBabyBorn;
+                static bool bOnCursed;
+                static bool bOnAgeMilestone;
+                static bool bOnFamilyDying;
+                static bool bAfkAutoReply;
+                static bool bFlashScreen;
+
+                // family-survival warning (called from HetuwMod)
+                static void familyAlert(const char* msg);
+
+                // speakerID != ourID is checked by the caller
+                static void onPlayerSays(int speakerID, const char* speech, int curseFlag);
+                static void onBabyBorn();
+                static void onSelfCurseLevel(int curseLevel);
+                static void stepAge(double age, char gender);
+                static void newLife();
+                static void draw();     // flash overlay, call from livingLifeDraw
+                static void cleanUpSounds();
         };
 
         static void cleanUp();

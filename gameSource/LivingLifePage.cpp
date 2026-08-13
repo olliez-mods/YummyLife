@@ -21325,6 +21325,16 @@ void LivingLifePage::step() {
                                     delete [] phexSpeech;
                                     }
 
+                                // YummyLife: attention ping when another
+                                // player's speech mentions us (the chat log
+                                // entry was already added above)
+                                if( existing->id != ourID ) {
+                                    YummyLife::Pings::onPlayerSays(
+                                        existing->id,
+                                        existing->currentSpeech,
+                                        curseFlag );
+                                    }
+
                                 double curTime = game_getCurrentTime();
                                 
                                 existing->speechFade = 1.0*fadeMultiplier;
@@ -21576,6 +21586,9 @@ void LivingLifePage::step() {
                                             }
 
                                         if( personID != -1 && baby) {
+                                            // YummyLife: our baby was born
+                                            YummyLife::Pings::onBabyBorn();
+
                                             LiveObject *babyO =
                                                 getLiveObject( personID );
                                             if( babyO != NULL ) {

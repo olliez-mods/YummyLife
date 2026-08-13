@@ -842,6 +842,9 @@ private:
 
 	static void drawHungerWarning();
 
+	static int lastFertileCount;
+	static void stepFamilySurvivalCheck();
+
 	static void autoNameBB();
 
 	static void onScroll(int dir);
