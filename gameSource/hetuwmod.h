@@ -842,6 +842,9 @@ private:
 
 	static void drawHungerWarning();
 
+	static bool bDrawTempReadout;
+	static void drawTempReadout();
+
 	static void autoNameBB();
 
 	static void onScroll(int dir);

@@ -313,6 +313,7 @@ bool HetuwMod::addBabyCoordsToList = false;
 
 bool HetuwMod::bRemapStart = true;
 bool HetuwMod::bDrawHungerWarning = false;
+bool HetuwMod::bDrawTempReadout = true;
 
 int HetuwMod::delayReduction = 0;
 
@@ -991,6 +992,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerMappedSetting("init_show_object_timers", iShowObjectTimers, showObjectTimersMap, {postComment: " // none, always, hover"});
 	yumConfig::registerSetting("enable_bb_speech_mush", bBBSpeechMushEnabled);
 	yumConfig::registerSetting("enable_shared_account_features", bEnableSharedAccountFeatures, {postComment: " // Enable features that allow you to share your account with others"});
+	yumConfig::registerSetting("show_temperature_readout", bDrawTempReadout, {postComment: " // numeric temperature + COLD/PERFECT/HOT label above the temp meter"});
 	yumConfig::registerSetting("log_chat", HetuwMod::bPrintChatLogToFile, {postComment: " // write speech to " hetuwLogFileName});
 	yumConfig::registerScaledSetting("qol_text_scale", qolTextScale, 10, {postComment: " // text size of the chat log overlay, 10 = full size, default 7"});
 	// ... to here
@@ -2316,6 +2318,7 @@ void HetuwMod::livingLifeDraw() {
 	}
 
 	if (bDrawBiomeInfo) drawBiomeIDs();
+	if (bDrawTempReadout) drawTempReadout();
 	if (bDrawHungerWarning) drawHungerWarning();
 }
 
@@ -5279,7 +5282,7 @@ void HetuwMod::drawAge() {
 	age = (int)((age-ageDecimal)*0.1);
 	snprintf(sBuf, sizeof(sBuf), "%c  %i.%i", ourGender, age, ageDecimal);
 	drawPos = lastScreenViewCenter;
-	drawPos.x += 290;
+	drawPos.x += 220;
 	drawPos.y -= viewHeight/2 - 25;
 	livingLifePage->hetuwDrawWithHandwritingFont( sBuf, drawPos );
 }
@@ -5636,6 +5639,31 @@ void HetuwMod::drawHelp() {
 		snprintf(str, sizeof(str), "MAP RUNNING SINCE: %s", getArcTimeStr().c_str());
 		livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
 	}
+}
+
+// YummyLife: numeric temperature + label, inked onto the vanilla gui panel
+// the same way the age readout is
+void HetuwMod::drawTempReadout() {
+	float heat = ourLiveObject->heat;
+	if (heat < 0) return;
+	int pct = (int)(heat * 100 + 0.5f);
+	const char *label;
+	if (heat < 0.15) label = "FREEZING";
+	else if (heat < 0.45) label = "COLD";
+	else if (heat <= 0.55) label = "PERFECT";
+	else if (heat <= 0.85) label = "HOT";
+	else label = "BURNING";
+
+	char sBuf[32];
+	snprintf(sBuf, sizeof(sBuf), "%d%% %s", pct, label);
+	doublePair drawPos = lastScreenViewCenter;
+	// centred above the panel art's handwritten TEMP. METER label
+	// (screen x +373..+471); x +480..+607 is the bar, where the
+	// sliding arrow would collide with the number
+	drawPos.x += 422;
+	drawPos.y -= viewHeight/2 - 44;
+	setDrawColor( 0, 0, 0, 1 );
+	livingLifePage->hetuwDrawScaledHandwritingFont( sBuf, drawPos, 0.72, alignCenter );
 }
 
 void HetuwMod::drawHungerWarning() {
