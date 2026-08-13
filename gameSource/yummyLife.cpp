@@ -16,6 +16,7 @@ using json = nlohmann::json;
 #include "hetuwmod.h"
 
 #include "minorGems/game/gameGraphics.h"
+#include "minorGems/game/drawUtils.h"
 
 #include "minorGems/util/random/JenkinsRandomSource.h"
 
@@ -223,6 +224,42 @@ void YummyLife::ChatLog::add(const char* speakerName, const char* text, bool isS
     }
 }
 
+// Fork extension: age-stamped attention-ping event line. Distance 0 and our
+// own position so the distance filter never hides it.
+void YummyLife::ChatLog::addEvent(const char* text, float r, float g, float b) {
+    if (text == NULL || text[0] == '\0') return;
+
+    Entry e;
+    e.kind = Entry::EVENT;
+    e.name = "EVENT";
+    e.text = text;
+    e.age = (int)HetuwMod::ourAge;
+    e.timestamp = time(NULL);
+    LiveObject *us = HetuwMod::ourLiveObject;
+    if (us != NULL) {
+        e.pos.x = (double)us->xd;
+        e.pos.y = (double)us->yd;
+    } else {
+        e.pos.x = 0;
+        e.pos.y = 0;
+    }
+    e.distanceToUs = 0;
+    if (HetuwMod::bPrintChatLogToFile) {
+        HetuwMod::writeLineToLogs("ping",
+                std::to_string(e.age) + hetuwLogSeperator + e.text);
+    }
+    if (e.text.size() > 48) e.text = e.text.substr(0, 46) + "..";
+    e.color[0] = r;
+    e.color[1] = g;
+    e.color[2] = b;
+
+    entries.push_back(e);
+    if ((int)entries.size() > chatLogMaxEntries) {
+        entries.erase(entries.begin());
+        if (scrollPos > 0) scrollPos--;
+    }
+}
+
 void YummyLife::ChatLog::scroll(int dir) {
     int size = (int)entries.size();
     if (size <= chatLogMaxLines) return;    // nothing to scroll
@@ -359,7 +396,14 @@ void YummyLife::ChatLog::draw() {
 
             float r, g, b; r = g = b = 1.0f; // default color (white)
 
-            if(e.kind == Entry::MENTION) {
+            if(e.kind == Entry::EVENT) {
+                // fork extension: attention-ping event line, age-stamped
+                r = e.color[0];
+                g = e.color[1];
+                b = e.color[2];
+                snprintf(line, sizeof(line), "! %s%d %s",
+                        distanceStr, e.age, e.text.c_str());
+            } else if(e.kind == Entry::MENTION) {
                 r = 1.0f;
                 g = 0.9f;
                 b = 0.2f;
@@ -399,10 +443,14 @@ void YummyLife::ChatLog::newLife() {
 void YummyLife::livingLifeStep(){
     AFK::step();
     stepActiveRequest();
+    if (HetuwMod::ourLiveObject != NULL) {
+        Pings::stepAge(HetuwMod::ourAge, HetuwMod::ourGender);
+    }
 }
 
 void YummyLife::livingLifeDraw(){
     ChatLog::draw();
+    Pings::draw();
     if(AFK::isAFK()){
         HetuwFont *customFont = HetuwMod::customFont;
         double scale = customFont->hetuwGetScaleFactor();
@@ -458,6 +506,7 @@ void YummyLife::drawLeaderboardName(doublePair pos){
 void YummyLife::cleanUp() {
     if(screenshotSound != NULL)
         freeSoundSprite(screenshotSound);
+    Pings::cleanUpSounds();
 }
 
 void YummyLife::takingScreenshot() {
@@ -465,6 +514,228 @@ void YummyLife::takingScreenshot() {
         screenshotSound = loadSoundSprite( "otherSounds", "tutorialChime.aiff" );
 
     playSoundSprite(screenshotSound, 0.1 * getSoundEffectsLoudness());
+}
+
+
+
+// ---------------------------------------------------------------------------
+// YummyLife::Pings — sound + screen flash when something needs attention
+// ---------------------------------------------------------------------------
+
+SoundSpriteHandle YummyLife::Pings::chimeSound = NULL;
+SoundSpriteHandle YummyLife::Pings::curseSound = NULL;
+double YummyLife::Pings::flashStartTime = 0;
+float YummyLife::Pings::flashColor[3] = {1, 1, 1};
+double YummyLife::Pings::lastNamePingTime = 0;
+double YummyLife::Pings::lastBabyPingTime = 0;
+double YummyLife::Pings::lastCursePingTime = 0;
+int YummyLife::Pings::lastOwnCurseLevel = -1;
+double YummyLife::Pings::lastAgeSeen = -1;
+char YummyLife::Pings::milestoneMsg[64] = "";
+double YummyLife::Pings::milestoneMsgTime = 0;
+bool YummyLife::Pings::bEnabled = true;
+bool YummyLife::Pings::bOnNameMention = true;
+bool YummyLife::Pings::bOnBabyBorn = true;
+bool YummyLife::Pings::bOnCursed = true;
+bool YummyLife::Pings::bOnAgeMilestone = true;
+bool YummyLife::Pings::bOnFamilyDying = true;
+bool YummyLife::Pings::bAfkAutoReply = true;
+bool YummyLife::Pings::bFlashScreen = true;
+double YummyLife::Pings::lastAfkReplyTime = 0;
+
+static const double pingFlashDuration = 0.7;
+static const double namePingCooldown = 5.0;
+static const double babyPingCooldown = 3.0;
+static const double cursePingCooldown = 2.0; // the speech and CU paths can both fire
+
+void YummyLife::Pings::playChime(bool curse) {
+    SoundSpriteHandle *sound = curse ? &curseSound : &chimeSound;
+    if (*sound == NULL)
+        *sound = loadSoundSprite( "otherSounds",
+                curse ? "curseChime.aiff" : "tutorialChime.aiff" );
+    if (*sound != NULL)
+        playSoundSprite( *sound, 0.2 * getSoundEffectsLoudness() );
+}
+
+void YummyLife::Pings::flash(float r, float g, float b) {
+    if (!bFlashScreen) return;
+    flashColor[0] = r;
+    flashColor[1] = g;
+    flashColor[2] = b;
+    flashStartTime = game_getCurrentTime();
+}
+
+// whole-word match of our first name in (all-caps) speech
+bool YummyLife::Pings::speechMentionsUs(const char* speech) {
+    LiveObject *us = HetuwMod::ourLiveObject;
+    if (us == NULL || us->name == NULL || speech == NULL) return false;
+
+    char firstName[64];
+    snprintf(firstName, sizeof(firstName), "%s", us->name);
+    char *space = strchr(firstName, ' ');
+    if (space) *space = '\0';
+    size_t nameLen = strlen(firstName);
+    if (nameLen < 2) return false; // 1-letter names give too many false hits
+
+    const char *pos = speech;
+    while ((pos = strstr(pos, firstName)) != NULL) {
+        bool startOk = (pos == speech) || !isalpha((unsigned char)pos[-1]);
+        bool endOk = !isalpha((unsigned char)pos[nameLen]);
+        if (startOk && endOk) return true;
+        pos += 1;
+    }
+    return false;
+}
+
+// curse ping shared by both detection paths, debounced
+void YummyLife::Pings::cursePing() {
+    if (!bEnabled || !bOnCursed) return;
+    double now = game_getCurrentTime();
+    if (now - lastCursePingTime < cursePingCooldown) return;
+    lastCursePingTime = now;
+    // logged AFTER the cooldown, unlike the other pings: this cooldown
+    // deduplicates one curse seen on both the speech and CU paths, so
+    // logging above it would produce two lines per curse
+    ChatLog::addEvent("YOU WERE CURSED", 1, 0.1, 0.1);
+    playChime(true);
+    flash(1, 0.1, 0.1);
+}
+
+void YummyLife::Pings::onPlayerSays(int speakerID, const char* speech, int curseFlag) {
+    if (!bEnabled) return;
+    if (!speechMentionsUs(speech)) return;
+
+    if (curseFlag) {
+        // a successful curse naming us: "CURSE FIRST LAST"
+        cursePing();
+        return;
+    }
+
+    // someone is calling for us while we're AFK: answer them (rate-limited)
+    if (bAfkAutoReply && AFK::isAFK()) {
+        double nowReply = game_getCurrentTime();
+        if (nowReply - lastAfkReplyTime > 30) {
+            lastAfkReplyTime = nowReply;
+            HetuwMod::Say("IM AFK, BACK SOON");
+        }
+    }
+
+    if (!bOnNameMention) return;
+    // the chat log detects and highlights mentions itself (ChatLog::add)
+    double now = game_getCurrentTime();
+    if (now - lastNamePingTime < namePingCooldown) return;
+    lastNamePingTime = now;
+    playChime(false);
+    flash(1, 0.9, 0.2);
+}
+
+void YummyLife::Pings::onBabyBorn() {
+    if (!bEnabled || !bOnBabyBorn) return;
+    // logged before the cooldown: twins are two real births
+    ChatLog::addEvent("YOUR BABY WAS BORN", 1, 0.5, 0.8);
+    double now = game_getCurrentTime();
+    if (now - lastBabyPingTime < babyPingCooldown) return;
+    lastBabyPingTime = now;
+    playChime(false);
+    flash(1, 0.5, 0.8);
+}
+
+// belt-and-braces curse detection: the server updating OUR curse level
+void YummyLife::Pings::onSelfCurseLevel(int curseLevel) {
+    if (lastOwnCurseLevel >= 0 && curseLevel > lastOwnCurseLevel) {
+        cursePing();
+    }
+    lastOwnCurseLevel = curseLevel;
+}
+
+// chime + flash + on-screen label
+void YummyLife::Pings::labelPing(const char* msg, bool curseSound,
+        float r, float g, float b) {
+    snprintf(milestoneMsg, sizeof(milestoneMsg), "%s", msg);
+    milestoneMsgTime = game_getCurrentTime();
+    ChatLog::addEvent(msg, r, g, b);
+    playChime(curseSound);
+    flash(r, g, b);
+}
+
+// soft-blue milestone ping with an on-screen label
+void YummyLife::Pings::agePing(const char* msg) {
+    if (!bEnabled || !bOnAgeMilestone) return;
+    labelPing(msg, false, 0.3, 0.6, 1);
+}
+
+// family line in danger: urgent sound + orange-red flash + label
+void YummyLife::Pings::familyAlert(const char* msg) {
+    if (!bEnabled || !bOnFamilyDying) return;
+    labelPing(msg, true, 1, 0.3, 0.1);
+}
+
+// called every living-life step with our current age
+void YummyLife::Pings::stepAge(double age, char gender) {
+    if (age <= 0) return;
+    double last = lastAgeSeen;
+    lastAgeSeen = age;
+    // first reading of a life (or a big jump backwards = new life missed
+    // somehow): record silently, never ping
+    if (last < 0 || age < last) return;
+
+    if (last < 3 && age >= 3) {
+        agePing("AGE 3 - YOU CAN CARRY THINGS NOW");
+    } else if (gender == 'F' && last < 14 && age >= 14) {
+        agePing("AGE 14 - YOU ARE FERTILE NOW");
+    } else if (gender == 'F' && last < 40 && age >= 40) {
+        agePing("AGE 40 - NO MORE BABIES");
+    } else if (last < 55 && age >= 55) {
+        agePing("AGE 55 - YOU ARE AN ELDER NOW");
+    }
+}
+
+void YummyLife::Pings::newLife() {
+    lastOwnCurseLevel = -1;
+    lastNamePingTime = 0;
+    lastBabyPingTime = 0;
+    lastCursePingTime = 0;
+    lastAgeSeen = -1;
+    lastAfkReplyTime = 0;
+    milestoneMsg[0] = '\0';
+    milestoneMsgTime = 0;
+    flashStartTime = 0;
+}
+
+void YummyLife::Pings::draw() {
+    if (flashStartTime > 0) {
+        double t = game_getCurrentTime() - flashStartTime;
+        if (t > pingFlashDuration) {
+            flashStartTime = 0;
+        } else {
+            float alpha = 0.35 * (1.0 - t / pingFlashDuration);
+            setDrawColor( flashColor[0], flashColor[1], flashColor[2], alpha );
+            drawRect( lastScreenViewCenter,
+                    HetuwMod::viewWidth * HetuwMod::guiScale,
+                    HetuwMod::viewHeight * HetuwMod::guiScale );
+        }
+    }
+
+    // ping label centered near the top of the screen for 4s
+    if (milestoneMsgTime > 0) {
+        if (game_getCurrentTime() - milestoneMsgTime > 4.0) {
+            milestoneMsgTime = 0;
+        } else {
+            HetuwFont *customFont = HetuwMod::customFont;
+            double scale = customFont->hetuwGetScaleFactor();
+            customFont->hetuwSetScaleFactor(scale * HetuwMod::guiScale * 1.4
+                    * HetuwMod::getQolTextScale());
+            doublePair drawPos = lastScreenViewCenter;
+            drawPos.y += HetuwMod::viewHeight/2 - 120*HetuwMod::guiScale;
+            HetuwMod::drawCustomTextWithBckgr(drawPos, milestoneMsg);
+            customFont->hetuwSetScaleFactor(scale);
+        }
+    }
+}
+
+void YummyLife::Pings::cleanUpSounds() {
+    if (chimeSound != NULL) freeSoundSprite(chimeSound);
+    if (curseSound != NULL) freeSoundSprite(curseSound);
 }
 
 
