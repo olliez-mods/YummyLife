@@ -313,6 +313,8 @@ bool HetuwMod::addBabyCoordsToList = false;
 
 bool HetuwMod::bRemapStart = true;
 bool HetuwMod::bDrawHungerWarning = false;
+bool HetuwMod::bDrawContainerPeek = true;
+bool HetuwMod::bDrawUsesRemaining = true;
 
 int HetuwMod::delayReduction = 0;
 
@@ -991,6 +993,8 @@ void HetuwMod::initSettings() {
 	yumConfig::registerMappedSetting("init_show_object_timers", iShowObjectTimers, showObjectTimersMap, {postComment: " // none, always, hover"});
 	yumConfig::registerSetting("enable_bb_speech_mush", bBBSpeechMushEnabled);
 	yumConfig::registerSetting("enable_shared_account_features", bEnableSharedAccountFeatures, {postComment: " // Enable features that allow you to share your account with others"});
+	yumConfig::registerSetting("show_container_peek", bDrawContainerPeek, {postComment: " // hovering a container lists its contents"});
+	yumConfig::registerSetting("show_uses_remaining", bDrawUsesRemaining, {postComment: " // hovering a multi-use object (tool, berry bush) shows uses left"});
 	yumConfig::registerSetting("log_chat", HetuwMod::bPrintChatLogToFile, {postComment: " // write speech to " hetuwLogFileName});
 	yumConfig::registerScaledSetting("qol_text_scale", qolTextScale, 10, {postComment: " // text size of the chat log overlay, 10 = full size, default 7"});
 	// ... to here
@@ -2316,6 +2320,8 @@ void HetuwMod::livingLifeDraw() {
 	}
 
 	if (bDrawBiomeInfo) drawBiomeIDs();
+	if (bDrawContainerPeek) drawContainerPeek();
+	if (bDrawUsesRemaining) drawUsesRemaining();
 	if (bDrawHungerWarning) drawHungerWarning();
 }
 
@@ -5636,6 +5642,106 @@ void HetuwMod::drawHelp() {
 		snprintf(str, sizeof(str), "MAP RUNNING SINCE: %s", getArcTimeStr().c_str());
 		livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
 	}
+}
+
+// YummyLife: hovering a container lists its contents next to the cursor
+void HetuwMod::drawContainerPeek() {
+	int mouseX, mouseY;
+	livingLifePage->hetuwGetMouseXY( mouseX, mouseY );
+	int tileX = round( mouseX/(float)CELL_D );
+	int tileY = round( mouseY/(float)CELL_D );
+	if (livingLifePage->hetuwGetObjId( tileX, tileY ) <= 0) return;
+
+	SimpleVector<int> contained;
+	livingLifePage->hetuwGetContained( tileX, tileY, &contained );
+	if (contained.size() == 0) return;
+
+	// aggregate counts, preserving first-seen order
+	std::vector<std::pair<int,int>> counts;
+	for (int i=0; i<contained.size(); i++) {
+		int id = contained.getElementDirect(i);
+		if (id < 0) id = -id; // sub-container ids can arrive negated
+		bool found = false;
+		for (unsigned k=0; k<counts.size(); k++) {
+			if (counts[k].first == id) { counts[k].second++; found = true; break; }
+		}
+		if (!found) counts.push_back(std::make_pair(id, 1));
+	}
+
+	// collect the content lines first (same strings as before)
+	std::vector<std::string> lines;
+	std::vector<bool> lineIsMore;
+	char line[96];
+	const unsigned maxLines = 10;
+	for (unsigned k=0; k<counts.size() && k<maxLines; k++) {
+		ObjectRecord *o = getObject(counts[k].first);
+		if (o == NULL || o->description == NULL) continue;
+		char descr[64];
+		objGetDescrWithoutHashtag(o->description, descr, sizeof(descr));
+		char upper[64];
+		strToUpper(descr, upper, sizeof(upper));
+		snprintf(line, sizeof(line), "%d X %s", counts[k].second, upper);
+		lines.push_back(line);
+		lineIsMore.push_back(false);
+	}
+	if (counts.size() > maxLines) {
+		snprintf(line, sizeof(line), "+%d MORE", (int)(counts.size() - maxLines));
+		lines.push_back(line);
+		lineIsMore.push_back(true);
+	}
+	if (lines.empty()) return;
+
+	// chalk-tooltip style, one call per line, stacked downward
+	// below the hover-name tooltip
+	FloatColor bgColor = { 0.05, 0.05, 0.05, 1.0 };
+	FloatColor whiteColor = { 1, 1, 1, 1 };
+	FloatColor grayColor = { 0.7, 0.7, 0.7, 1 };
+
+	doublePair pos = { mouseX + 22*guiScale, mouseY - 48*guiScale };
+	for (unsigned k=0; k<lines.size(); k++) {
+		FloatColor *txtColor = lineIsMore[k] ? &grayColor : &whiteColor;
+		livingLifePage->drawChalkBackgroundString( pos, lines[k].c_str(), 1.0, 100000.0, NULL, -1, &bgColor, txtColor, true );
+		pos.y -= 34*guiScale;
+	}
+}
+
+// YummyLife: hovering a multi-use object shows how many uses are left
+// (use-dummy index is client-side data that vanilla never displays)
+void HetuwMod::drawUsesRemaining() {
+	int mouseX, mouseY;
+	livingLifePage->hetuwGetMouseXY( mouseX, mouseY );
+	int tileX = round( mouseX/(float)CELL_D );
+	int tileY = round( mouseY/(float)CELL_D );
+	int objId = livingLifePage->hetuwGetObjId( tileX, tileY );
+	if (objId <= 0) return;
+	ObjectRecord *o = getObject(objId);
+	if (o == NULL) return;
+
+	int remaining = -1;
+	int total = -1;
+	if (o->isUseDummy) {
+		ObjectRecord *parent = getObject(o->useDummyParent);
+		if (parent == NULL) return;
+		total = parent->numUses;
+		remaining = o->thisUseDummyIndex + 1; // dummy_1 (index 0) = 1 use left
+	} else if (o->numUses > 1) {
+		total = o->numUses;
+		remaining = total;
+	}
+	if (total <= 1 || remaining < 0) return;
+
+	char sBuf[32];
+	snprintf(sBuf, sizeof(sBuf), "%d/%d USES", remaining, total);
+
+	float ratio = remaining / (float)total;
+	FloatColor bgColor = { 0.05, 0.05, 0.05, 1.0 };
+	FloatColor txtColor;
+	if (ratio > 0.5) txtColor = { 0.3, 1, 0.3, 1 };
+	else if (remaining > 1) txtColor = { 1, 0.9, 0.3, 1 };
+	else txtColor = { 1, 0.4, 0.3, 1 };
+
+	doublePair pos = { mouseX + 22*guiScale, mouseY - 48*guiScale };
+	livingLifePage->drawChalkBackgroundString( pos, sBuf, 1.0, 100000.0, NULL, -1, &bgColor, &txtColor, true );
 }
 
 void HetuwMod::drawHungerWarning() {

@@ -609,6 +609,9 @@ class LivingLifePage : public GamePage, public ActionListener {
 		bool hetuwNextActionIs(const char *);
 		int hetuwGetMapI( int tileX, int tileY );
 		int hetuwGetObjId( int mapX, int mapY );
+		// YummyLife: flat list of items inside the container on this tile
+		// (top-level and sub-contained), empty if none
+		void hetuwGetContained( int tileX, int tileY, SimpleVector<int> *out );
 		void hetuwClickMove( float x, float y );
 		double hetuwGetAge( LiveObject *inObj );
 		void hetuwGetStringAge( char* str, LiveObject *inObj );
