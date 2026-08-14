@@ -7131,7 +7131,7 @@ static void playerReadsStatue( LiveObject *inPlayer,
         if( strcmp( workingName, "-" ) == 0 ) {
             workingName = "A NAMLESS PERSON";
             }
-        if( strcmp( lastWords, "-" ) == 0 ) {
+        if( true || strcmp( lastWords, "-" ) == 0 ) {
             playerSays = autoSprintf( 
                 ":%s LEFT THE PLANET %s AND SAID NOTHING. "
                 "JUST GAVE US A GLANCE... "

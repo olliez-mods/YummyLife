@@ -41,6 +41,10 @@ Server Fixes:
 --DULY NOTED now pops up above your head for you to see in addition to the DING
   message.
 
+--Last Words on Statues no longer visible on mouse-over.  Too much risk of
+  troublesome messages becoming permanent fixtures in the world.  It was nice
+  while it lasted.
+
 
 
 
