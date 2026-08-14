@@ -17519,6 +17519,101 @@ void applyHungryWorkCost( LiveObject *inPlayer, int inHungryWorkCost ) {
 
 
 
+char isEveNamingBlocked( LiveObject *inPlayer ) {
+
+    if( inPlayer->error ||
+        inPlayer->isTutorial ||
+        inPlayer->curseStatus.curseLevel > 0 ) {
+
+        // these guys can't do harm with their name choices
+        
+        return false;
+        }
+
+    
+    /* next check if account is old enough */
+
+    int minDays = SettingsManager::getIntSetting( "minDaysForEveNaming", 15 );
+    
+
+    if( inPlayer->lifeStats.accountExistedDays < minDays ) {
+
+        // find closest naming-capable player
+
+        GridPos playerPos = getPlayerPos( inPlayer );
+
+        double minDist = DBL_MAX;
+        LiveObject *closestExpert = NULL;
+        
+        for( int i=0; i<players.size(); i++ ) {
+            LiveObject *p = players.getElement( i );
+            
+            if( p->id == inPlayer->id
+                ||
+                p->isTutorial
+                ||
+                p->curseStatus.curseLevel > 0
+                ||
+                p->isGhost ) {
+                // skip self
+                // skip tutorial or donkeytown players
+                // also skip ghosts
+                continue;
+                }
+
+            if( p->lifeStats.accountExistedDays < minDays ) {
+                // too new
+                continue;
+                }
+
+            
+            GridPos pos = getPlayerPos( p );
+            
+            double d = distance( pos, playerPos );
+                
+            
+            if( d < minDist ) {
+                minDist = d;
+                closestExpert = p;
+                }
+            }
+        
+        if( closestExpert == NULL ) {
+            // not found
+            // no arrow for them
+            sendGlobalMessage(
+                (char*)"YOUR ACCOUNT IS TOO NEW TO PICK AN EVE NAME.**"
+                       "SADLY, NO ONE IS AROUND TO HELP.",
+                inPlayer );
+            }
+        else {
+            sendGlobalMessage(
+                (char*)"YOUR ACCOUNT IS TOO NEW TO PICK AN EVE NAME.**"
+                       "FOLLOW ARROW TO SOMEONE WHO CAN HELP.",
+                inPlayer );
+
+            GridPos ePos = getPlayerPos( closestExpert );
+
+            char *message = autoSprintf( "PS\n"
+                                         "%d/0 NAMING HELP "
+                                         "*expert %d *map %d %d\n#",
+                                         inPlayer->id,
+                                         closestExpert->id,
+                                         ePos.x - inPlayer->birthPos.x,
+                                         ePos.y - inPlayer->birthPos.y );
+
+            sendMessageToPlayer( inPlayer, message, strlen( message ) );
+            delete [] message;
+            }
+
+        return true;
+        }
+
+    return false;
+    }
+
+
+
 static const char *numberToWords( int inNumber ) {
     switch( inNumber ) {
         case 1:
@@ -24595,8 +24690,13 @@ int main( int inNumArgs, const char **inArgs ) {
                         
                         if( nextPlayer->isEve && nextPlayer->name == NULL ) {
                             char *name = isFamilyNamingSay( m.saidText );
-                            
-                            if( name != NULL && strcmp( name, "" ) != 0 ) {
+
+                            if( name != NULL
+                                &&
+                                strcmp( name, "" ) != 0
+                                &&
+                                ! isEveNamingBlocked( nextPlayer ) ) {
+                                
                                 nameEve( nextPlayer, name );
                                 playerIndicesToSendNamesAbout.push_back( i );
                                 replaceNameInSaidPhrase( 
@@ -25293,8 +25393,12 @@ int main( int inNumArgs, const char **inArgs ) {
                                         
                                         name = isEveNamingSay( m.saidText );
                                         
-                                        if( name != NULL && 
-                                            strcmp( name, "" ) != 0 ) {
+                                        if( name != NULL
+                                            && 
+                                            strcmp( name, "" ) != 0
+                                            &&
+                                            ! isEveNamingBlocked(
+                                                nextPlayer ) ) {
                                             
                                             nameEve( closestOther, name );
                                             playerIndicesToSendNamesAbout.
@@ -25310,7 +25414,9 @@ int main( int inNumArgs, const char **inArgs ) {
                                             if( ! isEveWindow() && 
                                                 ! closestOther->isTutorial &&
                                                 closestOther->
-                                                curseStatus.curseLevel == 0 ) {
+                                                curseStatus.curseLevel
+                                                == 0 ) {
+                                                    
                                                 // new family name created
                                                 restockPostWindowFamilies();
                                                 }

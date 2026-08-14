@@ -45,6 +45,9 @@ Server Fixes:
   troublesome messages becoming permanent fixtures in the world.  It was nice
   while it lasted.
 
+--Accounts less than 15 days old cannot pick Eve names, and they get a DING
+  message explaining this, and an arrow toward someone who can help name them.
+
 
 
 
