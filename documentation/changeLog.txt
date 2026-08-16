@@ -48,6 +48,10 @@ Server Fixes:
 --Accounts less than 15 days old cannot pick Eve names, and they get a DING
   message explaining this, and an arrow toward someone who can help name them.
 
+--MOVE messages with very long paths (62+ long) are now discarded.  Before, a
+  malicious client could sent very long move messages, which would cause nearby
+  clients to lag processing them.
+
 
 
 

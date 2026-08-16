@@ -71,6 +71,10 @@
 #include "minorGems/util/random/JenkinsRandomSource.h"
 
 
+static int chunkDimensionX = 32;
+static int chunkDimensionY = 30;
+
+
 //#define IGNORE_PRINTF
 
 #ifdef IGNORE_PRINTF
@@ -3307,6 +3311,19 @@ ClientMessage parseMessage( LiveObject *inPlayer, char *inMessage ) {
         
         m.numExtraPos = (numTokens - offset) / 2;
         
+        if( m.numExtraPos > chunkDimensionX + chunkDimensionY ) {
+            // path way too long... there's no legit reason
+            // why a path would need to be this long, and it's
+            // probably an exploit trying to send really long paths
+            // to other clients
+            
+            delete tokens;
+            
+            m.type = UNKNOWN;
+            return m;
+            }
+        
+        
         m.extraPos = new GridPos[ m.numExtraPos ];
 
         for( int e=0; e<m.numExtraPos; e++ ) {
@@ -5441,8 +5458,7 @@ GridPos getClosestPlayerPos( int inX, int inY ) {
 
 
 
-static int chunkDimensionX = 32;
-static int chunkDimensionY = 30;
+
 
 static int maxSpeechRadius = 16;
 
