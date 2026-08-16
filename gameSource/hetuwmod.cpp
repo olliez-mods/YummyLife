@@ -313,6 +313,7 @@ bool HetuwMod::addBabyCoordsToList = false;
 
 bool HetuwMod::bRemapStart = true;
 bool HetuwMod::bDrawHungerWarning = false;
+bool HetuwMod::bDrawTempReadout = true;
 int HetuwMod::iContainerPeekMode = 1; // 0=never, 1=modifier, 2=hover
 bool HetuwMod::bDrawUsesRemaining = true;
 
@@ -993,6 +994,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerMappedSetting("init_show_object_timers", iShowObjectTimers, showObjectTimersMap, {postComment: " // none, always, hover"});
 	yumConfig::registerSetting("enable_bb_speech_mush", bBBSpeechMushEnabled);
 	yumConfig::registerSetting("enable_shared_account_features", bEnableSharedAccountFeatures, {postComment: " // Enable features that allow you to share your account with others"});
+	yumConfig::registerSetting("show_temperature_readout", bDrawTempReadout, {postComment: " // numeric temperature + COLD/PERFECT/HOT label above the temp meter"});
 	static std::map<std::string, int> containerPeekModeMap = {
 		{"never", 0},
 		{"modifier", 1},
@@ -2325,6 +2327,7 @@ void HetuwMod::livingLifeDraw() {
 	}
 
 	if (bDrawBiomeInfo) drawBiomeIDs();
+	if (bDrawTempReadout) drawTempReadout();
 	if (iContainerPeekMode != 0) drawContainerPeek();
 	if (bDrawUsesRemaining) drawUsesRemaining();
 	if (bDrawHungerWarning) drawHungerWarning();
@@ -5290,7 +5293,7 @@ void HetuwMod::drawAge() {
 	age = (int)((age-ageDecimal)*0.1);
 	snprintf(sBuf, sizeof(sBuf), "%c  %i.%i", ourGender, age, ageDecimal);
 	drawPos = lastScreenViewCenter;
-	drawPos.x += 290;
+	drawPos.x += 220;
 	drawPos.y -= viewHeight/2 - 25;
 	livingLifePage->hetuwDrawWithHandwritingFont( sBuf, drawPos );
 }
@@ -5649,6 +5652,29 @@ void HetuwMod::drawHelp() {
 	}
 }
 
+// YummyLife: numeric temperature + label, inked onto the vanilla gui panel
+// the same way the age readout is
+void HetuwMod::drawTempReadout() {
+	float heat = ourLiveObject->heat;
+	if (heat < 0) return;
+	int pct = (int)(heat * 100 + 0.5f);
+	const char *label;
+	if (heat < 0.15) label = "FREEZING";
+	else if (heat < 0.45) label = "COLD";
+	else if (heat <= 0.55) label = "PERFECT";
+	else if (heat <= 0.85) label = "HOT";
+	else label = "BURNING";
+
+	char sBuf[32];
+	snprintf(sBuf, sizeof(sBuf), "%d%% %s", pct, label);
+	doublePair drawPos = lastScreenViewCenter;
+	// centred above the panel art's handwritten TEMP. METER label
+	// (screen x +373..+471); x +480..+607 is the bar, where the
+	// sliding arrow would collide with the number
+	drawPos.x += 422;
+	drawPos.y -= viewHeight/2 - 44;
+	setDrawColor( 0, 0, 0, 1 );
+	livingLifePage->hetuwDrawScaledHandwritingFont( sBuf, drawPos, 0.72, alignCenter );
 // YummyLife: hovering a container lists its contents next to the cursor
 void HetuwMod::drawContainerPeek() {
 	if (iContainerPeekMode == 1 && !isShiftKeyDown() && !isControlKeyDown()) {
