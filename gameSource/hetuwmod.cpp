@@ -5675,6 +5675,8 @@ void HetuwMod::drawTempReadout() {
 	drawPos.y -= viewHeight/2 - 44;
 	setDrawColor( 0, 0, 0, 1 );
 	livingLifePage->hetuwDrawScaledHandwritingFont( sBuf, drawPos, 0.72, alignCenter );
+}
+
 // YummyLife: hovering a container lists its contents next to the cursor
 void HetuwMod::drawContainerPeek() {
 	if (iContainerPeekMode == 1 && !isShiftKeyDown() && !isControlKeyDown()) {
