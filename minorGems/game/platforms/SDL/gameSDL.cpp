@@ -5720,6 +5720,7 @@ void launchURL( char *inURL ) {
 // https://www.allegro.cc/forums/thread/606034
 
 #include <windows.h>
+#include <shellapi.h>
 
 char *getClipboardText() {
     char *fromClipboard = NULL;
@@ -5757,19 +5758,10 @@ void setClipboardText( const char *inText  ) {
 
 
 void launchURL( char *inURL ) {
-    // for some reason, on Windows, need extra set of "" before quoted URL
-    // found here:
-    // https://stackoverflow.com/questions/3037088/
-    //         how-to-open-the-default-web-browser-in-windows-in-c
-    
-    // the wmic method allows spawning a browser without it lingering as
-    // a child process
-    // https://steamcommunity.com/groups/steamworks/
-    //         discussions/0/154645427521397803/
-    char *call = autoSprintf( 
-        "wmic process call create 'cmd /c start \"\" \"%s\"'", inURL );    
-    system( call );
-    delete [] call;
+    // YummyLife: Replace Jason URL implementation
+    // ShellExecute hands off to the OS default browser and returns
+    // immediately, unlike system()/wmic which blocks the main thread
+    ShellExecuteA( NULL, "open", inURL, NULL, NULL, SW_SHOWNORMAL );
     }
 
 

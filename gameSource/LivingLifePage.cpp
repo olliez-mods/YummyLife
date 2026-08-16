@@ -3103,6 +3103,42 @@ int LivingLifePage::hetuwGetObjId( int tileX, int tileY ) {
 	return mMap[i];
 }
 
+// YummyLife: flat list of contained (and sub-contained) item ids on a tile
+void LivingLifePage::hetuwGetContained( int tileX, int tileY,
+                                        SimpleVector<int> *out ) {
+	int mapX = tileX - mMapOffsetX + mMapD / 2;
+	int mapY = tileY - mMapOffsetY + mMapD / 2;
+	int i = mapY * mMapD + mapX;
+	if (i < 0 || i >= mMapD*mMapD) return;
+
+	for( int c=0; c<mMapContainedStacks[i].size(); c++ ) {
+		out->push_back( mMapContainedStacks[i].getElementDirect( c ) );
+
+		if( c < mMapSubContainedStacks[i].size() ) {
+			SimpleVector<int> *sub =
+				mMapSubContainedStacks[i].getElement( c );
+			for( int s=0; s<sub->size(); s++ ) {
+				out->push_back( sub->getElementDirect( s ) );
+				}
+			}
+		}
+}
+
+// YummyLife: mirrors the hit-test that decides the white hover-highlight
+// outline (see drawMapCell's "highlight" condition), so hover tooltips only
+// show for the actual object under the cursor rather than anywhere in its tile's square
+int LivingLifePage::hetuwGetHoveredObjectID() {
+	if( mCurMouseOverID > 0 && ! mCurMouseOverSelf && ! mCurMouseOverBehind ) {
+		return mCurMouseOverID;
+		}
+	return -1;
+}
+
+void LivingLifePage::hetuwGetHoveredObjectTile( int &outTileX, int &outTileY ) {
+	outTileX = mCurMouseOverWorld.x;
+	outTileY = mCurMouseOverWorld.y;
+}
+
 static Image *expandToPowersOfTwoWhite( Image *inImage ) {
     
     int w = 1;
