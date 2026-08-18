@@ -60,6 +60,7 @@ float Phex::colorNamesInChat[4];
 float Phex::colorCmdMessage[4];
 float Phex::colorCmdInGameNames[4];
 float Phex::colorCmdMessageError[4];
+float Phex::colorChatBorder[4];
 std::string Phex::colorCodeWhite;
 std::string Phex::colorCodeNamesInChat;
 std::string Phex::colorCodeCmdMessage;
@@ -155,6 +156,121 @@ static bool temporaryJasonAuthOptIn = false;
 static std::string lastURLOpenRequest = "";
 static double lastURLOpenRequestTime = 0;
 
+// YummyLife: inline formatting tokens for chat messages.  A token is a flag in
+// the message text, the same way a color code is: it does not draw anything by
+// itself, it changes how the text around it is laid out.  Tokens are honoured
+// in every message, player chat included.
+//
+//   {*b}  divider line across the chat window, on a row of its own
+//   {*c}  center the text that follows
+//   {*l}  left align the text that follows (the default)
+//
+// Because a row can only have one alignment, every token ends the current row
+// and the text carries on below it.
+enum ChatToken { CHAT_TOKEN_BORDER, CHAT_TOKEN_CENTER, CHAT_TOKEN_LEFT };
+
+static const struct { const char *str; ChatToken token; } chatTokens[] = {
+	{ "{*b}", CHAT_TOKEN_BORDER },
+	{ "{*c}", CHAT_TOKEN_CENTER },
+	{ "{*l}", CHAT_TOKEN_LEFT },
+};
+
+// divider geometry, both as a fraction: the row of a normal text line, and the drawn rule of that row
+static constexpr double borderLineHeightFactor = 0.7;
+static constexpr double borderThicknessFactor = 0.15;
+
+// Returns the token starting at inText[i], or -1 if there is none
+static int chatTokenAt(const std::string &inText, size_t i) {
+	for (size_t t = 0; t < sizeof(chatTokens)/sizeof(chatTokens[0]); t++) {
+		std::string str = chatTokens[t].str;
+		if (inText.compare(i, str.length(), str) == 0) return (int)t;
+	}
+	return -1;
+}
+
+// Precompute and seperate the message into individual rows it'll be drawn as
+std::vector<Phex::ChatSegment> Phex::buildChatSegments(const std::string &text, const std::string &baseColorCode) {
+	std::vector<ChatSegment> segments;
+	bool centered = false;
+
+	std::string run = "";
+	// color survives a token: a color code stays in effect until the next one
+	std::string activeColorCode = baseColorCode; // color reached so far
+	std::string runColorCode = baseColorCode; // color the current run opens in
+	bool runHasText = false; // color codes alone are not worth a row
+
+	// Closes off the text collected so far.  Centering is measured and drawn a ine at a time
+	auto flushRun = [&]() {
+		std::string wrapped = runHasText ? wrapText(run) : "";
+		run = "";
+		runHasText = false;
+
+		if (wrapped.length() > 0) {
+			if (!centered) {
+				ChatSegment segment;
+				segment.textToDraw = runColorCode + wrapped;
+				segments.push_back(segment);
+			} else {
+				size_t lineStart = 0;
+				while (lineStart <= wrapped.length()) {
+					size_t lineEnd = wrapped.find('\n', lineStart);
+					if (lineEnd == std::string::npos) lineEnd = wrapped.length();
+
+					ChatSegment segment;
+					segment.centered = true;
+					// each line is its own drawString call, so it needs the color again
+					segment.textToDraw = runColorCode + wrapped.substr(lineStart, lineEnd - lineStart);
+					segments.push_back(segment);
+
+					lineStart = lineEnd + 1;
+				}
+			}
+		}
+
+		runColorCode = activeColorCode;
+	};
+
+	size_t i = 0;
+	while (i < text.length()) {
+		// a color code is a flag as well, and its bytes are not text, so step
+		// over the whole code rather than reading into it
+		if (text[i] == (char)hetuwFontColorCode && i + 4 < text.length()) {
+			activeColorCode = text.substr(i, 5);
+			run += activeColorCode;
+			i += 5;
+			continue;
+		}
+
+		int t = chatTokenAt(text, i);
+		if (t < 0) {
+			run += text[i];
+			runHasText = true;
+			i++;
+			continue;
+		}
+
+		flushRun();
+		i += strlen(chatTokens[t].str);
+
+		switch (chatTokens[t].token) {
+			case CHAT_TOKEN_BORDER: {
+				ChatSegment segment;
+				segment.kind = ChatSegment::Border;
+				segments.push_back(segment);
+				break;
+			}
+			case CHAT_TOKEN_CENTER: centered = true; break;
+			case CHAT_TOKEN_LEFT: centered = false; break;
+		}
+	}
+	flushRun();
+
+	// a message of nothing but alignment tokens still needs a row to live on
+	if (segments.empty()) segments.push_back(ChatSegment());
+
+	return segments;
+}
+
 // Initialize starting values for variables that should be reset on Phex reconnect
 // This will be called when onConnectionStatusChanged switches to CONNECTING
 // Don't put variables that must persist across reconnects in here or ones that affect connection/status
@@ -220,6 +336,7 @@ void Phex::init() {
 	setArray(colorCmdMessage, (const float[]){ 0.2f, 1.0f, 0.5f, 1.0f }, 4);
 	setArray(colorCmdInGameNames, (const float[]){ 0.6f, 1.0f, 0.2f, 1.0f }, 4);
 	setArray(colorCmdMessageError, (const float[]){ 1.0f, 0.7f, 0.4f, 1.0f }, 4);
+	setArray(colorChatBorder, (const float[]){ 1.0f, 1.0f, 1.0f, 0.35f }, 4);
 
 	mainChatWindow.init(recBckgr);
 	setArray(colorButPhexOffline, (const float[]){0.6, 0.0, 0.0, 0.6}, 4);
@@ -522,7 +639,7 @@ void Phex::serverCmdSAY(std::vector<std::string> input) {
 	chatElement.name = string(*getUserDisplayName(chatElement.hash));
 
 	std::string unWrappedText = colorCodeNamesInChat+chatElement.name+": "+colorCodeWhite+chatElement.text;
-	chatElement.textToDraw = wrapText(unWrappedText);
+	chatElement.segments = buildChatSegments(unWrappedText, colorCodeWhite);
 
 	mainChatWindow.addElement(chatElement);
 }
@@ -1511,8 +1628,12 @@ static std::string trimTrailingWhitespace(const std::string& str) {
 std::string Phex::wrapText(std::string text) {
 	size_t textLen = text.length();
 
+	// the font wraps at a fixed x, so text has to be measured from the same
+	// place it gets drawn or it wraps to the wrong width
+	doublePair measurePos = { mainChatWindow.rec[0], 0 };
+
 	// 'Ig' goes to max heigh and low, so we can use it to get the max height of a single line
-	double singleLineHeight = getStringWidthHeight({0, 0}, "Ig").y;
+	double singleLineHeight = getStringWidthHeight(measurePos, "Ig").y;
 
 	std::string wrappedText = "";
 
@@ -1534,7 +1655,7 @@ std::string Phex::wrapText(std::string text) {
 		}
 
 		// If the word fits on the current line put it in; 'Wi' is just an extra bit of length to make sure the word ALWAYS fits
-		if(getStringWidthHeight({0, 0}, line + word + "Wi").y <= singleLineHeight*1.1) {
+		if(getStringWidthHeight(measurePos, line + word + "Wi").y <= singleLineHeight*1.1) {
 			line += word;
 		} else {
 			// If the word doesn't fit, add it to the next line
@@ -1604,8 +1725,23 @@ void Phex::handlePlayerSays(int playerId, const char* msg, bool isCurse, int x, 
 
 void Phex::ChatWindow::addElement(ChatElement element) {
 	doublePair pos = {rec[0], rec[1]};
-	doublePair widthHeight = getStringWidthHeight(pos, element.textToDraw);
-	element.textHeight = widthHeight.y;
+
+	// measure once, here, so drawing a segment is only ever a draw call
+	element.textHeight = 0;
+	for (ChatSegment &segment : element.segments) {
+		if (segment.kind == ChatSegment::Border) {
+			// a divider takes a shorter row of its own; 'Ig' reaches highest and lowest, so it measures a full text line
+			segment.height = getStringWidthHeight(pos, "Ig").y * borderLineHeightFactor;
+		} else {
+			doublePair widthHeight = getStringWidthHeight(pos, segment.textToDraw);
+			segment.height = widthHeight.y;
+			segment.drawX = rec[0];
+			// a centered segment is always a single line, so its measured width is the width of the line we are about to draw
+			if (segment.centered) segment.drawX += ((rec[2] - rec[0]) - widthHeight.x) / 2.0;
+		}
+		element.textHeight += segment.height;
+	}
+
 	elements.push_back(element);
 	if (!hasFocus || scrollPos == (int)elements.size() - 2) {
 		scrollToBottom();
@@ -1633,8 +1769,7 @@ bool Phex::ChatWindow::onScroll(int dir) {
 }
 
 void Phex::ChatWindow::draw(bool bDraw) {
-	float x = rec[0];
-	float y = rec[1];
+	double y = rec[1];
 	topMinimum = 0;
 
 	if (bDraw) setDrawColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -1651,7 +1786,27 @@ void Phex::ChatWindow::draw(bool bDraw) {
 		y += elements[i].textHeight;
 		if (y > rec[3]) break;
 		topMinimum = y;
-		if (bDraw) drawString(elements[i].textToDraw.c_str(), {x, y});
+		if (bDraw) {
+			// y is the top of the message; its segments stack downwards from it
+			double segY = y;
+			for (const ChatSegment &segment : elements[i].segments) {
+				if (segment.kind == ChatSegment::Border) {
+					double thickness = segment.height * borderThicknessFactor;
+					double lineRec[4];
+					lineRec[0] = rec[0];
+					lineRec[2] = rec[2];
+					lineRec[1] = segY - (segment.height + thickness) / 2.0;
+					lineRec[3] = lineRec[1] + thickness;
+
+					HetuwMod::hSetDrawColor(colorChatBorder);
+					HetuwMod::hDrawRecFromPercent(lineRec);
+					setDrawColor(1.0f, 1.0f, 1.0f, 1.0f); // restore for the text segments
+				} else {
+					drawString(segment.textToDraw.c_str(), {segment.drawX, segY});
+				}
+				segY -= segment.height;
+			}
+		}
 	}
 
 	if (bDraw && isScrolledUp()) {
@@ -1671,7 +1826,7 @@ void Phex::addCmdMessageToChatWindow(std::string msg, int type) {
 
 	ChatElement element;
 	element.unixTimeStamp = time(NULL);
-	element.textToDraw = colorCode + msg + colorCodeWhite;
+	element.segments = buildChatSegments(colorCode + msg + colorCodeWhite, colorCode);
 	mainChatWindow.addElement(element);
 }
 

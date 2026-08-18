@@ -119,15 +119,24 @@ public:
 		void setBorderRecs();
 	};
 
+	struct ChatSegment {
+		enum Kind { Text, Border };
+		Kind kind = Text;
+		bool centered = false;
+		std::string textToDraw; // wrapped, Text only
+		double height = 0;
+		double drawX = 0; // set when measured, so centering costs nothing to draw
+	};
+
 	struct ChatElement {
 		static constexpr int maxHashDisplayLength = 8;
 		std::string text;
 		std::string hash;
 		std::string name = "";
 		time_t unixTimeStamp;
-		double textHeight;
+		double textHeight; // sum of the segment heights
 		double textHeightScaled;
-		std::string textToDraw;
+		std::vector<ChatSegment> segments;
 	};
 
 	struct ChatWindow {
@@ -319,6 +328,7 @@ public:
 	static float colorCmdMessage[4];
 	static float colorCmdInGameNames[4];
 	static float colorCmdMessageError[4];
+	static float colorChatBorder[4];
 	static std::string colorCodeWhite;
 	static std::string colorCodeNamesInChat;
 	static std::string colorCodeCmdMessage;
@@ -442,6 +452,7 @@ public:
 	static doublePair getStringWidthHeight(doublePair startPos, std::string str);
 	static double getLineHeight(HetuwFont *font);
 	static std::string wrapText(std::string text);
+	static std::vector<ChatSegment> buildChatSegments(const std::string &text, const std::string &baseColorCode);
 	static void drawString(std::string str, doublePair startPos);
 
 	static void createLifeProfile(int lifeID, std::string channel);
