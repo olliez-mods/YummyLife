@@ -4,7 +4,7 @@
 // YummyLife: Phex version 8 is PhexPlus
 #define PHEX_VERSION 13
 #define PHEX_CHAR_END 4
-#define PHEX_MAX_INPUT_STR_LENGTH 127
+#define PHEX_MAX_INPUT_STR_LENGTH 254
 
 #include <string>
 #include <vector>
