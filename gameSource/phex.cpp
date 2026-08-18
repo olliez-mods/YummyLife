@@ -1683,10 +1683,9 @@ std::string Phex::wrapText(std::string text) {
 		if(getStringWidthHeight(measurePos, line + word + "Wi").y <= singleLineHeight*1.1) {
 			line += word;
 		} else {
-			// If the word doesn't fit, add it to the next line
-			line = trimTrailingWhitespace(line); // This could remove \n if there is multiple at the end of a line
-			wrappedText += line + "\n" + word;
-			line = "";
+			std::string finishedLine = trimTrailingWhitespace(line); // This could remove \n if there is multiple at the end of a line
+			if (finishedLine.length() > 0) wrappedText += finishedLine + "\n";
+			line = word;
 		}
 	}
 	wrappedText += line;
