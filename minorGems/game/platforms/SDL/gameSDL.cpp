@@ -5595,6 +5595,34 @@ char isURLLaunchSupported() {
 
 
 
+#if defined(LINUX) || defined(__mac__)
+// YummyLife: wraps inString in POSIX single quotes, so that a shell treats
+// every character in it literally.  Inside single quotes the shell expands
+// nothing at all, so the only character needing special handling is ' itself,
+// which is escaped as '\'' (close quote, literal quote, reopen quote).
+//
+// Callers must delete [] the returned string.
+static char *shellSingleQuote( const char *inString ) {
+    SimpleVector<char> out;
+
+    out.push_back( '\'' );
+
+    for( int i=0; inString[i] != '\0'; i++ ) {
+        if( inString[i] == '\'' ) {
+            out.appendElementString( "'\\''" );
+            }
+        else {
+            out.push_back( inString[i] );
+            }
+        }
+
+    out.push_back( '\'' );
+
+    return out.getElementString();
+    }
+#endif
+
+
 #ifdef LINUX
 // X windows clipboard tutorial found here
 // http://michael.toren.net/mirrors/doc/X-copy+paste.txt
@@ -5654,8 +5682,12 @@ void setClipboardText( const char *inText  ) {
 
 
 void launchURL( char *inURL ) {
-    char *call = autoSprintf( "xdg-open \"%s\" &", inURL );    
+    // YummyLife: the URL is single-quoted before it reaches the shell, so
+    // that characters like ` $ ; | & cannot break out and run commands
+    char *quoted = shellSingleQuote( inURL );
+    char *call = autoSprintf( "xdg-open %s &", quoted );
     system( call );
+    delete [] quoted;
     delete [] call;
     }
 
@@ -5706,8 +5738,12 @@ void setClipboardText( const char *inText  ) {
 
 
 void launchURL( char *inURL ) {
-    char *call = autoSprintf( "open \"%s\"", inURL );    
+    // YummyLife: the URL is single-quoted before it reaches the shell, so
+    // that characters like ` $ ; | & cannot break out and run commands
+    char *quoted = shellSingleQuote( inURL );
+    char *call = autoSprintf( "open %s", quoted );
     system( call );
+    delete [] quoted;
     delete [] call;
     }
 

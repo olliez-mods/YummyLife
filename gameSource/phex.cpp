@@ -150,6 +150,11 @@ double Phex::graveIdDebounceStartTime = 0;
 
 static bool temporaryJasonAuthOptIn = false;
 
+// Last url the Phex server asked us to open that was not pre-built,
+// waiting for the player to confirm it with .open
+static std::string lastURLOpenRequest = "";
+static double lastURLOpenRequestTime = 0;
+
 // Initialize starting values for variables that should be reset on Phex reconnect
 // This will be called when onConnectionStatusChanged switches to CONNECTING
 // Don't put variables that must persist across reconnects in here or ones that affect connection/status
@@ -178,6 +183,8 @@ void Phex::initVariables() {
 	lifeStarted = false;
 
 	LBNRequestInProgress = false;
+
+	lastURLOpenRequest = "";
 }
 
 void Phex::init() {
@@ -451,6 +458,10 @@ void Phex::initServerCommands() {
 	serverCommands["APPLY_EMOTE"].minWords = 2;
 	serverCommands["SEND_WORLD_BLOB"].func = serverCmdSEND_WORLD_BLOB;
 	serverCommands["SEND_WORLD_BLOB"].minWords = 2;
+
+	// YummyLife: v13
+	serverCommands["URL_OPEN_PRE"].func = serverCmdURL_OPEN_PRE;
+	serverCommands["URL_OPEN_PRE"].minWords = 2;
 }
 
 #define CATCH_SERVER_COMMAND(cmdName) \
@@ -688,15 +699,111 @@ void Phex::serverCmdGET_LEADERBOARD_NAME(std::vector<std::string> input) {
 	triggerFitnessScoreUpdate();
 }
 
+static constexpr double urlOpenRequestTimeout = 300; // seconds
+static constexpr size_t maxURLDisplayLength = 20;
+static constexpr size_t maxURLArgLength = 256;
+
+static std::string truncateForDisplay(const std::string &url) {
+	if (url.length() <= maxURLDisplayLength) return url;
+	return url.substr(0, maxURLDisplayLength) + "...";
+}
+
+// Percent encodes everything outside the RFC 3986 unreserved set, so an
+// argument can never introduce url structure (/, ?, #, :, &) or shell charecters
+static std::string percentEncode(const std::string &str) {
+	static const char *hexDigits = "0123456789ABCDEF";
+
+	std::string out = "";
+	for (size_t i = 0; i < str.length(); i++) {
+		unsigned char c = (unsigned char)str[i];
+		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+			(c >= '0' && c <= '9') ||
+			c == '-' || c == '.' || c == '_' || c == '~') {
+			out += (char)c;
+		} else {
+			out += '%';
+			out += hexDigits[(c >> 4) & 0xF];
+			out += hexDigits[c & 0xF];
+		}
+	}
+	return out;
+}
+
+struct PreURL {
+	const char *url; // {0} {1} {2} are replaced with the escaped arguments
+	int numArgs;
+};
+
+// Urls the Phex server may open without asking.  The server only picks an
+// entry by index and fills in the arguments, so the host and path are always known
+static const PreURL preURLs[] = {
+	/* 0 */ { "http://phex.antinoid.com/phex/store?store_key={0}", 1 }, // store key
+	/* 1 */ { "https://oholcurse.com/player/interactions/{0}", 1 }, // player hash
+	/* 2 */ { "https://onetech.info/{0}", 1 }, // object id
+};
+
+static const int numPreURLs = sizeof(preURLs) / sizeof(preURLs[0]);
+
 // URL_OPEN <url> [promptText]
 void Phex::serverCmdURL_OPEN(std::vector<std::string> input) {
 	std::string url = input[1];
-	bool usePrompt = false;
-	std::string promptText = "";
+
+	printf("Phex server requested to open url: %s\n", url.c_str());
+
+	lastURLOpenRequest = url;
+	lastURLOpenRequestTime = HetuwMod::curStepTime;
+
+	addCmdMessageToChatWindow("Phex is attempting to open a url \"" + truncateForDisplay(url) + "\"");
 	if (input.size() >= 3) {
-		promptText = input[2];
-		usePrompt = true;
+		addCmdMessageToChatWindow("Phex says: " + joinStr(input, " ", 2));
 	}
+	addCmdMessageToChatWindow("type '" + strCmdChar + "open' to open it (Only do this if you trust Phex!)");
+}
+
+// URL_OPEN_PRE <index> [arg] [arg] [arg]
+void Phex::serverCmdURL_OPEN_PRE(std::vector<std::string> input) {
+	int index = -1;
+	try {
+		index = stoi(input[1]);
+	} CATCH_SERVER_COMMAND(URL_OPEN_PRE)
+
+	if (index < 0 || index >= numPreURLs) {
+		printf("Phex Error: URL_OPEN_PRE got unknown url index %d\n", index);
+		return;
+	}
+
+	const PreURL *preURL = &preURLs[index];
+
+	int numArgs = (int)input.size() - 2;
+	if (numArgs != preURL->numArgs) {
+		printf("Phex Error: URL_OPEN_PRE url %d takes %d arguments, but got %d\n",
+			index, preURL->numArgs, numArgs);
+		return;
+	}
+
+	std::string url = preURL->url;
+	for (int i = 0; i < numArgs; i++) {
+		std::string arg = input[i+2];
+		if (arg.length() > maxURLArgLength) {
+			printf("Phex Error: URL_OPEN_PRE argument %d is too long\n", i);
+			return;
+		}
+
+		std::string placeholder = "{" + to_string(i) + "}";
+		size_t pos = url.find(placeholder);
+		if (pos == std::string::npos) {
+			printf("Phex Error: URL_OPEN_PRE url %d has no %s placeholder\n",
+				index, placeholder.c_str());
+			return;
+		}
+
+		// the replacement is percent encoded, so it can never contain a
+		// placeholder of its own for a later pass to pick up
+		url = url.substr(0, pos) + percentEncode(arg) + url.substr(pos + placeholder.length());
+	}
+
+	printf("Phex opening pre-packed url %d: %s\n", index, url.c_str());
+
 	std::string url_copy = url;
 	launchURL(&url_copy[0]);
 }
@@ -1059,6 +1166,11 @@ void Phex::initChatCommands() {
 	chatCommands["OPTIN"].helpStr = "Opt in to sending your email to the Phex server";
 	chatCommands["OPTIN"].allowOffline = true;
 
+	chatCommands["OPEN"].func = chatCmdOPEN;
+	chatCommands["OPEN"].minWords = 1;
+	chatCommands["OPEN"].helpStr = "Opens the last url Phex asked to open";
+	chatCommands["OPEN"].allowOffline = true;
+
 	chatCommands["TEST"].func = chatCmdTEST;
 	chatCommands["TEST"].minWords = 1;
 	chatCommands["TEST"].helpStr = "For testing - dont use";
@@ -1159,6 +1271,23 @@ void Phex::chatCmdOPTIN(std::vector<std::string> input) {
 
 	addCmdMessageToChatWindow("Opted in. Set phex_send_email in " yummylifeSettingsFileName " to opt in permanently.");
 	addCmdMessageToChatWindow("Reconnecting...");
+}
+
+void Phex::chatCmdOPEN(std::vector<std::string> input) {
+	if (lastURLOpenRequest.length() < 1) {
+		addCmdMessageToChatWindow("Phex has not asked to open a url.", CMD_MSG_ERROR);
+		return;
+	}
+
+	if (HetuwMod::curStepTime - lastURLOpenRequestTime > urlOpenRequestTimeout) {
+		lastURLOpenRequest = "";
+		addCmdMessageToChatWindow("That url request has expired.", CMD_MSG_ERROR);
+		return;
+	}
+
+	std::string url_copy = lastURLOpenRequest;
+	lastURLOpenRequest = ""; // single use, so a stale request cant be triggered later
+	launchURL(&url_copy[0]);
 }
 
 void Phex::chatCmdTEST(std::vector<std::string> input) {

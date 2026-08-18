@@ -2,7 +2,7 @@
 #define PHEX_H
 
 // YummyLife: Phex version 8 is PhexPlus
-#define PHEX_VERSION 12
+#define PHEX_VERSION 13
 #define PHEX_CHAR_END 4
 #define PHEX_MAX_INPUT_STR_LENGTH 127
 
@@ -413,6 +413,8 @@ public:
 	static void serverCmdTEXT_COPY(std::vector<std::string> input);
 	static void serverCmdAPPLY_EMOTE(std::vector<std::string> input);
 	static void serverCmdSEND_WORLD_BLOB(std::vector<std::string> input);
+	// Phex v13...
+	static void serverCmdURL_OPEN_PRE(std::vector<std::string> input);
 
 	static void chatCmdHELP(std::vector<std::string> input);
 	static void chatCmdNAME(std::vector<std::string> input);
@@ -420,6 +422,7 @@ public:
 	static void chatCmdBLOCK(std::vector<std::string> input);
 	static void chatCmdLIFE(std::vector<std::string> input);
 	static void chatCmdOPTIN(std::vector<std::string> input);
+	static void chatCmdOPEN(std::vector<std::string> input);
 	static void chatCmdTEST(std::vector<std::string> input);
 
 	// Respond to a poke
