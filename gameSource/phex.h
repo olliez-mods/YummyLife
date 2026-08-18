@@ -121,11 +121,12 @@ public:
 
 	struct ChatSegment {
 		enum Kind { Text, Border };
+		enum Align { AlignLeft, AlignCenter, AlignRight };
 		Kind kind = Text;
-		bool centered = false;
+		Align align = AlignLeft;
 		std::string textToDraw; // wrapped, Text only
 		double height = 0;
-		double drawX = 0; // set when measured, so centering costs nothing to draw
+		double drawX = 0; // set when measured, so aligning costs nothing to draw
 	};
 
 	struct ChatElement {
@@ -450,6 +451,7 @@ public:
 	static void strToLower(std::string &str);
 	static std::string joinStr(std::vector<std::string> strVector, std::string seperator=" ", int offset=0);
 	static doublePair getStringWidthHeight(doublePair startPos, std::string str);
+	static double getStringDrawWidth(doublePair startPos, std::string str);
 	static double getLineHeight(HetuwFont *font);
 	static std::string wrapText(std::string text);
 	static std::vector<ChatSegment> buildChatSegments(const std::string &text, const std::string &baseColorCode);

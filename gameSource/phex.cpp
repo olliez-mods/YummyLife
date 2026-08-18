@@ -162,16 +162,20 @@ static double lastURLOpenRequestTime = 0;
 // in every message, player chat included.
 //
 //   {*b}  divider line across the chat window, on a row of its own
+//   {*n}  empty row, for spacing
 //   {*c}  center the text that follows
+//   {*r}  right align the text that follows
 //   {*l}  left align the text that follows (the default)
 //
 // Because a row can only have one alignment, every token ends the current row
 // and the text carries on below it.
-enum ChatToken { CHAT_TOKEN_BORDER, CHAT_TOKEN_CENTER, CHAT_TOKEN_LEFT };
+enum ChatToken { CHAT_TOKEN_BORDER, CHAT_TOKEN_BLANK, CHAT_TOKEN_CENTER, CHAT_TOKEN_RIGHT, CHAT_TOKEN_LEFT };
 
 static const struct { const char *str; ChatToken token; } chatTokens[] = {
 	{ "{*b}", CHAT_TOKEN_BORDER },
+	{ "{*n}", CHAT_TOKEN_BLANK },
 	{ "{*c}", CHAT_TOKEN_CENTER },
+	{ "{*r}", CHAT_TOKEN_RIGHT },
 	{ "{*l}", CHAT_TOKEN_LEFT },
 };
 
@@ -191,7 +195,7 @@ static int chatTokenAt(const std::string &inText, size_t i) {
 // Precompute and seperate the message into individual rows it'll be drawn as
 std::vector<Phex::ChatSegment> Phex::buildChatSegments(const std::string &text, const std::string &baseColorCode) {
 	std::vector<ChatSegment> segments;
-	bool centered = false;
+	ChatSegment::Align align = ChatSegment::AlignLeft;
 
 	std::string run = "";
 	// color survives a token: a color code stays in effect until the next one
@@ -199,14 +203,16 @@ std::vector<Phex::ChatSegment> Phex::buildChatSegments(const std::string &text, 
 	std::string runColorCode = baseColorCode; // color the current run opens in
 	bool runHasText = false; // color codes alone are not worth a row
 
-	// Closes off the text collected so far.  Centering is measured and drawn a ine at a time
+	// Closes off the text collected so far.  Anything not left aligned is
+	// measured and drawn a line at a time, since each line needs its own
+	// starting x
 	auto flushRun = [&]() {
 		std::string wrapped = runHasText ? wrapText(run) : "";
 		run = "";
 		runHasText = false;
 
 		if (wrapped.length() > 0) {
-			if (!centered) {
+			if (align == ChatSegment::AlignLeft) {
 				ChatSegment segment;
 				segment.textToDraw = runColorCode + wrapped;
 				segments.push_back(segment);
@@ -217,7 +223,7 @@ std::vector<Phex::ChatSegment> Phex::buildChatSegments(const std::string &text, 
 					if (lineEnd == std::string::npos) lineEnd = wrapped.length();
 
 					ChatSegment segment;
-					segment.centered = true;
+					segment.align = align;
 					// each line is its own drawString call, so it needs the color again
 					segment.textToDraw = runColorCode + wrapped.substr(lineStart, lineEnd - lineStart);
 					segments.push_back(segment);
@@ -259,8 +265,15 @@ std::vector<Phex::ChatSegment> Phex::buildChatSegments(const std::string &text, 
 				segments.push_back(segment);
 				break;
 			}
-			case CHAT_TOKEN_CENTER: centered = true; break;
-			case CHAT_TOKEN_LEFT: centered = false; break;
+			case CHAT_TOKEN_BLANK: {
+				// an empty text segment measures as a line and draws nothing
+				ChatSegment segment;
+				segments.push_back(segment);
+				break;
+			}
+			case CHAT_TOKEN_CENTER: align = ChatSegment::AlignCenter; break;
+			case CHAT_TOKEN_RIGHT: align = ChatSegment::AlignRight; break;
+			case CHAT_TOKEN_LEFT: align = ChatSegment::AlignLeft; break;
 		}
 	}
 	flushRun();
@@ -1502,6 +1515,18 @@ doublePair Phex::getStringWidthHeight(doublePair startPos, string str) {
 	return widthHeight;
 }
 
+// YummyLife: getStringWidthHeight stops short of the last character's advance,
+// which is near enough to center by but would hang right aligned text over the
+// edge of the window.  getCharPos leaves hetuwNextCharPos one space short of
+// where the line really ends, so adding that space back gives the full width.
+double Phex::getStringDrawWidth(doublePair startPos, string str) {
+	HetuwMod::pointFromPercentToMapCoords(startPos.x, startPos.y);
+	SimpleVector<doublePair> outPos;
+	mainFont->getCharPos(&outPos, str.c_str(), startPos, alignLeft);
+	double lineEnd = mainFont->hetuwNextCharPos.x + mainFont->hetuwGetSpaceWidth();
+	return (lineEnd - startPos.x) / HetuwMod::viewWidth;
+}
+
 double Phex::getLineHeight(HetuwFont *font) {
 	double lineHeight = font->getFontHeight();
 	lineHeight /= HetuwMod::viewHeight;
@@ -1733,11 +1758,14 @@ void Phex::ChatWindow::addElement(ChatElement element) {
 			// a divider takes a shorter row of its own; 'Ig' reaches highest and lowest, so it measures a full text line
 			segment.height = getStringWidthHeight(pos, "Ig").y * borderLineHeightFactor;
 		} else {
-			doublePair widthHeight = getStringWidthHeight(pos, segment.textToDraw);
-			segment.height = widthHeight.y;
+			segment.height = getStringWidthHeight(pos, segment.textToDraw).y;
 			segment.drawX = rec[0];
-			// a centered segment is always a single line, so its measured width is the width of the line we are about to draw
-			if (segment.centered) segment.drawX += ((rec[2] - rec[0]) - widthHeight.x) / 2.0;
+			// anything not left aligned is always a single line, so its measured width is the width of the line we are about to draw
+			if (segment.align != ChatSegment::AlignLeft) {
+				double freeSpace = (rec[2] - rec[0]) - getStringDrawWidth(pos, segment.textToDraw);
+				if (freeSpace < 0) freeSpace = 0;
+				segment.drawX += segment.align == ChatSegment::AlignCenter ? freeSpace / 2.0 : freeSpace;
+			}
 		}
 		element.textHeight += segment.height;
 	}
