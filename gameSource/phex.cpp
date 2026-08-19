@@ -60,6 +60,7 @@ float Phex::colorNamesInChat[4];
 float Phex::colorCmdMessage[4];
 float Phex::colorCmdInGameNames[4];
 float Phex::colorCmdMessageError[4];
+float Phex::colorChatBorder[4];
 std::string Phex::colorCodeWhite;
 std::string Phex::colorCodeNamesInChat;
 std::string Phex::colorCodeCmdMessage;
@@ -150,6 +151,139 @@ double Phex::graveIdDebounceStartTime = 0;
 
 static bool temporaryJasonAuthOptIn = false;
 
+// Last url the Phex server asked us to open that was not pre-built,
+// waiting for the player to confirm it with .open
+static std::string lastURLOpenRequest = "";
+static double lastURLOpenRequestTime = 0;
+
+// YummyLife: inline formatting tokens for chat messages.  A token is a flag in
+// the message text, the same way a color code is: it does not draw anything by
+// itself, it changes how the text around it is laid out.  Tokens are honoured
+// in every message, player chat included.
+//
+//   {*b}  divider line across the chat window, on a row of its own
+//   {*n}  empty row, for spacing
+//   {*c}  center the text that follows
+//   {*r}  right align the text that follows
+//   {*l}  left align the text that follows (the default)
+//
+// Because a row can only have one alignment, every token ends the current row
+// and the text carries on below it.
+enum ChatToken { CHAT_TOKEN_BORDER, CHAT_TOKEN_BLANK, CHAT_TOKEN_CENTER, CHAT_TOKEN_RIGHT, CHAT_TOKEN_LEFT };
+
+static const struct { const char *str; ChatToken token; } chatTokens[] = {
+	{ "{*b}", CHAT_TOKEN_BORDER },
+	{ "{*n}", CHAT_TOKEN_BLANK },
+	{ "{*c}", CHAT_TOKEN_CENTER },
+	{ "{*r}", CHAT_TOKEN_RIGHT },
+	{ "{*l}", CHAT_TOKEN_LEFT },
+};
+
+// divider geometry, both as a fraction: the row of a normal text line, and the drawn rule of that row
+static constexpr double borderLineHeightFactor = 0.7;
+static constexpr double borderThicknessFactor = 0.15;
+
+// Returns the token starting at inText[i], or -1 if there is none
+static int chatTokenAt(const std::string &inText, size_t i) {
+	for (size_t t = 0; t < sizeof(chatTokens)/sizeof(chatTokens[0]); t++) {
+		std::string str = chatTokens[t].str;
+		if (inText.compare(i, str.length(), str) == 0) return (int)t;
+	}
+	return -1;
+}
+
+// Precompute and seperate the message into individual rows it'll be drawn as
+std::vector<Phex::ChatSegment> Phex::buildChatSegments(const std::string &text, const std::string &baseColorCode) {
+	std::vector<ChatSegment> segments;
+	ChatSegment::Align align = ChatSegment::AlignLeft;
+
+	std::string run = "";
+	// color survives a token: a color code stays in effect until the next one
+	std::string activeColorCode = baseColorCode; // color reached so far
+	std::string runColorCode = baseColorCode; // color the current run opens in
+	bool runHasText = false; // color codes alone are not worth a row
+
+	// Closes off the text collected so far.  Anything not left aligned is
+	// measured and drawn a line at a time, since each line needs its own
+	// starting x
+	auto flushRun = [&]() {
+		std::string wrapped = runHasText ? wrapText(run) : "";
+		run = "";
+		runHasText = false;
+
+		if (wrapped.length() > 0) {
+			if (align == ChatSegment::AlignLeft) {
+				ChatSegment segment;
+				segment.textToDraw = runColorCode + wrapped;
+				segments.push_back(segment);
+			} else {
+				size_t lineStart = 0;
+				while (lineStart <= wrapped.length()) {
+					size_t lineEnd = wrapped.find('\n', lineStart);
+					if (lineEnd == std::string::npos) lineEnd = wrapped.length();
+
+					ChatSegment segment;
+					segment.align = align;
+					// each line is its own drawString call, so it needs the color again
+					segment.textToDraw = runColorCode + wrapped.substr(lineStart, lineEnd - lineStart);
+					segments.push_back(segment);
+
+					lineStart = lineEnd + 1;
+				}
+			}
+		}
+
+		runColorCode = activeColorCode;
+	};
+
+	size_t i = 0;
+	while (i < text.length()) {
+		// a color code is a flag as well, and its bytes are not text, so step
+		// over the whole code rather than reading into it
+		if (text[i] == (char)hetuwFontColorCode && i + 4 < text.length()) {
+			activeColorCode = text.substr(i, 5);
+			run += activeColorCode;
+			i += 5;
+			continue;
+		}
+
+		int t = chatTokenAt(text, i);
+		if (t < 0) {
+			run += text[i];
+			runHasText = true;
+			i++;
+			continue;
+		}
+
+		flushRun();
+		i += strlen(chatTokens[t].str);
+
+		switch (chatTokens[t].token) {
+			case CHAT_TOKEN_BORDER: {
+				ChatSegment segment;
+				segment.kind = ChatSegment::Border;
+				segments.push_back(segment);
+				break;
+			}
+			case CHAT_TOKEN_BLANK: {
+				// an empty text segment measures as a line and draws nothing
+				ChatSegment segment;
+				segments.push_back(segment);
+				break;
+			}
+			case CHAT_TOKEN_CENTER: align = ChatSegment::AlignCenter; break;
+			case CHAT_TOKEN_RIGHT: align = ChatSegment::AlignRight; break;
+			case CHAT_TOKEN_LEFT: align = ChatSegment::AlignLeft; break;
+		}
+	}
+	flushRun();
+
+	// a message of nothing but alignment tokens still needs a row to live on
+	if (segments.empty()) segments.push_back(ChatSegment());
+
+	return segments;
+}
+
 // Initialize starting values for variables that should be reset on Phex reconnect
 // This will be called when onConnectionStatusChanged switches to CONNECTING
 // Don't put variables that must persist across reconnects in here or ones that affect connection/status
@@ -178,6 +312,8 @@ void Phex::initVariables() {
 	lifeStarted = false;
 
 	LBNRequestInProgress = false;
+
+	lastURLOpenRequest = "";
 }
 
 void Phex::init() {
@@ -213,6 +349,7 @@ void Phex::init() {
 	setArray(colorCmdMessage, (const float[]){ 0.2f, 1.0f, 0.5f, 1.0f }, 4);
 	setArray(colorCmdInGameNames, (const float[]){ 0.6f, 1.0f, 0.2f, 1.0f }, 4);
 	setArray(colorCmdMessageError, (const float[]){ 1.0f, 0.7f, 0.4f, 1.0f }, 4);
+	setArray(colorChatBorder, (const float[]){ 1.0f, 1.0f, 1.0f, 0.35f }, 4);
 
 	mainChatWindow.init(recBckgr);
 	setArray(colorButPhexOffline, (const float[]){0.6, 0.0, 0.0, 0.6}, 4);
@@ -451,6 +588,10 @@ void Phex::initServerCommands() {
 	serverCommands["APPLY_EMOTE"].minWords = 2;
 	serverCommands["SEND_WORLD_BLOB"].func = serverCmdSEND_WORLD_BLOB;
 	serverCommands["SEND_WORLD_BLOB"].minWords = 2;
+
+	// YummyLife: v13
+	serverCommands["URL_OPEN_PRE"].func = serverCmdURL_OPEN_PRE;
+	serverCommands["URL_OPEN_PRE"].minWords = 2;
 }
 
 #define CATCH_SERVER_COMMAND(cmdName) \
@@ -511,7 +652,7 @@ void Phex::serverCmdSAY(std::vector<std::string> input) {
 	chatElement.name = string(*getUserDisplayName(chatElement.hash));
 
 	std::string unWrappedText = colorCodeNamesInChat+chatElement.name+": "+colorCodeWhite+chatElement.text;
-	chatElement.textToDraw = wrapText(unWrappedText);
+	chatElement.segments = buildChatSegments(unWrappedText, colorCodeWhite);
 
 	mainChatWindow.addElement(chatElement);
 }
@@ -688,15 +829,111 @@ void Phex::serverCmdGET_LEADERBOARD_NAME(std::vector<std::string> input) {
 	triggerFitnessScoreUpdate();
 }
 
+static constexpr double urlOpenRequestTimeout = 300; // seconds
+static constexpr size_t maxURLDisplayLength = 20;
+static constexpr size_t maxURLArgLength = 256;
+
+static std::string truncateForDisplay(const std::string &url) {
+	if (url.length() <= maxURLDisplayLength) return url;
+	return url.substr(0, maxURLDisplayLength) + "...";
+}
+
+// Percent encodes everything outside the RFC 3986 unreserved set, so an
+// argument can never introduce url structure (/, ?, #, :, &) or shell charecters
+static std::string percentEncode(const std::string &str) {
+	static const char *hexDigits = "0123456789ABCDEF";
+
+	std::string out = "";
+	for (size_t i = 0; i < str.length(); i++) {
+		unsigned char c = (unsigned char)str[i];
+		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+			(c >= '0' && c <= '9') ||
+			c == '-' || c == '.' || c == '_' || c == '~') {
+			out += (char)c;
+		} else {
+			out += '%';
+			out += hexDigits[(c >> 4) & 0xF];
+			out += hexDigits[c & 0xF];
+		}
+	}
+	return out;
+}
+
+struct PreURL {
+	const char *url; // {0} {1} {2} are replaced with the escaped arguments
+	int numArgs;
+};
+
+// Urls the Phex server may open without asking.  The server only picks an
+// entry by index and fills in the arguments, so the host and path are always known
+static const PreURL preURLs[] = {
+	/* 0 */ { "http://phex.antinoid.com/phex/store?store_key={0}", 1 }, // store key
+	/* 1 */ { "https://oholcurse.com/player/interactions/{0}", 1 }, // player hash
+	/* 2 */ { "https://onetech.info/{0}", 1 }, // object id
+};
+
+static const int numPreURLs = sizeof(preURLs) / sizeof(preURLs[0]);
+
 // URL_OPEN <url> [promptText]
 void Phex::serverCmdURL_OPEN(std::vector<std::string> input) {
 	std::string url = input[1];
-	bool usePrompt = false;
-	std::string promptText = "";
+
+	printf("Phex server requested to open url: %s\n", url.c_str());
+
+	lastURLOpenRequest = url;
+	lastURLOpenRequestTime = HetuwMod::curStepTime;
+
+	addCmdMessageToChatWindow("Phex is attempting to open a url:{*n}{*c}" + truncateForDisplay(url)+ "{*n}");
 	if (input.size() >= 3) {
-		promptText = input[2];
-		usePrompt = true;
+		addCmdMessageToChatWindow("{*l}Phex says: " + joinStr(input, " ", 2) + "{*b}");
 	}
+	addCmdMessageToChatWindow("{*l}type '" + strCmdChar + "open' to open it (Only do this if you trust Phex!){*b}");
+}
+
+// URL_OPEN_PRE <index> [arg] [arg] [arg]
+void Phex::serverCmdURL_OPEN_PRE(std::vector<std::string> input) {
+	int index = -1;
+	try {
+		index = stoi(input[1]);
+	} CATCH_SERVER_COMMAND(URL_OPEN_PRE)
+
+	if (index < 0 || index >= numPreURLs) {
+		printf("Phex Error: URL_OPEN_PRE got unknown url index %d\n", index);
+		return;
+	}
+
+	const PreURL *preURL = &preURLs[index];
+
+	int numArgs = (int)input.size() - 2;
+	if (numArgs != preURL->numArgs) {
+		printf("Phex Error: URL_OPEN_PRE url %d takes %d arguments, but got %d\n",
+			index, preURL->numArgs, numArgs);
+		return;
+	}
+
+	std::string url = preURL->url;
+	for (int i = 0; i < numArgs; i++) {
+		std::string arg = input[i+2];
+		if (arg.length() > maxURLArgLength) {
+			printf("Phex Error: URL_OPEN_PRE argument %d is too long\n", i);
+			return;
+		}
+
+		std::string placeholder = "{" + to_string(i) + "}";
+		size_t pos = url.find(placeholder);
+		if (pos == std::string::npos) {
+			printf("Phex Error: URL_OPEN_PRE url %d has no %s placeholder\n",
+				index, placeholder.c_str());
+			return;
+		}
+
+		// the replacement is percent encoded, so it can never contain a
+		// placeholder of its own for a later pass to pick up
+		url = url.substr(0, pos) + percentEncode(arg) + url.substr(pos + placeholder.length());
+	}
+
+	printf("Phex opening pre-packed url %d: %s\n", index, url.c_str());
+
 	std::string url_copy = url;
 	launchURL(&url_copy[0]);
 }
@@ -1059,6 +1296,11 @@ void Phex::initChatCommands() {
 	chatCommands["OPTIN"].helpStr = "Opt in to sending your email to the Phex server";
 	chatCommands["OPTIN"].allowOffline = true;
 
+	chatCommands["OPEN"].func = chatCmdOPEN;
+	chatCommands["OPEN"].minWords = 1;
+	chatCommands["OPEN"].helpStr = "Opens the last url Phex asked to open";
+	chatCommands["OPEN"].allowOffline = true;
+
 	chatCommands["TEST"].func = chatCmdTEST;
 	chatCommands["TEST"].minWords = 1;
 	chatCommands["TEST"].helpStr = "For testing - dont use";
@@ -1161,6 +1403,23 @@ void Phex::chatCmdOPTIN(std::vector<std::string> input) {
 	addCmdMessageToChatWindow("Reconnecting...");
 }
 
+void Phex::chatCmdOPEN(std::vector<std::string> input) {
+	if (lastURLOpenRequest.length() < 1) {
+		addCmdMessageToChatWindow("Phex has not asked to open a url.", CMD_MSG_ERROR);
+		return;
+	}
+
+	if (HetuwMod::curStepTime - lastURLOpenRequestTime > urlOpenRequestTimeout) {
+		lastURLOpenRequest = "";
+		addCmdMessageToChatWindow("That url request has expired.", CMD_MSG_ERROR);
+		return;
+	}
+
+	std::string url_copy = lastURLOpenRequest;
+	lastURLOpenRequest = ""; // single use, so a stale request cant be triggered later
+	launchURL(&url_copy[0]);
+}
+
 void Phex::chatCmdTEST(std::vector<std::string> input) {
 	if (true) return;
 	serverCmdGET_ALL_PLAYERS(input);
@@ -1254,6 +1513,18 @@ doublePair Phex::getStringWidthHeight(doublePair startPos, string str) {
 	doublePair widthHeight = { mainFont->hetuwWidth, mainFont->hetuwHeight };
 	widthHeight.x /= HetuwMod::viewWidth; widthHeight.y /= HetuwMod::viewHeight;
 	return widthHeight;
+}
+
+// YummyLife: getStringWidthHeight stops short of the last character's advance,
+// which is near enough to center by but would hang right aligned text over the
+// edge of the window.  getCharPos leaves hetuwNextCharPos one space short of
+// where the line really ends, so adding that space back gives the full width.
+double Phex::getStringDrawWidth(doublePair startPos, string str) {
+	HetuwMod::pointFromPercentToMapCoords(startPos.x, startPos.y);
+	SimpleVector<doublePair> outPos;
+	mainFont->getCharPos(&outPos, str.c_str(), startPos, alignLeft);
+	double lineEnd = mainFont->hetuwNextCharPos.x + mainFont->hetuwGetSpaceWidth();
+	return (lineEnd - startPos.x) / HetuwMod::viewWidth;
 }
 
 double Phex::getLineHeight(HetuwFont *font) {
@@ -1382,8 +1653,12 @@ static std::string trimTrailingWhitespace(const std::string& str) {
 std::string Phex::wrapText(std::string text) {
 	size_t textLen = text.length();
 
+	// the font wraps at a fixed x, so text has to be measured from the same
+	// place it gets drawn or it wraps to the wrong width
+	doublePair measurePos = { mainChatWindow.rec[0], 0 };
+
 	// 'Ig' goes to max heigh and low, so we can use it to get the max height of a single line
-	double singleLineHeight = getStringWidthHeight({0, 0}, "Ig").y;
+	double singleLineHeight = getStringWidthHeight(measurePos, "Ig").y;
 
 	std::string wrappedText = "";
 
@@ -1405,13 +1680,12 @@ std::string Phex::wrapText(std::string text) {
 		}
 
 		// If the word fits on the current line put it in; 'Wi' is just an extra bit of length to make sure the word ALWAYS fits
-		if(getStringWidthHeight({0, 0}, line + word + "Wi").y <= singleLineHeight*1.1) {
+		if(getStringWidthHeight(measurePos, line + word + "Wi").y <= singleLineHeight*1.1) {
 			line += word;
 		} else {
-			// If the word doesn't fit, add it to the next line
-			line = trimTrailingWhitespace(line); // This could remove \n if there is multiple at the end of a line
-			wrappedText += line + "\n" + word;
-			line = "";
+			std::string finishedLine = trimTrailingWhitespace(line); // This could remove \n if there is multiple at the end of a line
+			if (finishedLine.length() > 0) wrappedText += finishedLine + "\n";
+			line = word;
 		}
 	}
 	wrappedText += line;
@@ -1475,8 +1749,26 @@ void Phex::handlePlayerSays(int playerId, const char* msg, bool isCurse, int x, 
 
 void Phex::ChatWindow::addElement(ChatElement element) {
 	doublePair pos = {rec[0], rec[1]};
-	doublePair widthHeight = getStringWidthHeight(pos, element.textToDraw);
-	element.textHeight = widthHeight.y;
+
+	// measure once, here, so drawing a segment is only ever a draw call
+	element.textHeight = 0;
+	for (ChatSegment &segment : element.segments) {
+		if (segment.kind == ChatSegment::Border) {
+			// a divider takes a shorter row of its own; 'Ig' reaches highest and lowest, so it measures a full text line
+			segment.height = getStringWidthHeight(pos, "Ig").y * borderLineHeightFactor;
+		} else {
+			segment.height = getStringWidthHeight(pos, segment.textToDraw).y;
+			segment.drawX = rec[0];
+			// anything not left aligned is always a single line, so its measured width is the width of the line we are about to draw
+			if (segment.align != ChatSegment::AlignLeft) {
+				double freeSpace = (rec[2] - rec[0]) - getStringDrawWidth(pos, segment.textToDraw);
+				if (freeSpace < 0) freeSpace = 0;
+				segment.drawX += segment.align == ChatSegment::AlignCenter ? freeSpace / 2.0 : freeSpace;
+			}
+		}
+		element.textHeight += segment.height;
+	}
+
 	elements.push_back(element);
 	if (!hasFocus || scrollPos == (int)elements.size() - 2) {
 		scrollToBottom();
@@ -1504,8 +1796,7 @@ bool Phex::ChatWindow::onScroll(int dir) {
 }
 
 void Phex::ChatWindow::draw(bool bDraw) {
-	float x = rec[0];
-	float y = rec[1];
+	double y = rec[1];
 	topMinimum = 0;
 
 	if (bDraw) setDrawColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -1519,10 +1810,36 @@ void Phex::ChatWindow::draw(bool bDraw) {
 		if (msgDisplayDur > 0)
 			if ((int)(scrollPos + 1 - i) > drawMaxElements)
 				if (elements[i].unixTimeStamp+msgDisplayDur < HetuwMod::curStepSecondsSince1970) break;
+
+		// this message begins above the top of the window, everything above it is out of view
+		if (y >= rec[3]) break;
+
+		// y is the bottom of the message; its segments stack downwards from the top
+		double segY = y + elements[i].textHeight;
+		for (const ChatSegment &segment : elements[i].segments) {
+			// Drop out of view segments
+			if (segY <= rec[3]) {
+				if (segY > topMinimum) topMinimum = segY;
+				if (bDraw) {
+					if (segment.kind == ChatSegment::Border) {
+						double thickness = segment.height * borderThicknessFactor;
+						double lineRec[4];
+						lineRec[0] = rec[0];
+						lineRec[2] = rec[2];
+						lineRec[1] = segY - (segment.height + thickness) / 2.0;
+						lineRec[3] = lineRec[1] + thickness;
+
+						HetuwMod::hSetDrawColor(colorChatBorder);
+						HetuwMod::hDrawRecFromPercent(lineRec);
+						setDrawColor(1.0f, 1.0f, 1.0f, 1.0f); // restore for the text segments
+					} else {
+						drawString(segment.textToDraw.c_str(), {segment.drawX, segY});
+					}
+				}
+			}
+			segY -= segment.height;
+		}
 		y += elements[i].textHeight;
-		if (y > rec[3]) break;
-		topMinimum = y;
-		if (bDraw) drawString(elements[i].textToDraw.c_str(), {x, y});
 	}
 
 	if (bDraw && isScrolledUp()) {
@@ -1542,7 +1859,7 @@ void Phex::addCmdMessageToChatWindow(std::string msg, int type) {
 
 	ChatElement element;
 	element.unixTimeStamp = time(NULL);
-	element.textToDraw = colorCode + msg + colorCodeWhite;
+	element.segments = buildChatSegments(colorCode + msg + colorCodeWhite, colorCode);
 	mainChatWindow.addElement(element);
 }
 

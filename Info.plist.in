@@ -4,11 +4,11 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.olliez-mods.YummyLife</string>
+    <string>${MACOSX_BUNDLE_GUI_IDENTIFIER}</string>
     <key>CFBundleName</key>
-    <string>YummyLife</string>
+    <string>${MACOSX_BUNDLE_BUNDLE_NAME}</string>
     <key>CFBundleExecutable</key>
-    <string>YummyLife</string>
+    <string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleIconFile</key>

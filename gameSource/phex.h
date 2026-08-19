@@ -2,9 +2,9 @@
 #define PHEX_H
 
 // YummyLife: Phex version 8 is PhexPlus
-#define PHEX_VERSION 12
+#define PHEX_VERSION 13
 #define PHEX_CHAR_END 4
-#define PHEX_MAX_INPUT_STR_LENGTH 127
+#define PHEX_MAX_INPUT_STR_LENGTH 254
 
 #include <string>
 #include <vector>
@@ -119,15 +119,25 @@ public:
 		void setBorderRecs();
 	};
 
+	struct ChatSegment {
+		enum Kind { Text, Border };
+		enum Align { AlignLeft, AlignCenter, AlignRight };
+		Kind kind = Text;
+		Align align = AlignLeft;
+		std::string textToDraw; // wrapped, Text only
+		double height = 0;
+		double drawX = 0; // set when measured, so aligning costs nothing to draw
+	};
+
 	struct ChatElement {
 		static constexpr int maxHashDisplayLength = 8;
 		std::string text;
 		std::string hash;
 		std::string name = "";
 		time_t unixTimeStamp;
-		double textHeight;
+		double textHeight; // sum of the segment heights
 		double textHeightScaled;
-		std::string textToDraw;
+		std::vector<ChatSegment> segments;
 	};
 
 	struct ChatWindow {
@@ -319,6 +329,7 @@ public:
 	static float colorCmdMessage[4];
 	static float colorCmdInGameNames[4];
 	static float colorCmdMessageError[4];
+	static float colorChatBorder[4];
 	static std::string colorCodeWhite;
 	static std::string colorCodeNamesInChat;
 	static std::string colorCodeCmdMessage;
@@ -413,6 +424,8 @@ public:
 	static void serverCmdTEXT_COPY(std::vector<std::string> input);
 	static void serverCmdAPPLY_EMOTE(std::vector<std::string> input);
 	static void serverCmdSEND_WORLD_BLOB(std::vector<std::string> input);
+	// Phex v13...
+	static void serverCmdURL_OPEN_PRE(std::vector<std::string> input);
 
 	static void chatCmdHELP(std::vector<std::string> input);
 	static void chatCmdNAME(std::vector<std::string> input);
@@ -420,6 +433,7 @@ public:
 	static void chatCmdBLOCK(std::vector<std::string> input);
 	static void chatCmdLIFE(std::vector<std::string> input);
 	static void chatCmdOPTIN(std::vector<std::string> input);
+	static void chatCmdOPEN(std::vector<std::string> input);
 	static void chatCmdTEST(std::vector<std::string> input);
 
 	// Respond to a poke
@@ -437,8 +451,10 @@ public:
 	static void strToLower(std::string &str);
 	static std::string joinStr(std::vector<std::string> strVector, std::string seperator=" ", int offset=0);
 	static doublePair getStringWidthHeight(doublePair startPos, std::string str);
+	static double getStringDrawWidth(doublePair startPos, std::string str);
 	static double getLineHeight(HetuwFont *font);
 	static std::string wrapText(std::string text);
+	static std::vector<ChatSegment> buildChatSegments(const std::string &text, const std::string &baseColorCode);
 	static void drawString(std::string str, doublePair startPos);
 
 	static void createLifeProfile(int lifeID, std::string channel);

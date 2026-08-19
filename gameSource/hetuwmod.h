@@ -855,6 +855,13 @@ private:
 	static bool bCravingAutoSearch;
 	static char* cravingSearchWord;
 	static void updateCravingSearch(int foodID);
+	static bool bDrawTempReadout;
+	static void drawTempReadout();
+	static int iContainerPeekMode; // 0=never, 1=modifier, 2=hover
+	static void drawContainerPeek();
+
+	static bool bDrawUsesRemaining;
+	static void drawUsesRemaining();
 
 	static void autoNameBB();
 

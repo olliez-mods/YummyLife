@@ -180,6 +180,70 @@ set(CLIENT_SOURCE_FILES
     gameSource/GridPos.cpp
 )
 
+# The editor (EditOneLife) is a second program built from the same tree. This
+# list is the LAYER_SOURCE block of gameSource/makeFileListEditor, the upstream
+# recipe, so keep the two in step if that file changes.
+#
+# editorHetuwStubs.cpp is ours: the shared banks reach into a few HetuwMod
+# statics and the editor has no HetuwMod. PNGImageConverter is editor-only too,
+# the client never reads a PNG (TGAImageConverter.h is header only, which is why
+# no converter shows up in the client build at all).
+set(EDITOR_SOURCE_FILES
+    gameSource/editor.cpp
+    gameSource/editorHetuwStubs.cpp
+    gameSource/PageComponent.cpp
+    gameSource/GamePage.cpp
+    gameSource/TextField.cpp
+    gameSource/Button.cpp
+    gameSource/TextButton.cpp
+    gameSource/whiteSprites.cpp
+    gameSource/serialWebRequests.cpp
+    gameSource/message.cpp
+    gameSource/accountHmac.cpp
+    gameSource/EditorImportPage.cpp
+    gameSource/spriteBank.cpp
+    gameSource/Picker.cpp
+    gameSource/objectBank.cpp
+    gameSource/EditorObjectPage.cpp
+    gameSource/transitionBank.cpp
+    gameSource/EditorTransitionPage.cpp
+    gameSource/SpriteButton.cpp
+    gameSource/SpriteToggleButton.cpp
+    gameSource/CheckboxButton.cpp
+    gameSource/animationBank.cpp
+    gameSource/EditorAnimationPage.cpp
+    gameSource/EditorSpriteTrimPage.cpp
+    gameSource/ValueSlider.cpp
+    gameSource/ageControl.cpp
+    gameSource/overlayBank.cpp
+    gameSource/keyLegend.cpp
+    gameSource/LoadingPage.cpp
+    gameSource/folderCache.cpp
+    gameSource/binFolderCache.cpp
+    gameSource/PickableStatics.cpp
+    gameSource/soundBank.cpp
+    gameSource/SoundWidget.cpp
+    gameSource/convolution.cpp
+    gameSource/fft.cpp
+    gameSource/ogg.cpp
+    gameSource/zoomView.cpp
+    gameSource/categoryBank.cpp
+    gameSource/EditorCategoryPage.cpp
+    gameSource/RadioButtonSet.cpp
+    gameSource/EditorScenePage.cpp
+    gameSource/groundSprites.cpp
+    commonSource/fractalNoise.cpp
+    gameSource/spellCheck.cpp
+    gameSource/SoundUsage.cpp
+    gameSource/objectMetadata.cpp
+    gameSource/emotion.cpp
+    gameSource/exporter.cpp
+    gameSource/EditorExportPage.cpp
+    gameSource/importer.cpp
+    gameSource/settingsToggle.cpp
+    minorGems/graphics/converters/PNGImageConverter.cpp
+)
+
 # These are the compile options from the original build system. Note that -O0
 # in particular is sadly necessary to prevent some OHOL crashes.
 set(CLIENT_COMPILE_OPTIONS -Wall -Wwrite-strings -Wchar-subscripts -Wparentheses -g -O0)
@@ -205,7 +269,7 @@ if(WIN32)
 
     add_executable(YummyLife_windows ${CLIENT_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES} icon.rc)
     target_compile_options(YummyLife_windows PRIVATE ${CLIENT_COMPILE_OPTIONS})
-    target_link_libraries(YummyLife_windows opengl32 glu32 mingw32 SDLmain SDL wsock32 winmm ssl crypto ws2_32 crypt32)
+    target_link_libraries(YummyLife_windows opengl32 glu32 mingw32 SDLmain SDL wsock32 winmm ssl crypto ws2_32 crypt32 shell32)
     target_link_options(YummyLife_windows PRIVATE -mwindows -static-libstdc++ -static-libgcc)
 elseif(APPLE)
     # enable_language(OBJC) needs CMake 3.16; only the mac build requires it
@@ -235,6 +299,9 @@ elseif(APPLE)
     set_target_properties(YummyLife_mac PROPERTIES
         OUTPUT_NAME "YummyLife"
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/Info.plist.in"
+        MACOSX_BUNDLE_BUNDLE_NAME "YummyLife"
+        MACOSX_BUNDLE_EXECUTABLE_NAME "YummyLife"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.olliez-mods.YummyLife"
         MACOSX_BUNDLE_SHORT_VERSION_STRING "${YUMMYLIFE_VERSION}"
         MACOSX_BUNDLE_BUNDLE_VERSION "${YUMMYLIFE_VERSION}"
     )
@@ -307,6 +374,55 @@ elseif(APPLE)
     add_custom_command(TARGET YummyLife_mac POST_BUILD
         COMMAND "${CMAKE_SOURCE_DIR}/mac-bundle.sh" "$<TARGET_BUNDLE_DIR:YummyLife_mac>" "YummyLife"
         COMMENT "Bundling libraries into YummyLife.app"
+        VERBATIM
+    )
+
+    # The OHOL editor. EXCLUDE_FROM_ALL keeps it out of the normal build; ask
+    # for it by name:
+    #     cmake --build <dir> --target EditOneLife_mac
+    #
+    # A bundle rather than a bare binary because the editor looks for its data
+    # folders (sprites, objects, animations) in the working directory, and the
+    # __mac__ block in gameSDL.cpp only chdirs next to the program when it is
+    # running out of a .app. Drop EditOneLife.app in the game folder like
+    # YummyLife.app and it edits that folder's data.
+    add_executable(EditOneLife_mac MACOSX_BUNDLE EXCLUDE_FROM_ALL
+        ${EDITOR_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES}
+        minorGems/game/platforms/SDL/mac/MenuBarHelper.m)
+    target_compile_options(EditOneLife_mac PRIVATE ${CLIENT_COMPILE_OPTIONS})
+
+    set_target_properties(EditOneLife_mac PROPERTIES
+        OUTPUT_NAME "EditOneLife"
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/Info.plist.in"
+        MACOSX_BUNDLE_BUNDLE_NAME "EditOneLife"
+        MACOSX_BUNDLE_EXECUTABLE_NAME "EditOneLife"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.olliez-mods.EditOneLife"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${YUMMYLIFE_VERSION}"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${YUMMYLIFE_VERSION}"
+    )
+
+    target_include_directories(EditOneLife_mac PRIVATE ${SDL_INCLUDE_DIR})
+    target_link_libraries(EditOneLife_mac ${SDL_LIBRARY})
+    target_link_libraries(EditOneLife_mac "-framework OpenGL")
+
+    # The editor imports sprites from PNG files, so unlike the client it needs a
+    # PNG decoder. PNG::PNG pulls zlib in with it. No OpenSSL here: nothing the
+    # editor links reaches CPP-HTTPLib.
+    find_package(PNG REQUIRED)
+    target_link_libraries(EditOneLife_mac PNG::PNG)
+
+    add_dependencies(EditOneLife_mac mac_icon)
+
+    add_custom_command(TARGET EditOneLife_mac POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_DIR:EditOneLife_mac>/Contents/Resources"
+        COMMAND ${CMAKE_COMMAND} -E copy "${MAC_ICON_ICNS}" "$<TARGET_BUNDLE_DIR:EditOneLife_mac>/Contents/Resources/"
+        COMMENT "Copying mac_icon.icns into the bundle"
+        VERBATIM
+    )
+
+    add_custom_command(TARGET EditOneLife_mac POST_BUILD
+        COMMAND "${CMAKE_SOURCE_DIR}/mac-bundle.sh" "$<TARGET_BUNDLE_DIR:EditOneLife_mac>" "EditOneLife"
+        COMMENT "Bundling libraries into EditOneLife.app"
         VERBATIM
     )
 else()
