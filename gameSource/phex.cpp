@@ -883,11 +883,11 @@ void Phex::serverCmdURL_OPEN(std::vector<std::string> input) {
 	lastURLOpenRequest = url;
 	lastURLOpenRequestTime = HetuwMod::curStepTime;
 
-	addCmdMessageToChatWindow("Phex is attempting to open a url \"" + truncateForDisplay(url) + "\"");
+	addCmdMessageToChatWindow("Phex is attempting to open a url:{*n}{*c}" + truncateForDisplay(url)+ "{*n}");
 	if (input.size() >= 3) {
-		addCmdMessageToChatWindow("Phex says: " + joinStr(input, " ", 2));
+		addCmdMessageToChatWindow("{*l}Phex says: " + joinStr(input, " ", 2) + "{*b}");
 	}
-	addCmdMessageToChatWindow("type '" + strCmdChar + "open' to open it (Only do this if you trust Phex!)");
+	addCmdMessageToChatWindow("{*l}type '" + strCmdChar + "open' to open it (Only do this if you trust Phex!){*b}");
 }
 
 // URL_OPEN_PRE <index> [arg] [arg] [arg]
