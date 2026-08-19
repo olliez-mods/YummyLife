@@ -313,7 +313,6 @@ bool HetuwMod::addBabyCoordsToList = false;
 
 bool HetuwMod::bRemapStart = true;
 bool HetuwMod::bDrawHungerWarning = false;
-bool HetuwMod::bDrawFoodAssistant = true;
 bool HetuwMod::bCravingAutoSearch = true;
 char* HetuwMod::cravingSearchWord = NULL;
 bool HetuwMod::bDrawBabyFeedTimers = true;
@@ -1002,7 +1001,6 @@ void HetuwMod::initSettings() {
 	yumConfig::registerMappedSetting("init_show_object_timers", iShowObjectTimers, showObjectTimersMap, {postComment: " // none, always, hover"});
 	yumConfig::registerSetting("enable_bb_speech_mush", bBBSpeechMushEnabled);
 	yumConfig::registerSetting("enable_shared_account_features", bEnableSharedAccountFeatures, {postComment: " // Enable features that allow you to share your account with others"});
-	yumConfig::registerSetting("show_food_assistant", bDrawFoodAssistant, {postComment: " // Show pips restored/wasted by the held food above the hunger bar. Uses the authored food value; server-side scaling (if any) is not reflected"});
 	yumConfig::registerSetting("craving_auto_search", bCravingAutoSearch, {postComment: " // automatically highlight your craved food using the object search"});
 	yumConfig::registerSetting("show_baby_feed_timers", bDrawBabyFeedTimers, {postComment: " // show seconds-since-last-fed over babies so you can time pickups"});
 	yumConfig::registerSetting("show_temperature_readout", bDrawTempReadout, {postComment: " // numeric temperature + COLD/PERFECT/HOT label above the temp meter"});
@@ -2380,7 +2378,7 @@ void HetuwMod::livingLifeDraw() {
 	}
 
 	if (bDrawBiomeInfo) drawBiomeIDs();
-	if (bDrawFoodAssistant) drawFoodAssistant();
+	drawFoodAssistant();
 	if (bDrawBabyFeedTimers) drawBabyFeedTimers();
 	if (bDrawTempReadout) drawTempReadout();
 	if (iContainerPeekMode != 0) drawContainerPeek();
@@ -2528,7 +2526,7 @@ void HetuwMod::drawFoodAssistant() {
 	drawPos.x = lastScreenViewCenter.x - 590 + 20*30 + 15;
 	// 6 lower than the box row anchor so the text sits on the same
 	// horizontal line as the food pips
-	drawPos.y = lastScreenViewCenter.y - 340 - panelOffsetY;
+	drawPos.y = lastScreenViewCenter.y - 330 - panelOffsetY;
 
 	// dark green: bright green is illegible on the panel's paper art
 	if (fill > 0) setDrawColor( 0.1, 0.4, 0.1, 1 );
@@ -5778,7 +5776,7 @@ void HetuwMod::stepBabyFeedTimers() {
 	for (int i=0; i<gameObjects->size(); i++) {
 		LiveObject *o = gameObjects->getElement(i);
 		double age = livingLifePage->hetuwGetAge(o);
-		if (age >= 5 || o->finalAgeSet) {
+		if (age >= 3 || o->finalAgeSet) {
 			babyLastFedTime.erase(o->id);
 			continue;
 		}
@@ -5817,7 +5815,7 @@ void HetuwMod::drawBabyFeedTimers() {
 
 		doublePair pos;
 		pos.x = o->currentPos.x * CELL_D;
-		pos.y = o->currentPos.y * CELL_D - 30;
+		pos.y = o->currentPos.y * CELL_D - 10;
 		float w = livingLifePage->hetuwMeasureScaledHandwritingFont( sBuf, ts );
 		setDrawColor( 0, 0, 0, 0.7 );
 		drawRect( pos, w/2 + 4*ts, 13*ts );
@@ -5826,6 +5824,8 @@ void HetuwMod::drawBabyFeedTimers() {
 		else setDrawColor( 1, 0.3, 0.3, 1 );
 		livingLifePage->hetuwDrawScaledHandwritingFont( sBuf, pos, ts, alignCenter );
 	}
+}
+
 // YummyLife: numeric temperature + label, inked onto the vanilla gui panel
 // the same way the age readout is
 void HetuwMod::drawTempReadout() {

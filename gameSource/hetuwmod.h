@@ -609,7 +609,6 @@ public:
 	static char ourGender;
 	static bool bRemapStart;
 	static bool bDrawHungerWarning;
-	static bool bDrawFoodAssistant;
 	static int delayReduction;
 	static int zoomLimit;
 
