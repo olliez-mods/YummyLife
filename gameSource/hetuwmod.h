@@ -524,6 +524,12 @@ public:
 	// bottom of the screen (minitech's crafting guide) must clear this.
 	static float getBottomHudClearance();
 
+	// YummyLife: baby feed timers
+	static bool bDrawBabyFeedTimers;
+	static void onPlayerJustAte(int playerID);
+	static void stepBabyFeedTimers();
+	static void drawBabyFeedTimers();
+
 	static doublePair getFromMapToViewCoordsVec();
 	static doublePair getFromViewToMapCoordsVec();
 	static void pointFromPercentToMapCoords(float &x, float &y);
@@ -603,10 +609,12 @@ public:
 	static char ourGender;
 	static bool bRemapStart;
 	static bool bDrawHungerWarning;
+	static bool bDrawFoodAssistant;
 	static int delayReduction;
 	static int zoomLimit;
 
 	static int currentCravingFoodID;
+	static int currentCravingBonus;
 
 	static std::vector<FamilyInRange> familiesInRange;
 
@@ -637,7 +645,7 @@ public:
 	static SimpleVector<int> yummyFoodChain;
 	static bool isYummy(int objID);
 	static void foodIsMeh(ObjectRecord *obj);
-	static void onCravingReport(int foodID);
+	static void onCravingReport(int foodID, int bonus);
 	static void onJustAteFood(ObjectRecord *food);
 	static bool bDrawYum;
 	static bool bDrawGPSStatus;
@@ -842,6 +850,11 @@ private:
 
 	static void drawHungerWarning();
 
+	static void drawFoodAssistant();
+
+	static bool bCravingAutoSearch;
+	static char* cravingSearchWord;
+	static void updateCravingSearch(int foodID);
 	static bool bDrawTempReadout;
 	static void drawTempReadout();
 	static int iContainerPeekMode; // 0=never, 1=modifier, 2=hover
