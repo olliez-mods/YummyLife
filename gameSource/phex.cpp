@@ -1810,30 +1810,36 @@ void Phex::ChatWindow::draw(bool bDraw) {
 		if (msgDisplayDur > 0)
 			if ((int)(scrollPos + 1 - i) > drawMaxElements)
 				if (elements[i].unixTimeStamp+msgDisplayDur < HetuwMod::curStepSecondsSince1970) break;
-		y += elements[i].textHeight;
-		if (y > rec[3]) break;
-		topMinimum = y;
-		if (bDraw) {
-			// y is the top of the message; its segments stack downwards from it
-			double segY = y;
-			for (const ChatSegment &segment : elements[i].segments) {
-				if (segment.kind == ChatSegment::Border) {
-					double thickness = segment.height * borderThicknessFactor;
-					double lineRec[4];
-					lineRec[0] = rec[0];
-					lineRec[2] = rec[2];
-					lineRec[1] = segY - (segment.height + thickness) / 2.0;
-					lineRec[3] = lineRec[1] + thickness;
 
-					HetuwMod::hSetDrawColor(colorChatBorder);
-					HetuwMod::hDrawRecFromPercent(lineRec);
-					setDrawColor(1.0f, 1.0f, 1.0f, 1.0f); // restore for the text segments
-				} else {
-					drawString(segment.textToDraw.c_str(), {segment.drawX, segY});
+		// this message begins above the top of the window, everything above it is out of view
+		if (y >= rec[3]) break;
+
+		// y is the bottom of the message; its segments stack downwards from the top
+		double segY = y + elements[i].textHeight;
+		for (const ChatSegment &segment : elements[i].segments) {
+			// Drop out of view segments
+			if (segY <= rec[3]) {
+				if (segY > topMinimum) topMinimum = segY;
+				if (bDraw) {
+					if (segment.kind == ChatSegment::Border) {
+						double thickness = segment.height * borderThicknessFactor;
+						double lineRec[4];
+						lineRec[0] = rec[0];
+						lineRec[2] = rec[2];
+						lineRec[1] = segY - (segment.height + thickness) / 2.0;
+						lineRec[3] = lineRec[1] + thickness;
+
+						HetuwMod::hSetDrawColor(colorChatBorder);
+						HetuwMod::hDrawRecFromPercent(lineRec);
+						setDrawColor(1.0f, 1.0f, 1.0f, 1.0f); // restore for the text segments
+					} else {
+						drawString(segment.textToDraw.c_str(), {segment.drawX, segY});
+					}
 				}
-				segY -= segment.height;
 			}
+			segY -= segment.height;
 		}
+		y += elements[i].textHeight;
 	}
 
 	if (bDraw && isScrolledUp()) {
