@@ -18,6 +18,7 @@ host_os=$(uname -s)
 build_linux=false
 build_windows=false
 build_macos=false
+build_editor=false
 
 if [ $# -eq 0 ]; then
   if [ "$host_os" = "Darwin" ]; then
@@ -32,8 +33,10 @@ else
       linux)      build_linux=true ;;
       windows)    build_windows=true ;;
       macos|mac)  build_macos=true ;;
+      # The OHOL editor, mac only for now
+      editor)     build_editor=true ;;
       *)
-        echo "Unknown target '$target' (expected: linux, windows, macos)" >&2
+        echo "Unknown target '$target' (expected: linux, windows, macos, editor)" >&2
         exit 1
         ;;
     esac
@@ -44,6 +47,10 @@ if [ "$build_macos" = true ] && [ "$host_os" != "Darwin" ]; then
   echo "The macOS build has to be run natively on a Mac, Docker/WSL cannot produce it" >&2
   exit 1
 fi
+if [ "$build_editor" = true ] && [ "$host_os" != "Darwin" ]; then
+  echo "The editor build has to be run natively on a Mac, Docker/WSL cannot produce it" >&2
+  exit 1
+fi
 if { [ "$build_linux" = true ] || [ "$build_windows" = true ]; } && [ "$host_os" = "Darwin" ]; then
   echo "The Linux/Windows builds have to be run in Docker or WSL, not on a Mac" >&2
   exit 1
@@ -51,6 +58,7 @@ fi
 
 # Remove old builds
 rm -rf ./devbuild/YummyLife_*
+if [ "$build_editor" = true ]; then rm -rf ./devbuild/EditOneLife.app; fi
 
 if [ "$build_windows" = true ]; then
   echo ----- Windows -----
@@ -79,11 +87,20 @@ if [ "$build_macos" = true ]; then
   mv devbuild/macos/YummyLife.app devbuild/YummyLife_dev_mac.app
 fi
 
+if [ "$build_editor" = true ]; then
+  echo ----- editor -----
+  mkdir -p devbuild/macos
+  cmake -B devbuild/macos -S . -DTEST_BUILD=ON
+  # EXCLUDE_FROM_ALL in CMakeLists, so the target has to be named
+  cmake --build devbuild/macos --target EditOneLife_mac -j
+  mv devbuild/macos/EditOneLife.app devbuild/EditOneLife.app
+fi
+
 # For development, copy to ~/ahap and ~/ohol if folder exists for quick testing
 for dst in ahap ohol; do
   if [ -e ~/$dst ]; then
     echo Copying to ~/$dst
-    for built in devbuild/YummyLife_dev_*; do
+    for built in devbuild/YummyLife_dev_* devbuild/EditOneLife.app; do
       if [ -e "$built" ]; then
         # -R because the mac build is an .app bundle (a directory)
         cp -R "$built" ~/$dst/

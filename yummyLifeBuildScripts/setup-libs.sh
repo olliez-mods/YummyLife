@@ -40,7 +40,8 @@ if [ "$host_os" = "Darwin" ]; then
     echo "Homebrew is required for the macOS setup, install it from https://brew.sh" >&2
     exit 1
   fi
-  brew install cmake sdl12-compat openssl@3
+  # libpng is only needed by the editor target
+  brew install cmake sdl12-compat openssl@3 libpng
   echo -------------------
   echo
 else
