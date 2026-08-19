@@ -33,23 +33,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install g++ make cmake libsdl1.2-dev libglu-dev libgl-dev g++-mingw-w64-i686-win32 curl libssl-dev libcurl4-openssl-dev wget
-      - name: Install SDL
-        run: |
-          wget https://www.libsdl.org/release/SDL-devel-1.2.15-mingw32.tar.gz
-          tar zxvf SDL-devel-1.2.15-mingw32.tar.gz
-      - name: Install CPP-HTTPLib
-        run: |
-          mkdir -p ./CPP-HTTPLib
-          wget -O ./CPP-HTTPLib/httplib.h https://raw.githubusercontent.com/yhirose/cpp-httplib/v0.14.3/httplib.h
-      - name: Install OpenSSL
-        run: |
-          wget https://github.com/olliez-mods/OpenSSL-Prebuilt/releases/download/3.0.15-i686/openssl-3.0.15-i686.tar.gz
-          tar zxvf openssl-3.0.15-i686.tar.gz
-          cp -rf openssl-3.0.15-i686 openssl-3.0.15
-      - name: Install Nlohmann/json
-        run: |
-          mkdir -p ./nlohmann
-          wget -O ./nlohmann/json.hpp https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp
+      - name: Libraries
+        run: cd yummyLifeBuildScripts && ./setup-libs.sh
       - name: Apply Dev Patch (if exist)
         if: ${{ inputs.dev_patch_url != '' }}
         run: |
@@ -57,7 +42,7 @@ jobs:
           git apply --ignore-whitespace dev_patch.patch
       - name: Build Scripts
         run: |
-          ./build-release.sh
+          ./build.sh release
       - name: Upload Linux and Windows artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -73,13 +58,10 @@ jobs:
       PREVIEW_BUILD: ${{ inputs.preview_build }}
     steps:
       - uses: actions/checkout@v4
-      - name: Packages
-        run: brew install cmake sdl12-compat openssl@3
-      - name: Vendored library headers
-        run: |
-          mkdir -p CPP-HTTPLib nlohmann
-          curl -L -o CPP-HTTPLib/httplib.h https://raw.githubusercontent.com/yhirose/cpp-httplib/v0.14.3/httplib.h
-          curl -L -o nlohmann/json.hpp https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp
+      # The Darwin branch of this script is brew (including libpng, which the
+      # editor target needs) plus the vendored headers
+      - name: Packages and libraries
+        run: cd yummyLifeBuildScripts && ./setup-libs.sh
       - name: Apply Dev Patch (if exist)
         if: ${{ inputs.dev_patch_url != '' }}
         run: |
@@ -87,7 +69,7 @@ jobs:
           git apply --ignore-whitespace dev_patch.patch
       - name: Build Scripts
         run: |
-          ./build-release.sh macos
+          ./build.sh release macos
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:

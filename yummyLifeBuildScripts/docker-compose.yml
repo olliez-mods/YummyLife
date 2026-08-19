@@ -4,22 +4,23 @@ x-common: &common
   volumes:
     - ../:/app
   working_dir: /app
-  restart: no
+  user: "${DOCKER_USER:-root}"
 
 services:
   setup:
     <<: *common
     working_dir: /app/yummyLifeBuildScripts
-    entrypoint: ["sh", "-c", "echo $(pwd) && sed 's/\r$//' ./setup-libs.sh | sh -s --"]
+    entrypoint: ["bash", "./setup-libs.sh"]
+
+  # Anything after the service name is passed straight through to build.sh, so
+  # this one service covers every mode and target it accepts:
+  #   docker-compose run --rm build                 both, dev
+  #   docker-compose run --rm build linux           one target
+  #   docker-compose run --rm build release linux   mode and target
   build:
     <<: *common
-    entrypoint: ["sh", "-c", "sed 's/\r$//' ./build-dev.sh | sh -s --"]
-  build_windows:
-    <<: *common
-    entrypoint: ["sh", "-c", "sed 's/\r$//' ./build-dev.sh | sh -s -- windows"]
-  build_linux:
-    <<: *common
-    entrypoint: ["sh", "-c", "sed 's/\r$//' ./build-dev.sh | sh -s -- linux"]
+    entrypoint: ["bash", "./build.sh"]
+
   shell:
     <<: *common
     command: ["/bin/bash"]

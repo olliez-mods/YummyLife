@@ -1,5 +1,5 @@
 Docker scripts provided by YummyLife:
-These are not required, but they do make it easy to build in a reliable enviroment.
+These are not required, but they do make it easy to build in a reliable environment.
 WSL, and other methods do still work, docker scripts are an optional tool.
 
 Note: You do need to have docker already installed on your system for this to run.
@@ -12,12 +12,22 @@ Note4: Docker builds Linux and Windows. macOS cannot be cross-compiled, see the
 How to use:
 1. Run setup script (This may take some minutes): "docker-compose run --rm setup"
 2. Run build script:    -    -    -    -    -     "docker-compose run --rm build"
-3. Done: The built exacuteables for Linux and Windows will be in '../devbuild/'
+3. Done: The built executables for Linux and Windows will be in '../devbuild/'
 
-Building for a specific OS:
-If you only want to build for Windows or Linux you can specify:
-- "docker-compose run --rm build_linux"
-- "docker-compose run --rm build_windows"
+Building something specific:
+Anything you add after 'build' is passed straight to the build script, so:
+- "docker-compose run --rm build linux"           only Linux
+- "docker-compose run --rm build windows"         only Windows
+- "docker-compose run --rm build release"         a release build, into '../relbuild/'
+- "docker-compose run --rm build release linux"   both at once
+Modes are 'dev' (the default) and 'release'; targets are 'linux' and 'windows'.
+('macos' and 'editor' exist too, but only work when run natively on a Mac.)
+
+Building as yourself (Linux hosts):
+By default the container runs as root, so anything it writes into '../devbuild/'
+is owned by root and needs sudo to delete. To build as your own user instead:
+- DOCKER_USER="$(id -u):$(id -g)" docker-compose run --rm build
+On Docker Desktop for Windows/macOS this doesn't come up, the default is fine.
 
 Building for macOS:
 macOS builds can only be made on an actual Mac, no container or WSL can do it,
@@ -26,23 +36,23 @@ so there is no docker-compose pattern for it. On a Mac, skip docker entirely:
 2. Run the setup script natively from this folder:  "./setup-libs.sh"
    (this installs cmake, sdl12-compat and openssl@3 through brew and downloads
     the header-only libraries, it skips the Windows-only prebuilts)
-3. Run the build script from the YummyLife folder:  "cd .. && ./build-dev.sh"
+3. Run the build script from the YummyLife folder:  "cd .. && ./build.sh"
 4. Done: The built app will be at '../devbuild/YummyLife_dev_mac.app'
 
 Unlike Windows and Linux, the mac build is an .app bundle rather than a single
-exacuteable. It carries its own copy of SDL and OpenSSL inside it, so it runs on
+executable. It carries its own copy of SDL and OpenSSL inside it, so it runs on
 a Mac that has no Homebrew installed. Drop it into the OHOL/AHAP game folder and
 double-click it, it works out its own working directory from where it sits.
-Use '../build-release.sh' instead for a release build, that one also zips the app
+Use '../build.sh release' instead for a release build, that one also zips the app
 into 'relbuild/YummyLife_mac.zip' (a .app is a folder, so it has to be zipped to
 be uploaded as a release asset).
 
 What are these commands I'm running?:
 'docker-compose run' Let's us specify a build pattern to use (defined in 'docker-compose.yml').
 adding '--rm' tells docker to remove the container onces it finishes (to reduce clutter and space).
-next comes the pattern to use: 'setup', 'build', 'build_windows', 'build_linux', 'shell'.
+next comes the pattern to use: 'setup', 'build' or 'shell', then any build arguments.
 'setup': Downloads and extracts extra libraries (SDL and libcurl) needed to build
-'build/_linux/_windows': Goes through through the actual build proccess.
+'build': Goes through the actual build process.
 'shell': Puts you in an interactive shell inside the docker container
 
 Failed build? - 4 steps to success!:
@@ -50,5 +60,8 @@ Failed build? - 4 steps to success!:
 #2 If you are building for windows, sometimes it will fail the first time, try again
 #2 Google the issue, docker is a widely used tool, someone might have the answer for you
 #3 Make sure you are in the correct folder, you need to be in 'yummyLifeBuildScripts'
+#3 On Windows, if a script dies with a strange '\r' or 'bad interpreter' error,
+   your clone still has CRLF line endings from before .gitattributes handled
+   .sh files. Refresh the working copy: "git rm --cached -r . && git reset --hard"
 #3 Ping OliverZ in OHOL discord server (he is an idiot) with your problem
 #4 Give up and use old hard methods

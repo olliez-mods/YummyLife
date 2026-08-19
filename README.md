@@ -61,166 +61,175 @@ The non-Steam version can be re-downloaded from: `http://onehouronelife.com/tick
 
 Open a bug report using the Issues tab above.
 
-# Compiling
+# Building from source
 
-Compiling on Linux is recommended for release builds, but a native build on Windows or macOS is possible for development use.
-
-## Linux
-
-### Debian/Ubuntu Dependencies
-
-For a Linux build only:
+Everything is driven by one script, `./build.sh`, on every platform. It takes a mode
+and any number of targets, in any order:
 
 ```
-sudo apt install g++ make cmake libsdl1.2-dev libglu-dev libgl-dev
+./build.sh                    # dev build of whatever this machine can produce
+./build.sh release            # same, as a release build
+./build.sh linux windows      # pick targets
+./build.sh release macos      # pick both
+./build.sh editor             # the OHOL editor (see below)
 ```
 
-For a Windows cross build:
+Modes are `dev` (the default) and `release`. Targets are `linux`, `windows`, `macos`
+and `editor`.
+
+| | dev build | release build |
+| --- | --- | --- |
+| Linux | `devbuild/YummyLife_dev_linux` | `relbuild/YummyLife_linux` |
+| Windows | `devbuild/YummyLife_dev_windows.exe` | `relbuild/YummyLife_windows.exe` |
+| macOS | `devbuild/YummyLife_dev_mac.app` | `relbuild/YummyLife.app` + `YummyLife_mac.zip` |
+
+A dev build is compiled with `TEST_BUILD`, which marks the window title and enables
+test-only features; a release build is what the Releases page carries. Release builds
+start clean every time, dev builds reuse the previous one and are much faster. If you
+symlink your AHAP and/or OHOL directories to `~/ahap` and `~/ohol`, finished builds are
+copied there automatically.
+
+## Which platform builds what
+
+Windows and Linux binaries are built on Linux — the Windows one by cross-compiling with
+mingw. macOS binaries can only be built on a Mac; no container or VM can produce them.
+
+So:
+
+- **On Windows** — use Docker (below). It builds both the Windows and Linux binaries.
+- **On Linux** — build natively, or use Docker.
+- **On macOS** — build the mac app natively with Homebrew. Docker will also give you
+  Linux and Windows binaries, with the caveat noted below.
+
+## Setup
+
+Clone the repo, then do the one-time setup for your platform. Either way this fetches
+the vendored libraries (SDL for the Windows cross-build, a prebuilt 32-bit OpenSSL,
+`cpp-httplib` and `nlohmann/json`) into the repo root.
+
+### Docker
+
+Needs Docker installed, nothing else. From the `yummyLifeBuildScripts` folder:
+
+```
+docker compose run --rm setup
+```
+
+(On older Docker installs the command is `docker-compose` with a hyphen.)
+
+### macOS
+
+Install [Homebrew](https://brew.sh/), then from the `yummyLifeBuildScripts` folder:
+
+```
+./setup-libs.sh
+```
+
+That installs `cmake`, `sdl12-compat`, `openssl@3` and `libpng` through Homebrew and
+downloads the header-only libraries. SDL 1.2 itself is unmaintained and no longer builds
+on modern macOS; [sdl12-compat](https://github.com/libsdl-org/sdl12-compat) provides the
+same API on top of SDL2, and is what Homebrew ships.
+
+### Linux
+
+Install the build dependencies:
+
+```
+sudo apt install g++ make cmake libsdl1.2-dev libglu-dev libgl-dev libssl-dev curl
+```
+
+Add this if you also want to cross-compile the Windows binary:
 
 ```
 sudo apt install g++-mingw-w64-i686-win32
 ```
 
-### Building for Linux
-
-Make and switch to a build directory:
+Then from the `yummyLifeBuildScripts` folder:
 
 ```
-mkdir build
-cd build
-```
-
-Configure and build:
-
-```
-cmake .. && make -j8
-```
-
-The configuration step may fail due to missing libraries; install these from your distro's package manager and repeat until it succeeds.
-
-### Building for Windows (cross-compiling)
-
-Download and extract [SDL 1.2.15](https://www.libsdl.org/release/SDL-devel-1.2.15-mingw32.tar.gz), placing the `SDL-1.2.15` directory in the root of the repo:
-
-```
-curl -O https://www.libsdl.org/release/SDL-devel-1.2.15-mingw32.tar.gz
-tar zxvf SDL-devel-1.2.15-mingw32.tar.gz
-```
-
-Then build with the included `mingw-cross-toolchain.cmake`, customizing it if necessary if you're on a non-Debian/Ubuntu distro:
-
-```
-mkdir crossbuild
-cd crossbuild
-cmake -DCMAKE_TOOLCHAIN_FILE=../mingw-cross-toolchain.cmake ..
-make -j8
-```
-
-### Both (for release)
-
-The `build-release.sh` script will perform a fresh build of both Windows and Linux executables in `relbuild/`. If you
-symlink your AHAP and/or OHOL directories to `~/ahap` and `~/ohol` respectively, they will be copied there for easy
-verification.
-
-## Windows
-
-Download and extract [SDL 1.2.15](https://www.libsdl.org/release/SDL-devel-1.2.15-mingw32.tar.gz), placing the `SDL-1.2.15` directory in the root of the repo.
-
-Install [MSYS2](https://www.msys2.org/) and (optionally) [VS Code](https://code.visualstudio.com/).
-
-In an MSYS2 terminal:
-
-```
-pacman -S mingw-w64-i686-{gcc,cmake,make}
-```
-
-### VS Code
-
-(If you don't want to use VS Code, jump to the next section.)
-
-Install the CMake plugin and tell it to configure the project, scan for toolkits, then select the `GCC ... i686-w64-mingw32` option.
-
-Pressing F7 or using the "CMake: Build" action will build YummyLife_windows.exe in the `build/` directory.
-
-### MSYS2
-
-(If you just want to use VS Code, you can skip this section.)
-
-Launch the "MSYS2 MINGW32" shortcut that MSYS2 installed.
-
-```
-$ cd /c/Users/yourname/wherever/you/cloned/this/repo
-$ mkdir build
-$ cd build
-$ cmake ..
-$ cmake --build . -j
-```
-
-YummyLife_windows.exe will be in that `build/` directory.
-
-### Caveats
-
-You will need to copy the libwinpthread-1.dll from MSYS (typically at `C:\msys64\mingw32\bin\libwinpthread-1.dll`) to
-your OHOL directory to be able to use a .exe built in this way. Because of this additional dependency introduced by
-MSYS, distributing this .exe is not recommended.
-
-## macOS
-
-The mac build produces `YummyLife.app`, a self-contained bundle: SDL and OpenSSL are
-copied into `Contents/Frameworks` and the icon is generated from `mac_icon.png`, so it
-runs on machines without Homebrew. `build-release.sh` zips it into `YummyLife_mac.zip`,
-which is what the Releases page carries.
-
-### Dependencies
-
-Install [Homebrew](https://brew.sh/), then:
-
-```
-brew install cmake sdl12-compat openssl@3
-```
-
-(SDL 1.2 itself is unmaintained and no longer builds on modern macOS;
-[sdl12-compat](https://github.com/libsdl-org/sdl12-compat) provides the same API on top of
-SDL2 and is what Homebrew ships.)
-
-Then fetch the vendored library headers. The setup script handles this (on macOS it
-installs the Homebrew packages above and skips the Windows-only prebuilts):
-
-```
-cd yummyLifeBuildScripts
 ./setup-libs.sh
 ```
 
-### Building for macOS
+Package names above are Debian/Ubuntu. `mingw-cross-toolchain.cmake` hardcodes
+Debian's `/usr/bin/i686-w64-mingw32-*` paths, so on another distro either edit that file
+or use Docker for the Windows build.
+
+## Building with Docker
+
+Run from the `yummyLifeBuildScripts` folder. Anything after `build` goes straight to
+`build.sh`, so every command in the reference at the top of this section works here too:
 
 ```
-./build-dev.sh          # devbuild/YummyLife_dev_mac.app, a test build
-./build-release.sh      # relbuild/YummyLife.app + relbuild/YummyLife_mac.zip
+docker compose run --rm build                  # Linux + Windows, dev
+docker compose run --rm build linux            # just Linux
+docker compose run --rm build release linux    # release build
+docker compose run --rm shell                  # a shell in the container, to poke around
 ```
 
-Both scripts default to the mac target when run on a Mac. To sign with a real Developer
-ID instead of the default ad-hoc signature, set `YUMMYLIFE_CODESIGN` to the identity name
-before building.
+Binaries land in `devbuild/` or `relbuild/` in the repo, same as a native build.
 
-### Running
+Two things worth knowing:
 
-Copy `YummyLife.app` next to the game data folders (the mac OHOL distribution is a folder
-containing `animations/`, `objects/`, `sprites/`, etc. alongside the `OneLife_v###.app`)
-and double-click it. The app sets its working directory to the folder it sits in, so it
-finds the game data by itself.
+- The container runs as root, so on a Linux host the build output ends up root-owned.
+  To build as yourself instead:
+  `DOCKER_USER="$(id -u):$(id -g)" docker compose run --rm build`
+- On an Apple Silicon Mac, Docker produces **arm64** Linux binaries, not the x86_64 ones
+  the Releases page carries. Fine for checking that something compiles, not for shipping.
 
-Because the release is not notarized, macOS will refuse to open it the first time. Either
+WSL works too if you would rather not use Docker on Windows — it is an ordinary Linux
+environment, so follow the Linux instructions inside it. Native Windows toolchains such
+as MSYS2 are not supported: they link against DLLs that the shipped build does not have.
+
+## Building on macOS
+
+```
+./build.sh              # devbuild/YummyLife_dev_mac.app
+./build.sh release      # relbuild/YummyLife.app + relbuild/YummyLife_mac.zip
+```
+
+The result is a self-contained bundle: SDL and OpenSSL are copied into
+`Contents/Frameworks` and the icon is generated from `mac_icon.png`, so it runs on a Mac
+with no Homebrew installed. The release form also zips it with `ditto`, which preserves
+the bundle's symlinks and code signature where a plain `zip` would not.
+
+To sign with a real Developer ID instead of the default ad-hoc signature, set
+`YUMMYLIFE_CODESIGN` to the identity name before building.
+
+### Running it
+
+Copy `YummyLife.app` next to the game data folders — the mac OHOL distribution is a
+folder holding `animations/`, `objects/`, `sprites/` and so on, alongside
+`OneLife_v###.app` — and double-click. The app sets its working directory to the folder
+it sits in, so it finds the game data by itself.
+
+Because the release is not notarized, macOS refuses to open it the first time. Either
 right-click the app and pick Open, or clear the quarantine flag:
 
 ```
 xattr -dr com.apple.quarantine YummyLife.app
 ```
 
-If you don't own the Steam/mac version, the same data folders can be obtained
-from [OneLifeData7](https://github.com/jasonrohrer/OneLifeData7) (checkout the latest
+If you don't own the Steam/mac version, the same data folders can be obtained from
+[OneLifeData7](https://github.com/jasonrohrer/OneLifeData7) (checkout the latest
 `OneLife_v*` tag), plus the `graphics/`, `otherSounds/`, `languages/`, `settings/`,
 `language.txt`, `us_english_60.txt`, `wordList.txt` and the two `*.aiff` files from this
 repo's `gameSource/`.
+
+## The OHOL editor
+
+Jason's object/sprite/animation editor builds from this tree too, currently on macOS
+only:
+
+```
+./build.sh editor       # devbuild/EditOneLife.app
+```
+
+It reads its data folders from wherever it sits, so drop it into the game folder next to
+`YummyLife.app`. It also needs the editor-only art in `graphics/` (button icons and so
+on) — those live in `gameSource/graphics/` and may not be in a player install, so copy
+them across if the editor comes up with missing buttons.
+
+See `documentation/EditorAndServerBuildNotes.txt` for what the editor actually does.
 
 # Merging upstream changes
 
