@@ -721,6 +721,10 @@ typedef struct LiveObject {
 
         char *twinCode;
 
+        /* if cursesUseSenderEmail is 0, then we cache the global
+           words here */
+        char *curseWords;
+
         int id;
 
         char special;
@@ -1408,6 +1412,12 @@ typedef struct DeadObject {
         int displayID;
         
         char *name;
+
+        char *email;
+
+        /* if cursesUseSenderEmail is 0, then we cache the global
+           words here */
+        char *curseWords;
         
         SimpleVector<int> *lineage;
         
@@ -1445,6 +1455,20 @@ static void addPastPlayer( LiveObject *inPlayer ) {
     if( inPlayer->name != NULL ) {
         o.name = stringDuplicate( inPlayer->name );
         }
+
+    if( inPlayer->origEmail != NULL ) {
+        o.email = stringDuplicate( inPlayer->origEmail );
+        }
+    else {
+        o.email = stringDuplicate( inPlayer->email );
+        }
+
+    o.curseWords = NULL;
+
+    if( inPlayer->curseWords != NULL ) {
+        o.curseWords = stringDuplicate( inPlayer->curseWords );
+        }
+    
     o.lineageEveID = inPlayer->lineageEveID;
     o.lifeStartTimeSeconds = inPlayer->lifeStartTimeSeconds;
     o.deathTimeSeconds = inPlayer->deathTimeSeconds;
@@ -2617,6 +2641,9 @@ void quitCleanup() {
         if( nextPlayer->twinCode != NULL  ) {
             delete [] nextPlayer->twinCode;
             }
+        if( nextPlayer->curseWords != NULL  ) {
+            delete [] nextPlayer->curseWords;
+            }
         if( nextPlayer->lastBabyEmail != NULL  ) {
             delete [] nextPlayer->lastBabyEmail;
             }
@@ -2650,8 +2677,17 @@ void quitCleanup() {
 
     for( int i=0; i<pastPlayers.size(); i++ ) {
         DeadObject *o = pastPlayers.getElement( i );
+
+        if( o->name != NULL ) {
+            delete [] o->name;
+            }
         
-        delete [] o->name;
+        delete [] o->email;
+
+        if( o->curseWords != NULL ) {
+            delete [] o->curseWords;
+            }
+        
         delete o->lineage;
         }
     pastPlayers.deleteAll();
@@ -2840,8 +2876,10 @@ static int useCurseWords = 1;
 
 
 // result NOT destroyed by caller
-static const char *getCurseWord( char *inSenderEmail,
-                                 char *inEmail, int inWordIndex ) {
+static const char *getCurseWord( const char *inSenderEmail,
+                                 const char *inEmail,
+                                 int inWordIndex ) {
+    
     if( ! useCurseWords || curseWords.size() == 0 ) {
         return "X";
         }
@@ -2882,6 +2920,26 @@ static const char *getCurseWord( char *inSenderEmail,
     
     return curseWords.getElementDirect( index );
     }
+
+
+/* result IS destroyed by caller */
+static char *getCursePhrase( LiveObject *inReceiver,
+                             char       *inSenderEmail ) {
+
+    if( cursesUseSenderEmail
+        ||
+        inReceiver->curseWords == NULL ) {
+        return 
+            autoSprintf( "%s_%s_%s",
+                         getCurseWord( inSenderEmail, inReceiver->email, 0 ),
+                         getCurseWord( inSenderEmail, inReceiver->email, 1 ),
+                         getCurseWord( inSenderEmail, inReceiver->email, 2 ) );
+        }
+    else {
+        return stringDuplicate( inReceiver->curseWords );
+        }
+    }
+
 
 
 
@@ -6855,13 +6913,13 @@ static void makePlayerSay( LiveObject *inPlayer, char *inToSay ) {
             // words to Donkeytown players
             inPlayer->curseStatus.curseLevel == 0 ) {
 
-            char *message = autoSprintf( "CU\n%d 1 %s_%s_%s\n#", targetP->id,
-                                         getCurseWord( inPlayer->email,
-                                                       targetP->email, 0 ),
-                                         getCurseWord( inPlayer->email,
-                                                       targetP->email, 1 ),
-                                         getCurseWord( inPlayer->email,
-                                                       targetP->email, 2 ) );
+            char *phrase  = getCursePhrase( targetP, inPlayer->email );
+            
+            char *message = autoSprintf( "CU\n%d 1 %s\n#",
+                                         targetP->id,
+                                         phrase );
+            delete [] phrase;
+            
             sendMessageToPlayer( inPlayer,
                                  message, strlen( message ) );
             delete [] message;
@@ -9757,9 +9815,24 @@ int processLoggedInPlayer( int inAllowOrForceReconnect,
 
     newObject.twinCode = NULL;
 
+    newObject.curseWords = NULL;
+
     if( inTwinCode != NULL ) {
         newObject.twinCode = stringDuplicate( inTwinCode );
         }
+
+    if( ! cursesUseSenderEmail ) {
+
+        /* curse words are global, cache them */
+        newObject.curseWords =
+            autoSprintf( 
+                "%s_%s_%s", 
+                getCurseWord( "", newObject.email, 0 ),
+                getCurseWord( "", newObject.email, 1 ),
+                getCurseWord( "", newObject.email, 2 ) );
+        
+        }
+    
 
     newObject.lastBabyEmail = NULL;
 
@@ -20073,7 +20146,15 @@ int main( int inNumArgs, const char **inArgs ) {
                 if( curStepTime - o->lifeStartTimeSeconds > 
                     pastPlayerFlushTime ) {
                     // stale
-                    delete [] o->name;
+
+                    if( o->name != NULL ) {
+                        delete [] o->name;
+                        }
+                    
+                    delete [] o->email;
+                    if( o->curseWords != NULL ) {
+                        delete [] o->curseWords;
+                        }
                     delete o->lineage;
                     pastPlayers.deleteElement( i );
                     i--;
@@ -22684,6 +22765,8 @@ int main( int inNumArgs, const char **inArgs ) {
                             { 0,
                               0,
                               stringDuplicate( "~" ),
+                              stringDuplicate( "~" ),
+                              stringDuplicate( "~" ),
                               defaultLineage,
                               0,
                               0 };
@@ -22777,6 +22860,8 @@ int main( int inNumArgs, const char **inArgs ) {
                             }
                     
                         delete [] defaultO.name;
+                        delete [] defaultO.email;
+                        delete [] defaultO.curseWords;
                         delete defaultO.lineage;
                         }
                     }
@@ -24650,6 +24735,12 @@ int main( int inNumArgs, const char **inArgs ) {
                                     getPlayerByName( name, nextPlayer );
                                 }
 
+                            /* fixme
+                               if not found, look in dead table
+                               if still not found, consider it as a curse name
+                               if still not found, consider it as a curse name
+                               in the dead table */
+
                             if( name != NULL ) {
                                 delete [] name;
                                 }
@@ -24770,20 +24861,18 @@ int main( int inNumArgs, const char **inArgs ) {
                             // don't send CU messages with curse
                             // words to Donkeytown players
                             if( nextPlayer->curseStatus.curseLevel == 0 ) {
-                                
+                                char *phrase =
+                                    getCursePhrase( otherToForgive,
+                                                    nextPlayer->email );
+            
                                 char *message = 
                                     autoSprintf( 
-                                        "CU\n%d 0 %s_%s_%s\n#", 
+                                        "CU\n%d 0 %s\n#", 
                                         otherToForgive->id,
-                                        getCurseWord( nextPlayer->email,
-                                                      otherToForgive->email, 
-                                                      0 ),
-                                        getCurseWord( nextPlayer->email,
-                                                      otherToForgive->email, 
-                                                      1 ),
-                                        getCurseWord( nextPlayer->email,
-                                                      otherToForgive->email, 
-                                                      2 ) );
+                                        phrase );
+                                
+                                delete [] phrase;
+                                
                                 sendMessageToPlayer( nextPlayer,
                                                      message, 
                                                      strlen( message ) );
@@ -24825,22 +24914,19 @@ int main( int inNumArgs, const char **inArgs ) {
                                     // words to Donkeytown players
                                     if( nextPlayer->
                                         curseStatus.curseLevel == 0 ) {
+                                        char *phrase =
+                                            getCursePhrase(
+                                                otherToForgive,
+                                                nextPlayer->email );
                                         
                                         char *message = 
                                             autoSprintf( 
-                                                "CU\n%d 0 %s_%s_%s\n#", 
+                                                "CU\n%d 0 %s\n#",
                                                 otherToForgive->id,
-                                                getCurseWord( 
-                                                    nextPlayer->email,
-                                                    otherToForgive->email, 0 ),
-                                                getCurseWord( 
-                                                    nextPlayer->email,
-                                                    otherToForgive->email, 
-                                                    1 ),
-                                                getCurseWord( 
-                                                    nextPlayer->email,
-                                                    otherToForgive->email, 
-                                                    2 ) );
+                                                phrase );
+
+                                        delete [] phrase;
+                                        
                                         sendMessageToPlayer( 
                                             nextPlayer,
                                             message, strlen( message ) );
@@ -28895,15 +28981,14 @@ int main( int inNumArgs, const char **inArgs ) {
                         // words to Donkeytown players
                         otherPlayer->curseStatus.curseLevel == 0 ) {
 
+                        char *phrase = getCursePhrase( nextPlayer,
+                                                       otherPlayer->email );
                         char *message = autoSprintf( 
-                            "CU\n%d 1 %s_%s_%s\n#",
+                            "CU\n%d 1 %s\n#",
                             nextPlayer->id,
-                            getCurseWord( otherPlayer->email,
-                                          nextPlayer->email, 0 ),
-                            getCurseWord( otherPlayer->email,
-                                          nextPlayer->email, 1 ),
-                            getCurseWord( otherPlayer->email,
-                                          nextPlayer->email, 2 ) );
+                            phrase );
+
+                        delete [] phrase;
                         
                         sendMessageToPlayer( otherPlayer,
                                              message, strlen( message ) );
@@ -31614,15 +31699,14 @@ int main( int inNumArgs, const char **inArgs ) {
                     if( level == 0 ) {
                         continue;
                         }
-                    
 
-                    char *line = autoSprintf( "%d %d %s_%s_%s\n", o->id, level,
-                                              getCurseWord( nextPlayer->email,
-                                                            o->email, 0 ),
-                                              getCurseWord( nextPlayer->email,
-                                                            o->email, 1 ),
-                                              getCurseWord( nextPlayer->email,
-                                                            o->email, 2 ) );
+                    char *phrase = getCursePhrase( o,
+                                                   nextPlayer->email );
+
+                    char *line = autoSprintf( "%d %d %s\n", o->id, level,
+                                              phrase );
+                    delete [] phrase;
+                    
                     cursesWorking.appendElementString( line );
                     delete [] line;
                     
@@ -33573,6 +33657,9 @@ int main( int inNumArgs, const char **inArgs ) {
                     }
                 if( nextPlayer->twinCode != NULL  ) {
                     delete [] nextPlayer->twinCode;
+                    }
+                if( nextPlayer->curseWords != NULL ) {
+                    delete [] nextPlayer->curseWords;
                     }
                 if( nextPlayer->lastBabyEmail != NULL ) {
                     delete [] nextPlayer->lastBabyEmail;
