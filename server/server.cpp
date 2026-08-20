@@ -4184,8 +4184,20 @@ static void leaderDied( LiveObject *inLeader );
 
 
 
+static void forcePickName( LiveObject *inPlayer );
+
+
 double computeAge( LiveObject *inPlayer ) {
     double age = computeAge( inPlayer->lifeStartTimeSeconds );
+
+    if( ! inPlayer->isTutorial
+        &&
+        inPlayer->name == NULL
+        &&
+        Time::getCurrentTime() - inPlayer->trueStartTimeSeconds > 480 ) {
+        /* they've been alive more than 8 minutes and have no name */
+        forcePickName( inPlayer );
+        }
 
     if( inPlayer->isGhost &&
         ! inPlayer->ghostDestroyed ) {
@@ -14775,8 +14787,9 @@ char *getUniqueCursableName( char *inPlayerName, char *outSuffixAdded,
                 }
             }
         
-
-        return inPlayerName;
+        if( ! dup ) {
+            return inPlayerName;
+            }
         }    
     
     
@@ -16543,7 +16556,7 @@ void executeKillAction( int inKillerIndex,
 
 
 
-static void nameEve( LiveObject *nextPlayer, char *name ) {
+static void nameEve( LiveObject *nextPlayer, const char *name ) {
     
     const char *close = findCloseLastName( name );
     nextPlayer->name = autoSprintf( "%s %s", eveName, close );
@@ -16786,6 +16799,78 @@ static char *getLineageLastName( int inLineageEveID ) {
             }
         }
     return NULL;
+    }
+
+
+
+static void forcePickName( LiveObject *inPlayer ) {
+
+    if( inPlayer->name != NULL ) {
+        return;
+        }
+    
+    // fixme
+    if( inPlayer->isEve ) {
+
+        nameEve( inPlayer, getRandomLastName() );
+
+        inPlayer->forcedName = true;
+        inPlayer->forcedNameSent = false;
+        return;
+        }
+    
+    const char *lastName       =  inPlayer->familyName;
+    char        isNewLastName  =  false;
+    
+
+    if( lastName == NULL ) {
+        lastName = getLineageLastName( inPlayer->lineageEveID );
+        }
+
+    if( lastName == NULL ) {
+        isNewLastName = true;
+        lastName = getRandomLastName();
+        }
+    
+    const char *firstName = getRandomFirstName( getFemale( inPlayer ) );
+
+    inPlayer->name = autoSprintf( "%s %s", firstName, lastName );
+
+    /* if we really have picked a new last name for this non-Eve player,
+       pass the inIsEve flag in here, to make sure the last name is unique
+       amoung living families */
+    inPlayer->name = getUniqueCursableName( inPlayer->name,
+                                            &( inPlayer->nameHasSuffix ),
+                                            isNewLastName,
+                                            getFemale( inPlayer ) );
+    if( inPlayer->familyName == NULL ) {
+        
+        char finalFirstName[99];
+        char finalLastName[99];
+        char suffix[99];
+    
+        if( inPlayer->nameHasSuffix ) {
+        
+            sscanf( inPlayer->name, 
+                    "%s %s %s", 
+                    finalFirstName, finalLastName, suffix );
+            }
+        else {
+            sscanf( inPlayer->name, 
+                    "%s %s", 
+                    finalFirstName, finalLastName );
+            }
+        inPlayer->familyName = stringDuplicate( finalLastName );
+        }
+
+    if( ! inPlayer->isTutorial ) {    
+        logName( inPlayer->id,
+                 inPlayer->email,
+                 inPlayer->name,
+                 inPlayer->lineageEveID );
+        }
+    inPlayer->forcedName = true;
+    inPlayer->forcedNameSent = false;
     }
 
 
