@@ -289,6 +289,7 @@ static SimpleVector<char*> forgiveEveryonePhrases;
 static SimpleVector<int> clueIndicesLeftToGive;
 
 static SimpleVector<char*> specialPhrases;
+static SimpleVector<char*> whoIsPhrases;
 
 
 
@@ -2800,7 +2801,7 @@ void quitCleanup() {
     forgiveEveryonePhrases.deallocateStringElements();
 
     specialPhrases.deallocateStringElements();
-    
+    whoIsPhrases.deallocateStringElements();
 
     if( orderPhrase != NULL ) {
         delete [] orderPhrase;
@@ -14028,6 +14029,10 @@ char *isNamedSpecialSay( char *inSaidString ) {
     return isReverseNamingSay( inSaidString, &specialPhrases );
     }
 
+char *isNamedWhoIsSay( char *inSaidString ) {
+    return isNamingSay( inSaidString, &whoIsPhrases );
+    }
+
 
 
 static char isWildcardGivingSay( char *inSaidString,
@@ -19902,6 +19907,7 @@ int main( int inNumArgs, const char **inArgs ) {
     readPhrases( "forgiveEveryonePhrases", &forgiveEveryonePhrases );
 
     specialPhrases.push_back( stringDuplicate( "IS VERY SPECIAL INDEED" ) );
+    whoIsPhrases.push_back( stringDuplicate( "WHO THE HECK IS" ) );
     
 
     orderPhrase = 
@@ -24933,8 +24939,95 @@ int main( int inNumArgs, const char **inArgs ) {
                                                      psMessage, 
                                                      strlen( psMessage ) );
                                 delete [] psMessage;
+
+                                delete [] m.saidText;
+                                m.saidText = stringDuplicate( "" );
                                 }
                             }
+
+                        if( nextPlayer->ofp ) {
+                            /* another ofp case... player info */
+                            char *name = isNamedWhoIsSay( m.saidText );
+
+                            if( name != NULL && strcmp( name, "" ) != 0 ) {
+                                LiveObject *specialPlayer =
+                                    getPlayerByName( name, nextPlayer );
+
+                                if( specialPlayer != NULL ) {
+
+                                    char  *curseWords =
+                                        stringDuplicate( "X X X" );
+
+                                    if( specialPlayer->curseWords != NULL ) {
+                                        delete [] curseWords;
+                                        char found;
+                                        curseWords = replaceAll(
+                                            specialPlayer->curseWords,
+                                            "_", " ", &found );
+                                        }
+                                    
+                                    char *message =
+                                        autoSprintf( 
+                                            "%s HAS HAD AN ACCOUNT FOR %d "
+                                            "DAYS.**"
+                                            "THEIR CURSE WORDS ARE: %s",
+                                            name,
+                                            specialPlayer->
+                                                lifeStats.accountExistedDays,
+                                            curseWords );
+                                        
+                                    sendGlobalMessage( message,
+                                                       nextPlayer );
+                                    delete [] message;
+                                    }
+                                else {
+                                    DeadObject *specialPlayer =
+                                        getDeadPlayerByName( name );
+
+                                    if( specialPlayer != NULL ) {
+                                        char  *curseWords =
+                                            stringDuplicate( "X X X" );
+
+                                        if( specialPlayer->curseWords != NULL ) {
+                                            delete [] curseWords;
+                                            char found;
+                                            curseWords = replaceAll(
+                                                specialPlayer->curseWords,
+                                                "_", " ", &found );
+                                            }
+                                        
+                                        char *message =
+                                            autoSprintf( 
+                                                "%s DIED %d "
+                                                "minutes ago.**"
+                                                "THEIR CURSE WORDS ARE: %s",
+                                                name,
+                                                (int)( ( Time::getCurrentTime() -
+                                                         specialPlayer->
+                                                         deathTimeSeconds )
+                                                       / 60 ),
+                                                curseWords );
+                                        
+                                        sendGlobalMessage( message,
+                                                           nextPlayer );
+                                        delete [] message;
+                                        }
+                                    else {
+                                        char *message =
+                                            autoSprintf( 
+                                                "%s NOT FOUND,**"
+                                                "NEITHER LIVING NOR DEAD.",
+                                                name );
+                                        
+                                        sendGlobalMessage( message,
+                                                           nextPlayer );
+                                        delete [] message;
+                                        }
+                                    }  
+                                }
+                            }
+                        
+                            
                         
                         
                         if( nextPlayer->isEve && nextPlayer->name == NULL ) {
