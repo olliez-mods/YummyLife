@@ -6567,6 +6567,22 @@ static LiveObject *getPlayerByEmail( char *inEmail ) {
 
 
 
+static LiveObject *getPlayerByOrigEmail( char *inEmail ) {
+    for( int j=0; j<players.size(); j++ ) {
+        
+        LiveObject *otherPlayer = players.getElement( j );
+        
+        if( otherPlayer->origEmail != NULL &&
+            strcmp( otherPlayer->origEmail, inEmail ) == 0 ) {
+            
+            return otherPlayer;
+            }
+        }
+    return NULL;
+    }
+
+
+
 static int usePersonalCurses = 0;
 
 static char friendsOnlyMode = 0;
@@ -17884,6 +17900,75 @@ char isNearPopBlocked( LiveObject *inPlayer,
 
 
 // returns NULL if not found
+static DeadObject *getDeadPlayerByName( char *inName ) {
+    /* look at most recent first */
+    for( int j =  pastPlayers.size() - 1;
+             j >= 0;
+             j -- ) {
+        
+        DeadObject *otherPlayer = pastPlayers.getElement( j );
+        if( otherPlayer->name != NULL
+            &&
+            strcmp( otherPlayer->name, inName ) == 0 ) {
+            
+            return otherPlayer;
+            }
+        }
+
+    return NULL;
+    }
+
+
+
+static char *getPlayerEmailByCurseWords( char *inWords ) {
+
+    char  found;
+    char *wordsWithUnderscore = replaceAll( inWords, " ", "_", &found );
+
+    for( int j = 0;
+             j < players.size();
+             j ++ ) {
+        LiveObject *otherPlayer = players.getElement( j );
+        if( otherPlayer->curseWords != NULL
+            &&
+            strcmp( otherPlayer->curseWords, wordsWithUnderscore ) == 0 ) {
+
+            delete [] wordsWithUnderscore;
+
+            if( otherPlayer->origEmail != NULL ) {
+                return otherPlayer->origEmail;
+                }
+            else {
+                return otherPlayer->email;
+                }
+            }
+        }
+
+    for( int j =  pastPlayers.size() - 1;
+             j >= 0;
+             j -- ) {
+        
+        DeadObject *otherPlayer = pastPlayers.getElement( j );
+
+        if( otherPlayer->curseWords != NULL
+            &&
+            strcmp( otherPlayer->curseWords, wordsWithUnderscore ) == 0 ) {
+
+            delete [] wordsWithUnderscore;
+
+            return otherPlayer->email;
+            }
+        }
+
+    delete [] wordsWithUnderscore;
+
+    return NULL;
+    }
+
+
+    
+
+// returns NULL if not found
 static LiveObject *getPlayerByName( char *inName, 
                                     LiveObject *inPlayerSayingName ) {
     for( int j=0; j<players.size(); j++ ) {
@@ -24726,6 +24811,7 @@ int main( int inNumArgs, const char **inArgs ) {
 
                         
                         if( nextPlayer->ofp ) {
+                            char *specialPlayerEmail = NULL;
                             LiveObject *specialPlayer = NULL;
                             
                             char *name = isNamedSpecialSay( m.saidText );
@@ -24733,23 +24819,67 @@ int main( int inNumArgs, const char **inArgs ) {
                             if( name != NULL && strcmp( name, "" ) != 0 ) {
                                 specialPlayer =
                                     getPlayerByName( name, nextPlayer );
+
+                                if( specialPlayer != NULL ) {
+                                    if( specialPlayer->origEmail != NULL ) {
+                                        specialPlayerEmail =
+                                            specialPlayer->origEmail;
+                                        }
+                                    else {
+                                        specialPlayerEmail =
+                                            specialPlayer->email;
+                                        }
+                                    }
+
+                                if( specialPlayerEmail == NULL ) {
+                                    // try finding dead player matching
+                                    // name
+                                    DeadObject *specialPlayerD =
+                                        getDeadPlayerByName( name );
+
+                                    if( specialPlayerD != NULL ) {
+                                        specialPlayerEmail =
+                                            specialPlayerD->email;
+                                        }
+                                    }
+                                if( specialPlayerEmail == NULL ) {
+                                    // try again treating them like curse words
+
+                                    specialPlayerEmail =
+                                        getPlayerEmailByCurseWords( name );
+                                    }
                                 }
 
-                            /* fixme
-                               if not found, look in dead table
-                               if still not found, consider it as a curse name
-                               if still not found, consider it as a curse name
-                               in the dead table */
 
                             if( name != NULL ) {
                                 delete [] name;
                                 }
 
-                            if( specialPlayer != NULL
+                            if( specialPlayerEmail != NULL
                                 &&
-                                ! specialPlayer->special ) {
+                                ! isAccountSpecial( specialPlayerEmail ) ) {
 
-                                specialPlayer->special = true;
+                                if( specialPlayer == NULL ) {
+                                    /* try getting special living player
+                                       now, in case we found them
+                                       through curse words, and we
+                                       only have their email,
+                                       not their player object */
+                                    specialPlayer =
+                                        getPlayerByEmail( specialPlayerEmail );
+                                    }
+                                if( specialPlayer == NULL ) {
+                                    /* try getting a recently-dead,
+                                       but not pastPlayer, through
+                                       their origEmail */
+                                    specialPlayer =
+                                        getPlayerByOrigEmail(
+                                            specialPlayerEmail );
+                                    } 
+
+                                if( specialPlayer != NULL ) {
+                                    specialPlayer->special = true;
+                                    }
 
                                 FILE *newSpecialLog = fopen( "newSpecialLog.txt",
                                                              "a" );
@@ -24759,12 +24889,24 @@ int main( int inNumArgs, const char **inArgs ) {
                                     fprintf( newSpecialLog,
                                              "%s -> %s\n",
                                              nextPlayer->email,
-                                             specialPlayer->email );
+                                             specialPlayerEmail );
                                     fclose( newSpecialLog );
                                     }
+
+                                /* clear all curses this special player
+                                   has applied to other people. */
                                 
-                                clearAllDBCurse( specialPlayer->id,
-                                                 specialPlayer->email );
+                                if( specialPlayer != NULL ) {
+                                    clearAllDBCurse( specialPlayer->id,
+                                                     specialPlayerEmail );
+                                    }
+                                else {
+                                    /* id is only used for logging,
+                                       so if we're dealing with a dead player,
+                                       just skip the id */
+                                    clearAllDBCurse( 0,
+                                                     specialPlayerEmail );
+                                    }
 
                                 FILE *specialAccounts =
                                     fopen( "settings/specialAccounts.ini",
@@ -24774,7 +24916,7 @@ int main( int inNumArgs, const char **inArgs ) {
 
                                     fprintf( specialAccounts,
                                              "\n%s",
-                                             specialPlayer->email );
+                                             specialPlayerEmail );
                                     fclose( specialAccounts );
                                     }
 
