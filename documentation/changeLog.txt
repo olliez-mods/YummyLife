@@ -63,6 +63,7 @@ Server Fixes:
 --Players who have lived more than 8 minutes without being named or picking a
   name (as Eve) get a ranom name assigned.
 
+--Who is silent.
 
 
 

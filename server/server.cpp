@@ -25108,7 +25108,10 @@ int main( int inNumArgs, const char **inArgs ) {
                                                            nextPlayer );
                                         delete [] message;
                                         }
-                                    }  
+                                    }
+                                
+                                delete [] m.saidText;
+                                m.saidText = stringDuplicate( "" );
                                 }
                             }
                         
