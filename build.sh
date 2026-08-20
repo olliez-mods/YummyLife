@@ -8,6 +8,7 @@ set -e
 #   ./build.sh editor           the OHOL editor
 #   ./build.sh release macos    a mode and a target
 #   ./build.sh linux windows    dev is implied
+#   ./build.sh run              build, then launch it out of the game folder
 #
 # Modes (dev, release) and targets (linux, windows, macos, editor) can be given
 # in any order. macOS binaries can only be built on a Mac (Docker/WSL cannot
@@ -26,6 +27,11 @@ build_macos=false
 build_editor=false
 have_target=false
 
+do_run=false
+run_name=""
+run_exe=""
+run_dir=""
+
 for arg in "$@"; do
   case "$arg" in
     dev|release) mode="$arg" ;;
@@ -35,8 +41,9 @@ for arg in "$@"; do
     # The OHOL editor, mac only for now. TEST_BUILD/PREVIEW_BUILD are only read
     # by game.cpp, hetuwmod.cpp and yummyLife.cpp, none of which the editor links
     editor)      build_editor=true;  have_target=true ;;
+    run)         do_run=true ;;
     *)
-      echo "Unknown argument '$arg' (modes: dev, release; targets: linux, windows, macos, editor)" >&2
+      echo "Unknown argument '$arg' (modes: dev, release; targets: linux, windows, macos, editor; also: run)" >&2
       exit 1
       ;;
   esac
@@ -108,6 +115,7 @@ if [ "$build_linux" = true ]; then
   cmake -B "$outdir/linux" -S . $cmake_flags
   cmake --build "$outdir/linux" -j
   mv "$outdir/linux/YummyLife_linux" "$outdir/$name_linux"
+  run_name="$name_linux"
 fi
 
 if [ "$build_macos" = true ]; then
@@ -119,6 +127,8 @@ if [ "$build_macos" = true ]; then
   # its own copy of SDL and OpenSSL. Drop it in the game folder and run it.
   rm -rf "$outdir/$name_mac"
   mv "$outdir/macos/YummyLife.app" "$outdir/$name_mac"
+  run_name="$name_mac"
+  run_exe=YummyLife
 
   if [ "$mode" = release ]; then
     # A .app is a directory, so it has to be zipped to be a release asset. ditto
@@ -136,6 +146,8 @@ if [ "$build_editor" = true ]; then
   cmake --build "$outdir/macos" --target EditOneLife_mac -j
   rm -rf "$outdir/EditOneLife.app"
   mv "$outdir/macos/EditOneLife.app" "$outdir/EditOneLife.app"
+  run_name=EditOneLife.app
+  run_exe=EditOneLife
 fi
 
 # Once, at the end: the macos folder is shared by the macos and editor targets,
@@ -154,5 +166,28 @@ for dst in ahap ohol; do
         cp -R "$built" ~/$dst/
       fi
     done
+    run_dir=~/$dst
   fi
 done
+
+if [ "$do_run" = true ]; then
+  if [ -z "$run_name" ]; then
+    echo "Nothing to run: no runnable target was built (the Windows build cannot be launched here)" >&2
+    exit 1
+  fi
+  if [ -z "$run_dir" ]; then
+    echo "Nothing to run from: symlink a game folder to ~/ohol (or ~/ahap) first, e.g." >&2
+    echo "  ln -s /Applications/OneLife ~/ohol" >&2
+    exit 1
+  fi
+
+  if [ -n "$run_exe" ]; then
+    run_path="$run_dir/$run_name/Contents/MacOS/$run_exe"
+  else
+    run_path="$run_dir/$run_name"
+  fi
+
+  echo ----- running "$run_name" -----
+  cd "$run_dir"
+  exec "$run_path"
+fi
