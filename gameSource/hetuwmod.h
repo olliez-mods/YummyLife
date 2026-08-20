@@ -815,6 +815,24 @@ private:
 	static std::vector<doublePair*> searchWordEndPos;
 	static std::vector<bool> searchWordListDelete;
 
+	// YummyLife: history of past object searches, most recent first
+	static std::vector<std::string> searchHistory;
+	static int searchHistoryMaxSize;
+	static int searchHistorySelection; // -1 = using the typed text, else index into searchHistory
+	static std::string searchTypedString; // typed text, kept while browsing the history
+	static void addToSearchHistory( const char *word );
+	static void searchHistoryStep( int dir );
+	static void drawSearchHistory();
+	static std::vector<doublePair> searchHistoryDrawPos; // row centers, rebuilt every draw
+	static float searchHistoryRecWidthHalf;
+	static float searchHistoryRecHeightHalf;
+	static bool searchHistoryMouseDown( float mX, float mY );
+public:
+	static bool escapeConsumed();
+private:
+	static void addSearchWord( const char *word );
+	static void closeSearchInput();
+
 	static bool bTeachLanguage;
 	static int teachLanguageCount;
 	static double timeLastLanguage;

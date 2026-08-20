@@ -252,6 +252,14 @@ int HetuwMod::drawSearchListTopY;
 std::vector<doublePair*> HetuwMod::searchWordStartPos;
 std::vector<doublePair*> HetuwMod::searchWordEndPos;
 std::vector<bool> HetuwMod::searchWordListDelete;
+// YummyLife
+std::vector<std::string> HetuwMod::searchHistory;
+int HetuwMod::searchHistoryMaxSize = 10;
+int HetuwMod::searchHistorySelection = -1;
+std::string HetuwMod::searchTypedString;
+std::vector<doublePair> HetuwMod::searchHistoryDrawPos;
+float HetuwMod::searchHistoryRecWidthHalf = 0;
+float HetuwMod::searchHistoryRecHeightHalf = 0;
 
 bool HetuwMod::takingPhoto;
 bool HetuwMod::takingSpecialPhoto = false;
@@ -388,7 +396,7 @@ static vector<string> defaultAutoDieOptions;
 
 HetuwFont *HetuwMod::customFont = NULL;
 
-std::string HetuwMod::helpTextSearch[6];
+std::string HetuwMod::helpTextSearch[8];
 std::string HetuwMod::helpTextCustomCoord[5];
 
 std::string HetuwMod::hexRaceColor_brown = "a85e3d";
@@ -501,7 +509,7 @@ void HetuwMod::initHelpText() {
 	helpTextSearch[0] += toupper(charKey_Search);
 	helpTextSearch[0] += " and activated SEARCH";
 
-	helpTextSearch[1] = "Abort with ESC";
+	helpTextSearch[1] = "Abort with ESC or clicking";
 	helpTextSearch[2] = "Type in the name of the object you want to find";
 	helpTextSearch[3] = "Put a . at the end for an exact search";
 
@@ -1045,6 +1053,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("draw_yumpulsate", b_drawYumPulsate);
 
 	yumConfig::registerSetting("search_include_hash_text", searchIncludeHashText, {preComment: "\n"});
+	yumConfig::registerSetting("search_history_size", searchHistoryMaxSize, {postComment: " // how many past object searches to keep, pick one with UP / DOWN (0 to disable)"});
 	yumConfig::registerSetting("draw_searchtext", b_drawSearchText);
 	yumConfig::registerSetting("draw_searchrec", b_drawSearchTileRec);
 	yumConfig::registerSetting("draw_searchpulsate", b_drawSearchPulsate);
@@ -2353,7 +2362,10 @@ void HetuwMod::livingLifeDraw() {
 	Phex::draw();
 	if (getCustomCords == 1) drawCoordsHelpA();
 	if (bDrawInputString) {
-		if (getSearchInput > 0) drawSearchHelpText();
+		if (getSearchInput > 0) {
+			drawSearchHelpText();
+			drawSearchHistory();
+		}
 		if (getCustomCords == 2) drawCoordsHelpB();
 		if (getCustomCords == 3) drawCoordsHelpC();
 		drawInputString();
@@ -3675,8 +3687,7 @@ bool HetuwMod::livingLifeKeyDown(unsigned char inASCII) {
 		stopAutoRoadRunTime = time(NULL);
 		activateAutoRoadRun = true;
 		getCustomCords = 0;
-		getSearchInput = 0;
-		bDrawInputString = false;
+		closeSearchInput();
 		bxRay = false;
 		bHidePlayers = false;
 		bTeachLanguage = false;
@@ -3738,17 +3749,15 @@ bool HetuwMod::livingLifeKeyDown(unsigned char inASCII) {
 	if (getSearchInput > 0) {
 		if (inASCII == 13) { // ENTER
 			string strSearch = tempInputString.substr(8, tempInputString.length());
-			bDrawInputString = false;
-			getSearchInput = 0;
+			closeSearchInput();
 			if (strSearch.size() < 1) return true;
-			searchWordList.push_back(stringDuplicate(strSearch.c_str()));
-			searchWordStartPos.push_back(new doublePair());
-			searchWordEndPos.push_back(new doublePair());
-			searchWordListDelete.push_back(false);
-			setSearchArray();
+			addSearchWord(strSearch.c_str());
 			//printf("hetuw strSearch: %s\n", strSearch.c_str());
 		} else { // not enter
 			addToTempInputString( toupper(inASCII), false, 8);
+			// typing changes the text, so we are no longer showing a history entry
+			searchHistorySelection = -1;
+			searchTypedString = tempInputString.substr(8, tempInputString.length());
 		}
 		return true;
 	}
@@ -3893,6 +3902,9 @@ bool HetuwMod::livingLifeKeyDown(unsigned char inASCII) {
 		tempInputString = "SEARCH: ";
 		getSearchInput = 1;
 		bDrawInputString = true;
+		searchHistorySelection = -1;
+		searchTypedString = "";
+		searchHistoryDrawPos.clear(); // filled in by the next draw
 		return true;
 	}
 	if (!commandKey && shiftKey && isCharKey(inASCII, charKey_Search)) {
@@ -4206,6 +4218,16 @@ bool HetuwMod::livingLifeSpecialKeyDown(unsigned char inKeyCode) {
 	bool shiftKey = isShiftKeyDown();
 	bool r = false;
 
+	if (getSearchInput > 0) {
+		if( inKeyCode == MG_KEY_DOWN ) {
+			searchHistoryStep( 1 );
+			return true;
+		} else if( inKeyCode == MG_KEY_UP ) {
+			searchHistoryStep( -1 );
+			return true;
+		}
+	}
+
 	if (!isCommandKeyDown() && !isShiftKeyDown()) {
 		if( inKeyCode == MG_KEY_LEFT ) { 
 			zoomDecrease();
@@ -4235,6 +4257,7 @@ bool HetuwMod::livingLifeSpecialKeyDown(unsigned char inKeyCode) {
 
 bool HetuwMod::livingLifePageMouseDown( float mX, float mY ) {
 	//printf("hetuw mouse down %f, %f\n", mX, mY);
+	if (searchHistoryMouseDown( mX, mY )) return true;
 	if (bDrawHomeCords) {
 		for (unsigned i=0; i<homePosStack.size(); i++) {
 			if (mX >= homePosStack[i]->drawStartPos.x && mX <= homePosStack[i]->drawEndPos.x) {
@@ -5320,6 +5343,140 @@ void HetuwMod::drawPlayersInRangePanel() {
 		tooltip(recStartX, recStartY, recEndX, recEndY, text, rgba);
 	}
 
+}
+
+// YummyLife: start searching for word and put it at the top of the history
+void HetuwMod::addSearchWord( const char *word ) {
+	addToSearchHistory(word);
+	searchWordList.push_back(stringDuplicate(word));
+	searchWordStartPos.push_back(new doublePair());
+	searchWordEndPos.push_back(new doublePair());
+	searchWordListDelete.push_back(false);
+	setSearchArray();
+}
+
+// YummyLife: escape closes our search prompt, so the game should not also
+// open the pause screen on that same press
+bool HetuwMod::escapeConsumed() {
+	return getSearchInput > 0;
+}
+
+void HetuwMod::closeSearchInput() {
+	getSearchInput = 0;
+	bDrawInputString = false;
+	searchHistorySelection = -1;
+}
+
+// YummyLife: remember the searches the player typed, newest first
+void HetuwMod::addToSearchHistory( const char *word ) {
+	if (searchHistoryMaxSize <= 0) return;
+
+	for (unsigned i=0; i<searchHistory.size(); i++) {
+		if (searchHistory[i] == word) {
+			searchHistory.erase(searchHistory.begin()+i);
+			break;
+		}
+	}
+
+	searchHistory.insert(searchHistory.begin(), word);
+	if ((int)searchHistory.size() > searchHistoryMaxSize) {
+		searchHistory.resize(searchHistoryMaxSize);
+	}
+}
+
+// dir 1 goes to older entries, dir -1 back to newer ones
+// selection -1 means the text the player typed themselves
+void HetuwMod::searchHistoryStep( int dir ) {
+	if (searchHistory.size() == 0) return;
+
+	int newSelection = searchHistorySelection + dir;
+	if (newSelection < -1) newSelection = -1;
+	if (newSelection > (int)searchHistory.size()-1) newSelection = searchHistory.size()-1;
+	if (newSelection == searchHistorySelection) return;
+
+	searchHistorySelection = newSelection;
+	if (searchHistorySelection < 0) {
+		tempInputString = "SEARCH: " + searchTypedString;
+	} else {
+		tempInputString = "SEARCH: " + searchHistory[searchHistorySelection];
+	}
+}
+
+void HetuwMod::drawSearchHistory() {
+	searchHistoryDrawPos.clear();
+	if (searchHistory.size() == 0) return;
+
+	int mouseX, mouseY;
+	livingLifePage->hetuwGetMouseXY( mouseX, mouseY );
+
+	double scale = customFont->hetuwGetScaleFactor();
+	customFont->hetuwSetScaleFactor(scale * guiScale);
+
+	float lineHeight = customFont->getFontHeight() * 1.1;
+	float spaceWidth = customFont->hetuwGetSpaceWidth();
+
+	float biggestTextWidth = 0;
+	for (unsigned i=0; i<searchHistory.size(); i++) {
+		float textWidth = customFont->measureString(searchHistory[i].c_str());
+		if (textWidth > biggestTextWidth) biggestTextWidth = textWidth;
+	}
+	searchHistoryRecWidthHalf = (biggestTextWidth/2) + spaceWidth*2;
+	searchHistoryRecHeightHalf = lineHeight/2;
+
+	doublePair drawPos = lastScreenViewCenter;
+	drawPos.y -= 14*guiScale + lineHeight; // just below the input string
+
+	for (unsigned i=0; i<searchHistory.size(); i++) {
+		bool selected = ((int)i == searchHistorySelection);
+
+		if (selected) setDrawColor( 0.2, 0.5, 0.1, 0.9 );
+		else setDrawColor( 0, 0, 0, 0.8 );
+		drawRect( drawPos, searchHistoryRecWidthHalf, searchHistoryRecHeightHalf );
+
+		if (selected) setDrawColor( 0.3, 1.0, 0, 1.0 );
+		else setDrawColor( 0.7, 0.7, 0.7, 1.0 );
+		customFont->drawString( searchHistory[i].c_str(), drawPos, alignCenter );
+
+		// the mouse can pick an entry too, so highlight what it is over
+		if (!selected
+			&& mouseX >= drawPos.x-searchHistoryRecWidthHalf && mouseX <= drawPos.x+searchHistoryRecWidthHalf
+			&& mouseY >= drawPos.y-searchHistoryRecHeightHalf && mouseY <= drawPos.y+searchHistoryRecHeightHalf) {
+			setDrawColor( 1, 1, 1, 0.4 );
+			drawRect( drawPos, searchHistoryRecWidthHalf, searchHistoryRecHeightHalf );
+		}
+
+		searchHistoryDrawPos.push_back( drawPos );
+		drawPos.y -= lineHeight;
+	}
+
+	customFont->hetuwSetScaleFactor(scale);
+}
+
+// YummyLife: while the search prompt is open the mouse belongs to it
+// left click searches an entry right away, right click only puts it in the
+// input string so it can be edited first
+bool HetuwMod::searchHistoryMouseDown( float mX, float mY ) {
+	if (getSearchInput <= 0) return false;
+
+	for (unsigned i=0; i<searchHistoryDrawPos.size(); i++) {
+		doublePair pos = searchHistoryDrawPos[i];
+		if (mX < pos.x-searchHistoryRecWidthHalf || mX > pos.x+searchHistoryRecWidthHalf) continue;
+		if (mY < pos.y-searchHistoryRecHeightHalf || mY > pos.y+searchHistoryRecHeightHalf) continue;
+
+		if (isLastMouseButtonRight()) {
+			searchHistorySelection = i;
+			tempInputString = "SEARCH: " + searchHistory[i];
+		} else {
+			string strSearch = searchHistory[i];
+			closeSearchInput();
+			addSearchWord(strSearch.c_str());
+		}
+		return true;
+	}
+
+	// clicked anywhere else -> abort the search instead of clicking the world
+	closeSearchInput();
+	return true;
 }
 
 void HetuwMod::drawSearchList() {

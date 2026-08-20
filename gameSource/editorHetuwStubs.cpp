@@ -30,3 +30,9 @@ float HetuwMod::drawColorAlpha = 1.0f;
 char hetuwGetConfirmExitKey() {
 	return '%';
 }
+
+
+// Same story: the editor has no HetuwMod overlays, so escape is never ours.
+char yumEscapeConsumed() {
+	return false;
+}

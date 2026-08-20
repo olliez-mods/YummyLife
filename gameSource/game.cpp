@@ -492,6 +492,10 @@ char hetuwGetConfirmExitKey() {
 	return HetuwMod::charKey_ConfirmExit;
 }
 
+char yumEscapeConsumed() {
+	return HetuwMod::escapeConsumed();
+}
+
 void initDrawString( int inWidth, int inHeight ) {
 
     toggleLinearMagFilter( true );

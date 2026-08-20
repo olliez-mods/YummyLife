@@ -28345,7 +28345,7 @@ void LivingLifePage::specialKeyDown( int inKeyCode ) {
         return;
         }
 
-	if (!vogMode) HetuwMod::livingLifeSpecialKeyDown( inKeyCode );
+	if (!vogMode && HetuwMod::livingLifeSpecialKeyDown( inKeyCode )) return;
 
     if( vogMode && ! TextField::isAnyFocused() ) {
         GridPos posOffset = { 0, 0 };

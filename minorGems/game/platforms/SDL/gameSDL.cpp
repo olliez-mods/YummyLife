@@ -4095,8 +4095,11 @@ void GameSceneHandler::keyPressed(
         // escape only
 
         if( inKey == 27 ) {
-            // escape always toggles pause
-            mPaused = !mPaused;
+            // escape toggles pause, unless the game is closing something of
+            // its own with this press (unpausing always works though)
+            if( mPaused || ! yumEscapeConsumed() ) {
+                mPaused = !mPaused;
+                }
             }
         }
     else {

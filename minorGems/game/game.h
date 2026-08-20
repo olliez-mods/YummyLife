@@ -86,6 +86,10 @@ char *getHashSalt();
 void hetuwSetViewSize();
 char hetuwGetConfirmExitKey();
 
+// true if the game is already using this escape press to close something of
+// its own, so the platform layer should leave the pause screen alone
+char yumEscapeConsumed();
+
 
 // name of custom font TGA file to find in "graphics" folder
 const char *getFontTGAFileName();
