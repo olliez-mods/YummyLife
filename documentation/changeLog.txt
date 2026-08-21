@@ -4,6 +4,19 @@ http://onehouronelife.com/updateLog.php
 
 
 
+Version 438   ???
+
+--New /nochat and /yeschat command to disable and re-enable seeing in-game
+  player-generated text.  Parents can use  /nochat password  to disable seeing
+  chat, and   /yeschat password   will then be required to re-enable seeing
+  chat.  /nochat applies to all speech bubble text (including read maps, etc.)
+  and to DING messages (which may contain orders from leaders).  Note that this
+  will affect tutorial DING messages to, so parents should probably wait to
+  enable this until after their child has finished the tutorial.
+
+
+
+
 Server Fixes:
 
 --Friends coordinate picking now uses a server-side secret, to make offline
