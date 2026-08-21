@@ -4,7 +4,7 @@ http://onehouronelife.com/updateLog.php
 
 
 
-Version 438   ???
+Version 438   2026-August-20
 
 --New /nochat and /yeschat command to disable and re-enable seeing in-game
   player-generated text.  Parents can use  /nochat password  to disable seeing

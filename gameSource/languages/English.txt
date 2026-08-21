@@ -562,6 +562,8 @@ orderCommand "/ORDER"
 motherCommand "/MOTHER"
 
 blacklistCommand "/BLACKLIST"
+noChatCommand "/NOCHAT"
+yesChatCommand "/YESCHAT"
 
 
 familyLabel "+FAMILY+"
