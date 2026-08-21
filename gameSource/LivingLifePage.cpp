@@ -317,6 +317,8 @@ static bool yumDidAutoSIDS = false;
 
 static SimpleVector<char*> wordBlacklist;
 
+static char noChat = 0;
+
 
 // destroyed inSpeech and returns newly-allocated string (destroyed by caller)
 // with blacklist words replaced by XXXXX
@@ -330,8 +332,13 @@ static char *applyWordBlacklist( char *inSpeech ) {
     for( int i=0; i< tokens->size(); i++ ) {
         char *word = tokens->getElementDirect( i );
         
-        if( wordBlacklist.getMatchingStringIndex( word ) != -1 ) {
+        if( noChat
+            ||
+            wordBlacklist.getMatchingStringIndex( word ) != -1 ) {
+            
             // word on blacklist
+            // or we're in noChat mode where every word is blacklisted
+            
             int wordLen = strlen( word );
             
             for( int c=0; c<wordLen; c++ ) {
@@ -3267,6 +3274,9 @@ LivingLifePage::LivingLifePage()
     
     wordBlacklist.deallocateStringElements();
 
+
+    noChat = SettingsManager::getIntSetting( "noChat",
+                                             0 );
     
     
     SimpleVector<char *> *wordList = 
@@ -21761,14 +21771,13 @@ void LivingLifePage::step() {
                             
 
                             if( existing->currentSpeech != NULL ) {
-                                
-                                recordSpeech( existing->name,
-                                              existing->currentSpeech );
-                            
+
                                 existing->currentSpeech = 
                                     applyWordBlacklist( 
                                         existing->currentSpeech );
                                 
+                                recordSpeech( existing->name,
+                                              existing->currentSpeech );
                                 }
                             
 
@@ -28194,6 +28203,86 @@ void LivingLifePage::keyDown( unsigned char inASCII ) {
                             else if (commandTyped( typedText, "/GPS" ) ) {
                                 GPS::createGPSHomeMarker(); // recreate marker if deleted
                             }
+                            else if( commandTyped( typedText, 
+                                                   "noChatCommand",
+                                                   false ) ) {
+                                
+                                char *firstSpace = strstr( typedText, " " );
+                                
+                                int old =
+                                    SettingsManager::getIntSetting( "noChat",
+                                                                    0 );
+                                if( old == 0 ) {
+                                    SettingsManager::setSetting( "noChat",
+                                                                 1 );
+                                    
+                                    if( firstSpace != NULL ) {
+
+                                        SettingsManager::setSetting(
+                                            "noChatPW",
+                                            &( firstSpace[1] ) );
+
+                                        
+                                        }
+                                    noChat = 1;
+                                    }
+
+                                if( firstSpace != NULL ) {
+                                    // terminate so that pw is
+                                    // hidden from up-arrow history
+                                    firstSpace[0] = '\0';
+                                    }
+                                }
+                            else if( commandTyped( typedText, 
+                                                   "yesChatCommand",
+                                                   false ) ) {
+                                
+                                char *firstSpace = strstr( typedText, " " );
+                                int old =
+                                    SettingsManager::getIntSetting( "noChat",
+                                                                    0 );
+                                if( old == 1 ) {
+                                    char *oldPW =
+                                        SettingsManager::
+                                            getSettingContents( "noChatPW" );
+
+                                    if( oldPW != NULL
+                                        &&
+                                        oldPW[0] != '\0' ) {
+                                
+                                        if( firstSpace != NULL ) {
+                                            if( strcmp( oldPW,
+                                                        &( firstSpace[1] ) )
+                                                == 0 ) {
+
+                                                // pw match
+                                                SettingsManager::setSetting(
+                                                    "noChatPW", "" );
+                                                SettingsManager::setSetting(
+                                                    "noChat", 0 );
+                                                noChat = 0;
+                                                }
+                                            }
+                                        }
+                                    else {
+                                        // no pw set to check
+                                        SettingsManager::setSetting(
+                                            "noChatPW", "" );
+                                        SettingsManager::setSetting(
+                                            "noChat", 0 );
+                                        noChat = 0;
+                                        }
+                                    if( oldPW != NULL ) {
+                                        delete [] oldPW;
+                                        }
+                                    }
+                                
+                                if( firstSpace != NULL ) {
+                                    // terminate so that pw is
+                                    // hidden from up-arrow history
+                                    firstSpace[0] = '\0';
+                                    }
+                                }
                             else {
                                 // filter hints
                                 char *filterString = 

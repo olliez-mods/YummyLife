@@ -26,8 +26,9 @@ cd gameSource
 
 echo "Building OneLife..."
 
-NPROC=${NPROC:-4}
-make -j$NPROC || exit 1
+touch graphics/*.tga
+
+make || exit 1
 
 
 
