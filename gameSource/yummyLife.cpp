@@ -1845,6 +1845,18 @@ struct YumDecayTimerEntry {
 static SimpleVector<YumDecayTimerEntry> sDecayTimers;
 
 
+// A timer that has moved off the map and into a player's hand. Decay keeps
+// running while carried, so the absolute ETA is unchanged — we just park it
+// here until they set the object back down.
+struct YumHeldTimerEntry {
+    int playerID;
+    int objectID;
+    double eta;
+};
+
+static SimpleVector<YumHeldTimerEntry> sHeldTimers;
+
+
 // -- internal helpers --
 
 static int yumFindTimer( int worldX, int worldY ) {
@@ -1853,6 +1865,51 @@ static int yumFindTimer( int worldX, int worldY ) {
         if( e->worldX == worldX && e->worldY == worldY ) return i;
         }
     return -1;
+    }
+
+
+static int yumFindHeldTimer( int playerID, int objectID ) {
+    for( int i=0; i<sHeldTimers.size(); i++ ) {
+        YumHeldTimerEntry *e = sHeldTimers.getElement( i );
+        if( e->playerID == playerID && e->objectID == objectID ) return i;
+        }
+    return -1;
+    }
+
+
+// Held entries are only removed when the object is set back down, so drop the
+// ones that can no longer pay off: the object decayed in hand, or the carrier
+// died / walked out of range and we will never see the set-down.
+static void yumPruneHeldTimers() {
+    double now = game_getCurrentTime();
+    for( int i=0; i<sHeldTimers.size(); i++ ) {
+        if( sHeldTimers.getElement( i )->eta < now ) {
+            sHeldTimers.deleteElement( i );
+            i--;
+            }
+        }
+    }
+
+
+// Writes the ETA for a cell, replacing any existing entry there.
+static void yumSetTimer( int worldX, int worldY, int objectID, double eta,
+                         bool survivesReload ) {
+    int idx = yumFindTimer( worldX, worldY );
+    if( idx >= 0 ) {
+        YumDecayTimerEntry *e = sDecayTimers.getElement( idx );
+        e->objectID       = objectID;
+        e->eta            = eta;
+        e->survivesReload = survivesReload;
+        }
+    else {
+        YumDecayTimerEntry entry;
+        entry.worldX         = worldX;
+        entry.worldY         = worldY;
+        entry.objectID       = objectID;
+        entry.eta            = eta;
+        entry.survivesReload = survivesReload;
+        sDecayTimers.push_back( entry );
+        }
     }
 
 
@@ -1869,18 +1926,13 @@ bool yumIsDecayTrackable( int objectID ) {
     ObjectRecord *obj = getObject( objectID );
     if( obj == NULL ) return false;
 
-    // Permanent objects can't be picked up — timer is always reliable.
-    if( obj->permanent ) return true;
-
-    // Non-permanent: only trackable if picking up and putting down produces
-    // a different ground ID (server then restarts decay on drop).
-    TransRecord *pickupTr = getTrans( 0, objectID );
-    if( pickupTr == NULL || pickupTr->newActor <= 0 ) return false;
-
-    int heldID = pickupTr->newActor;
-    TransRecord *dropTr = getTrans( heldID, 0 );
-    if( dropTr == NULL ) return false;
-    return ( dropTr->newTarget != objectID );
+    // Whether it can be picked up no longer matters here. Most carryable
+    // objects (firebrands, hot metal in tongs, lit lanterns) have no explicit
+    // 0_<id> pickup transition — the server uses generic pickup, where the
+    // held ID equals the ground ID — so testing for one rejected them all.
+    // yumOnMapChange decides per event whether an appearance carries a known
+    // ETA, which is the question that actually needed answering.
+    return true;
     }
 
 
@@ -1907,8 +1959,37 @@ bool yumDecaySurvivesChunkReload( int objectID ) {
     }
 
 
-void yumOnMapChange( int worldX, int worldY, int newID, int oldID ) {
+void yumOnMapChange( int worldX, int worldY, int newID, int oldID,
+                     int inResponsiblePlayerID, int inResponsibleHoldingID ) {
+
+    // The sign carries meaning; the identity does not.
+    int responsibleID = inResponsiblePlayerID;
+    if( responsibleID < -1 ) responsibleID = -responsibleID;
+
     if( newID <= 0 ) {
+        // Cell emptied. If the object we were timing went into the responsible
+        // player's hand, the ETA goes with it — decay keeps running in hand.
+        int idx = yumFindTimer( worldX, worldY );
+        if( idx >= 0 &&
+            inResponsiblePlayerID != -1 &&
+            oldID > 0 &&
+            inResponsibleHoldingID == oldID ) {
+
+            yumPruneHeldTimers();
+
+            double eta = sDecayTimers.getElement( idx )->eta;
+            int heldIdx = yumFindHeldTimer( responsibleID, oldID );
+            if( heldIdx >= 0 ) {
+                sHeldTimers.getElement( heldIdx )->eta = eta;
+                }
+            else {
+                YumHeldTimerEntry held;
+                held.playerID = responsibleID;
+                held.objectID = oldID;
+                held.eta      = eta;
+                sHeldTimers.push_back( held );
+                }
+            }
         yumClearDecayTimer( worldX, worldY );
         return;
         }
@@ -1916,32 +1997,64 @@ void yumOnMapChange( int worldX, int worldY, int newID, int oldID ) {
     // Same ID: an interaction kept the object unchanged — preserve the timer.
     if( newID == oldID ) return;
 
-    // Object changed; set a fresh timer if trackable, else clear.
-    if( yumIsDecayTrackable( newID ) ) {
-        TransRecord *decayTr = getTrans( -1, newID );
-        double eta = game_getCurrentTime() + decayTr->autoDecaySeconds;
-        bool survives = yumDecaySurvivesChunkReload( newID );
-
-        int idx = yumFindTimer( worldX, worldY );
-        if( idx >= 0 ) {
-            YumDecayTimerEntry *e = sDecayTimers.getElement( idx );
-            e->objectID       = newID;
-            e->eta            = eta;
-            e->survivesReload = survives;
-            }
-        else {
-            YumDecayTimerEntry entry;
-            entry.worldX         = worldX;
-            entry.worldY         = worldY;
-            entry.objectID       = newID;
-            entry.eta            = eta;
-            entry.survivesReload = survives;
-            sDecayTimers.push_back( entry );
-            }
-        }
-    else {
+    if( !yumIsDecayTrackable( newID ) ) {
         yumClearDecayTimer( worldX, worldY );
+        return;
         }
+
+    if( inResponsiblePlayerID > 0 ) {
+        // A player set this object down. Its decay started whenever it was
+        // first created, not now, so the only honest ETA is the one we parked
+        // when we watched them pick it up.
+        int heldIdx = yumFindHeldTimer( responsibleID, newID );
+        if( heldIdx >= 0 ) {
+            double eta = sHeldTimers.getElement( heldIdx )->eta;
+            sHeldTimers.deleteElement( heldIdx );
+            if( eta > game_getCurrentTime() ) {
+                yumSetTimer( worldX, worldY, newID, eta,
+                             yumDecaySurvivesChunkReload( newID ) );
+                return;
+                }
+            }
+        // Carried in from somewhere we were not watching — age unknown.
+        yumClearDecayTimer( worldX, worldY );
+        return;
+        }
+
+    // Auto-decayed into place (-1) or produced by a transition on this cell
+    // (< -1): either way the server created it just now, so decay starts here.
+    TransRecord *decayTr = getTrans( -1, newID );
+    yumSetTimer( worldX, worldY, newID,
+                 game_getCurrentTime() + decayTr->autoDecaySeconds,
+                 yumDecaySurvivesChunkReload( newID ) );
+    }
+
+
+void yumOnPlayerHoldingChange( int playerID, int inOldHeldID, int inNewHeldID ) {
+    // Negative IDs are held babies. 0 -> X is a ground pickup, which
+    // yumOnMapChange owns; only a swap of one real object for another is the
+    // in-hand transition we are after.
+    if( inOldHeldID <= 0 || inNewHeldID <= 0 ) return;
+    if( inOldHeldID == inNewHeldID ) return;
+
+    // Whatever they were holding is gone, so its parked ETA can never pay off.
+    int staleIdx = yumFindHeldTimer( playerID, inOldHeldID );
+    if( staleIdx >= 0 ) sHeldTimers.deleteElement( staleIdx );
+
+    if( !yumIsDecayTrackable( inNewHeldID ) ) return;
+
+    // Never overwrite an ETA we already know — a pickup recorded by
+    // yumOnMapChange is real data, this one is only an inference.
+    if( yumFindHeldTimer( playerID, inNewHeldID ) >= 0 ) return;
+
+    yumPruneHeldTimers();
+
+    TransRecord *decayTr = getTrans( -1, inNewHeldID );
+    YumHeldTimerEntry held;
+    held.playerID = playerID;
+    held.objectID = inNewHeldID;
+    held.eta      = game_getCurrentTime() + decayTr->autoDecaySeconds;
+    sHeldTimers.push_back( held );
     }
 
 
@@ -1980,5 +2093,6 @@ void yumClearDecayTimer( int worldX, int worldY ) {
 
 void yumClearAllDecayTimers() {
     sDecayTimers.deleteAll();
+    sHeldTimers.deleteAll();
     }
 
