@@ -55,9 +55,15 @@ release from [the Releases page](https://github.com/olliez-mods/YummyLife/releas
 EOT
 fi
 
+# A stub to fill in on the draft before publishing
 cat <<'EOT'
-**Already have OHOL or AHAP installed?** Take the drop-in build — that is almost
-everyone. The full downloads are only for a machine with no game on it at all.
+# Release!
+
+Notes:
+- note 1
+- note 2
+
+---
 
 ### Drop-in — install over an existing OHOL/AHAP folder
 
@@ -69,13 +75,13 @@ EOT
 
 row "Windows" "YummyLife_windows.exe" "run it in place"
 row "Linux"   "YummyLife_linux"       "\`chmod +x\` then run"
-row "macOS"   "YummyLife_mac.zip"     "unzip to get \`YummyLife.app\`"
+row "macOS"   "YummyLife_mac.zip"     "unzip to get \`YummyLife.app\` — see note below"
 
 cat <<'EOT'
 
-### OHOL — complete, nothing else needed
+---
 
-Unzip anywhere and run. Includes all One Hour One Life game data.
+### OHOL — complete download, nothing else needed
 
 | Platform | Download | Size | Notes |
 |---|---|---|---|
@@ -83,13 +89,13 @@ EOT
 
 row "Windows" "YummyLife_OHOL_windows.zip" "run \`YummyLife_windows.exe\`"
 row "Linux"   "YummyLife_OHOL_linux.zip"   "run \`./YummyLife_linux\`"
-row "macOS"   "YummyLife_OHOL_mac.zip"     "open the \`.app\`, keep it in the folder"
+row "macOS"   "YummyLife_OHOL_mac.zip"     "keep the \`.app\` in the folder — see note below"
 
 cat <<'EOT'
 
-### AHAP — complete, nothing else needed
+---
 
-Same as above, with Another Planet game data instead.
+### AHAP — complete download, nothing else needed
 
 | Platform | Download | Size | Notes |
 |---|---|---|---|
@@ -97,24 +103,16 @@ EOT
 
 row "Windows" "YummyLife_AHAP_windows.zip" "run \`YummyLife_windows.exe\`"
 row "Linux"   "YummyLife_AHAP_linux.zip"   "run \`./YummyLife_linux\`"
-row "macOS"   "YummyLife_AHAP_mac.zip"     "open the \`.app\`, keep it in the folder"
+row "macOS"   "YummyLife_AHAP_mac.zip"     "keep the \`.app\` in the folder — see note below"
 
 cat <<'EOT'
 
 ---
 
-**macOS first run.** The app is ad-hoc signed rather than notarized, so macOS
-refuses to open it until the quarantine flag is cleared. Either right-click the
-app and choose Open, or:
+**macOS first run.** The app is not notarized, so macOS refuses to open it until you
+clear the quarantine flag:
 
 ```
 xattr -dr com.apple.quarantine YummyLife.app
 ```
-
-**Full downloads and your account.** A full folder ships without an account key,
-so you will be asked to log in on first launch. If you own the game on Steam, use
-the drop-in build instead — installing into the Steam folder is what lets the mod
-pick up your Steam login.
-
-**Having issues?** See [troubleshooting](https://github.com/olliez-mods/YummyLife/#troubleshooting).
 EOT
