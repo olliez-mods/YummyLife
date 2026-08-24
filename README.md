@@ -299,22 +299,11 @@ Notes:
 - note 2
 ```
 
-**Everything a push produces is left as a draft.** A draft is only visible to people
-with write access, so nothing reaches players until it is published by hand. Look the
-artifacts over, then hit Publish. Running the workflow manually offers a `draft` toggle
-to skip that.
-
 **Test builds.** Running the workflow manually with `test_release` puts up a
 mid-version build for people to try. It bumps nothing: the tag is the current version
 plus the next free `-test-N`, so `v438.1-test-1`, `v438.1-test-2` and so on against the
 same version. It is compiled with `PREVIEW_BUILD`, which marks the window title, the
-notes carry a "THIS IS A TEST RELEASE" banner, and it always publishes rather than
-drafting, since a draft cannot be downloaded by the testers it is meant for.
-
-**Every release is marked pre-release.** That includes normal ones. Be aware this
-means `/releases/latest` returns nothing, and that is the endpoint the in-game update
-check reads (`getLatestVersionTag` in `gameSource/yummyLife.cpp`) — so players are not
-notified about new versions from inside the game, and have to check the Releases page.
+notes carry a "THIS IS A TEST RELEASE" banner, and it is marked as a GitHub pre-release.
 
 # Merging upstream changes
 

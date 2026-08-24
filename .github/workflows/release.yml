@@ -260,23 +260,20 @@ jobs:
         run: |
           set -e
 
-          # Every release is a pre-release. Note this means /releases/latest
-          # returns nothing, and that is the endpoint the in-game update check
-          # reads (yummyLife.cpp, getLatestVersionTag), so players are not
-          # notified about updates from inside the game.
-          PRERELEASE=--prerelease
-
-          # A push always leaves a draft; a manual run can publish straight away.
-          if [ "${{ github.event_name }}" = workflow_dispatch ]; then
-            [ "${{ inputs.draft }}" = true ] && DRAFT=--draft || DRAFT=
+          # Every path drafts. Only unticking 'draft' on a manual run publishes
+          # straight away, and a push has no way to ask for that at all.
+          if [ "${{ github.event_name }}" = workflow_dispatch ] \
+             && [ "${{ inputs.draft }}" != true ]; then
+            DRAFT=
           else
             DRAFT=--draft
           fi
 
-          # A test build exists to be downloaded, and a draft is only visible to
-          # people with write access, so it always publishes.
+          # Only test builds get the pre-release flag.
           if [ "${{ inputs.test_release }}" = true ]; then
-            DRAFT=
+            PRERELEASE=--prerelease
+          else
+            PRERELEASE=
           fi
 
           ASSETS=$(find ./artifacts -type f | sort)
