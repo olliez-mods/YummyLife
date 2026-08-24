@@ -1,0 +1,296 @@
+name: Release Build
+
+# Pushing a version bump to master builds everything and leaves a DRAFT release ready to look over
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      draft:
+        description: Leave the release as a draft
+        required: false
+        default: true
+        type: boolean
+      test_release:
+        description: 'Test build: publishes as v<version>-test-N, bumps nothing'
+        required: false
+        default: false
+        type: boolean
+      dev_patch_url:
+        description: URL to a patch file for development builds
+        required: false
+        type: string
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  OHOL_DATA_REPO: jasonrohrer/OneLifeData7
+  OHOL_TAG_PREFIX: OneLife_v
+  AHAP_DATA_REPO: jasonrohrer/AnotherPlanetData
+  AHAP_TAG_PREFIX: AnotherPlanet_v
+
+jobs:
+
+  # Cheap gate: work out the release tag from game.cpp and skip everything if
+  # that release already exists. Checking for the release rather than diffing
+  # game.cpp keeps this correct across multi-commit pushes, merges, reverts and
+  # re-runs.
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      needed: ${{ steps.version.outputs.needed }}
+      ohol_ref: ${{ steps.data.outputs.ohol_ref }}
+      ahap_ref: ${{ steps.data.outputs.ahap_ref }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from game.cpp
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          V=$(sed -n 's/^int versionNumber = \([0-9]*\);.*/\1/p' gameSource/game.cpp)
+          S=$(sed -n 's/^const char \*yumSubVersion = "\([^"]*\)".*/\1/p' gameSource/game.cpp)
+          if [ -z "$V" ] || [ -z "$S" ]; then
+            echo "Could not parse versionNumber / yumSubVersion out of gameSource/game.cpp" >&2
+            exit 1
+          fi
+          TAG="v${V}${S}"
+
+          # A test release is a mid-version build handed out for testing. It does
+          # not bump anything, so several stack up against the same base version
+          # and the tag gets the next free -test-N suffix.
+          if [ "${{ inputs.test_release }}" = true ]; then
+            LAST=$(gh release list --limit 200 --json tagName --jq '.[].tagName' \
+                     | grep "^${TAG}-test-" | sed "s/^${TAG}-test-//" \
+                     | grep '^[0-9][0-9]*$' | sort -n | tail -1)
+            TAG="${TAG}-test-$(( ${LAST:-0} + 1 ))"
+          fi
+
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Release tag would be $TAG"
+
+          # A manual run always builds; a push only builds a version not yet released
+          if [ "${{ github.event_name }}" = workflow_dispatch ]; then
+            echo "needed=true" >> $GITHUB_OUTPUT
+          elif gh release view "$TAG" > /dev/null 2>&1; then
+            echo "needed=false" >> $GITHUB_OUTPUT
+            echo "$TAG already exists, nothing to do"
+          else
+            echo "needed=true" >> $GITHUB_OUTPUT
+          fi
+
+      # Resolved here so the build jobs can shallow-checkout the data at an exact tag
+      - name: Resolve latest data tags
+        id: data
+        if: steps.version.outputs.needed == 'true'
+        run: |
+          set -e
+          latest() {
+            # latest <repo> <tag prefix>
+            n=$(git ls-remote --tags --refs "https://github.com/$1" "$2*" \
+                  | sed "s#.*/$2##" | grep '^[0-9][0-9]*$' | sort -n | tail -1)
+            [ -n "$n" ] || { echo "no $2* tags found in $1" >&2; exit 1; }
+            echo "$2$n"
+          }
+          echo "ohol_ref=$(latest ${{ env.OHOL_DATA_REPO }} ${{ env.OHOL_TAG_PREFIX }})" >> $GITHUB_OUTPUT
+          echo "ahap_ref=$(latest ${{ env.AHAP_DATA_REPO }} ${{ env.AHAP_TAG_PREFIX }})" >> $GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
+
+  build-linux:
+    needs: check
+    if: needs.check.outputs.needed == 'true'
+    runs-on: ubuntu-latest
+    env:
+      # A test build is what the preview build used to be: marks the window title
+      PREVIEW_BUILD: ${{ inputs.test_release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout OHOL data
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.OHOL_DATA_REPO }}
+          ref: ${{ needs.check.outputs.ohol_ref }}
+          path: dataRepos/OneLifeData7
+          fetch-depth: 1
+
+      - name: Checkout AHAP data
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.AHAP_DATA_REPO }}
+          ref: ${{ needs.check.outputs.ahap_ref }}
+          path: dataRepos/AnotherPlanetData
+          fetch-depth: 1
+
+      - name: Packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install g++ make cmake libsdl1.2-dev libglu-dev libgl-dev g++-mingw-w64-i686-win32 curl libssl-dev libcurl4-openssl-dev wget zip
+
+      - name: Libraries
+        run: cd yummyLifeBuildScripts && ./setup-libs.sh
+
+      - name: Apply Dev Patch (if exist)
+        if: ${{ inputs.dev_patch_url != '' }}
+        run: |
+          wget -O dev_patch.patch "${{ inputs.dev_patch_url }}"
+          git apply --ignore-whitespace dev_patch.patch
+
+      - name: Build Scripts
+        run: |
+          ./build.sh release
+
+      # Must come after build.sh: a release build wipes relbuild/ before it starts
+      - name: Package full folders
+        run: |
+          set -e
+          for game in ohol ahap; do
+            for platform in linux windows; do
+              ./yummyLifeBuildScripts/makeReleaseFolder.sh \
+                "${{ needs.check.outputs.tag }}" "$platform" "$game"
+            done
+          done
+
+      - name: Upload Linux and Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-windows
+          # The zips are already compressed, so re-compressing them into the
+          # artifact just burns minutes
+          compression-level: 0
+          path: |
+            ./relbuild/YummyLife_linux
+            ./relbuild/YummyLife_windows.exe
+            ./relbuild/release/*.zip
+          if-no-files-found: error
+
+  build-macos:
+    needs: check
+    if: needs.check.outputs.needed == 'true'
+    runs-on: macos-latest
+    env:
+      # A test build is what the preview build used to be: marks the window title
+      PREVIEW_BUILD: ${{ inputs.test_release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout OHOL data
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.OHOL_DATA_REPO }}
+          ref: ${{ needs.check.outputs.ohol_ref }}
+          path: dataRepos/OneLifeData7
+          fetch-depth: 1
+
+      - name: Checkout AHAP data
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.AHAP_DATA_REPO }}
+          ref: ${{ needs.check.outputs.ahap_ref }}
+          path: dataRepos/AnotherPlanetData
+          fetch-depth: 1
+
+      # The Darwin branch of this script is brew (including libpng, which the
+      # editor target needs) plus the vendored headers
+      - name: Packages and libraries
+        run: cd yummyLifeBuildScripts && ./setup-libs.sh
+
+      - name: Apply Dev Patch (if exist)
+        if: ${{ inputs.dev_patch_url != '' }}
+        run: |
+          curl -L -o dev_patch.patch "${{ inputs.dev_patch_url }}"
+          git apply --ignore-whitespace dev_patch.patch
+
+      - name: Build Scripts
+        run: |
+          ./build.sh release macos
+
+      - name: Package full folders
+        run: |
+          set -e
+          for game in ohol ahap; do
+            ./yummyLifeBuildScripts/makeReleaseFolder.sh \
+              "${{ needs.check.outputs.tag }}" mac "$game"
+          done
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          compression-level: 0
+          path: |
+            ./relbuild/YummyLife_mac.zip
+            ./relbuild/release/*.zip
+          if-no-files-found: error
+
+  release:
+    needs: [check, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # Only for makeReleaseNotes.sh
+      - uses: actions/checkout@v4
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Build release notes
+        run: |
+          ./yummyLifeBuildScripts/makeReleaseNotes.sh \
+            "${{ needs.check.outputs.tag }}" \
+            ./artifacts \
+            "${{ github.repository }}" \
+            "${{ inputs.test_release || false }}" > notes.md
+          cat notes.md
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.check.outputs.tag }}
+        run: |
+          set -e
+
+          # Every release is a pre-release. Note this means /releases/latest
+          # returns nothing, and that is the endpoint the in-game update check
+          # reads (yummyLife.cpp, getLatestVersionTag), so players are not
+          # notified about updates from inside the game.
+          PRERELEASE=--prerelease
+
+          # A push always leaves a draft; a manual run can publish straight away.
+          if [ "${{ github.event_name }}" = workflow_dispatch ]; then
+            [ "${{ inputs.draft }}" = true ] && DRAFT=--draft || DRAFT=
+          else
+            DRAFT=--draft
+          fi
+
+          # A test build exists to be downloaded, and a draft is only visible to
+          # people with write access, so it always publishes.
+          if [ "${{ inputs.test_release }}" = true ]; then
+            DRAFT=
+          fi
+
+          ASSETS=$(find ./artifacts -type f | sort)
+          echo "Uploading:"; echo "$ASSETS"
+
+          # Re-running against an existing tag replaces its assets rather than
+          # failing on the already-created release
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" $ASSETS --clobber
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes-file notes.md \
+              --target "$GITHUB_SHA" \
+              $DRAFT $PRERELEASE \
+              $ASSETS
+          fi
