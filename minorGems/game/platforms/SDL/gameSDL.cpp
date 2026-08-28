@@ -1640,6 +1640,27 @@ static void showMessage( const char *inAppName,
 
 
 
+#if defined(__mac__) || defined(LINUX)
+// YumyLife
+static void redirectStdioToFile( const char *inFileName, FILE *inStream ) {
+    FILE *testFile = fopen( inFileName, "w" );
+
+    if( testFile == NULL ) {
+        // can't write here -- leave the stream as it is
+        return;
+        }
+    fclose( testFile );
+
+    if( freopen( inFileName, "w", inStream ) != NULL ) {
+        // Line buffered.  freopen resets even stderr to fully buffered, and an
+        // empty log after a hard crash is exactly the case we want this for.
+        setvbuf( inStream, NULL, _IOLBF, 0 );
+        }
+    }
+#endif
+
+
+
 int mainFunction( int inNumArgs, char **inArgs ) {
 
 #ifdef WIN32
@@ -1909,7 +1930,27 @@ int mainFunction( int inNumArgs, char **inArgs ) {
         delete [] appDirectoryPath;
     #endif
 
-        
+
+    #if defined(__mac__) || defined(LINUX)
+        // Do this after the __mac__ block above:  Finder launches app bundles
+        // with the working directory set to /, and only that block has chdir'd
+        // us into the game folder where these files belong (and where
+        // gameLog.txt is about to be opened).
+        //
+        // SDL_STDIO_REDIRECT=0 turns it off, matching the opt-out that SDL's
+        // own win32 redirect honours, for anyone running from a terminal who
+        // wants output on the terminal.
+        const char *stdioRedirectSetting = getenv( "SDL_STDIO_REDIRECT" );
+
+        if( stdioRedirectSetting == NULL ||
+            stdioRedirectSetting[0] != '0' ||
+            stdioRedirectSetting[1] != '\0' ) {
+
+            redirectStdioToFile( "stdout.txt", stdout );
+            redirectStdioToFile( "stderr.txt", stderr );
+            }
+    #endif
+
 
     AppLog::setLog( new FileLog( "gameLog.txt" ) );
     AppLog::setLoggingLevel( Log::DETAIL_LEVEL );
