@@ -618,6 +618,10 @@ class LivingLifePage : public GamePage, public ActionListener {
 		int hetuwGetHoveredObjectID();
 		// world tile coords of the object returned by hetuwGetHoveredObjectID()
 		void hetuwGetHoveredObjectTile( int &outTileX, int &outTileY );
+		// YummyLife: post a fading speech bubble anchored to a world tile,
+		// exactly like the server's LS message does
+		void hetuwAddLocationSpeech( int tileX, int tileY,
+									 const char *inSpeech );
 		void hetuwClickMove( float x, float y );
 		double hetuwGetAge( LiveObject *inObj );
 		void hetuwGetStringAge( char* str, LiveObject *inObj );

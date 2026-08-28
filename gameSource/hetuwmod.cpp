@@ -330,6 +330,8 @@ static std::map<int,double> babyLastFedTime;
 bool HetuwMod::bDrawTempReadout = true;
 int HetuwMod::iContainerPeekMode = 1; // 0=never, 1=modifier, 2=hover
 bool HetuwMod::bDrawUsesRemaining = true;
+int HetuwMod::iStatueSpeechMode = 0; // 0=off, 1=hover, 2=click
+vector<HetuwMod::StatueSpeech> HetuwMod::statueSpeech;
 
 int HetuwMod::delayReduction = 0;
 
@@ -1019,6 +1021,12 @@ void HetuwMod::initSettings() {
 	};
 	yumConfig::registerMappedSetting("show_container_peek", iContainerPeekMode, containerPeekModeMap, {postComment: " // never, modifier (hold ctrl or shift while hovering), hover"});
 	yumConfig::registerSetting("show_uses_remaining", bDrawUsesRemaining, {postComment: " // hovering a multi-use object (tool, berry bush) shows uses left"});
+	static std::map<std::string, int> statueSpeechModeMap = {
+		{"off", 0},
+		{"hover", 1},
+		{"click", 2}
+	};
+	yumConfig::registerMappedSetting("restore_statue_speech", iStatueSpeechMode, statueSpeechModeMap, {postComment: " // last words on rocket statues, which the server no longer speaks: off, hover, click"});
 	yumConfig::registerSetting("log_chat", HetuwMod::bPrintChatLogToFile, {postComment: " // write speech to " hetuwLogFileName});
 	yumConfig::registerScaledSetting("qol_text_scale", qolTextScale, 10, {postComment: " // text size of the chat log overlay, 10 = full size, default 7"});
 	// ... to here
@@ -1203,6 +1211,7 @@ void HetuwMod::initOnBirth() { // will be called from LivingLifePage.cpp
 
 	YummyLife::ChatLog::newLife();
 	babyLastFedTime.clear();
+	statueSpeech.clear();
 
 	// craving does not carry across lives
 	currentCravingFoodID = -1;
@@ -2395,6 +2404,7 @@ void HetuwMod::livingLifeDraw() {
 	if (bDrawTempReadout) drawTempReadout();
 	if (iContainerPeekMode != 0) drawContainerPeek();
 	if (bDrawUsesRemaining) drawUsesRemaining();
+	if (iStatueSpeechMode == 1) drawStatueSpeech();
 	if (bDrawHungerWarning) drawHungerWarning();
 }
 
@@ -4288,6 +4298,18 @@ bool HetuwMod::livingLifePageMouseDown( float mX, float mY ) {
 		moveToAndClickTile(tileX, tileY, !isLastMouseButtonRight());
 		return true;
 	}
+	if (iStatueSpeechMode == 2) {
+		int objId = livingLifePage->hetuwGetHoveredObjectID();
+		if (objId > 0) {
+			ObjectRecord *o = getObject(objId);
+			if (o != NULL && o->isStatue) {
+				int tileX, tileY;
+				livingLifePage->hetuwGetHoveredObjectTile(tileX, tileY);
+				// doesn't consume the click, the normal action still runs
+				onStatueClick(tileX, tileY);
+			}
+		}
+	}
 	bMoveClick = false;
 	return false;
 }
@@ -5059,8 +5081,101 @@ void HetuwMod::onCurseUpdate(LiveObject* o) {
 	HetuwMod::writeLineToLogs(type, data);
 }
 
-void HetuwMod::onStatueResponse(int birthRelX, int birthRelY, int displayID, const char* name, const char* clothing, const char* finalWords) {
-	// GPS::onStatueReceived(birthRelX, birthRelY, displayID, name, clothing, finalWords); STATUE SCANNING REMOVED
+void HetuwMod::onStatueResponse(int worldX, int worldY, int displayID, const char* name, const char* clothing, const char* finalWords, double statueAge) {
+	// GPS::onStatueReceived(worldX, worldY, displayID, name, clothing, finalWords); STATUE SCANNING REMOVED
+
+	StatueSpeech s;
+	s.tileX = worldX;
+	s.tileY = worldY;
+	s.name = name ? name : "-";
+	s.lastWords = finalWords ? finalWords : "-";
+	s.statueAge = statueAge;
+	s.responseTime = game_getCurrentTime();
+
+	// the server sends these with spaces collapsed to underscores
+	std::replace(s.name.begin(), s.name.end(), '_', ' ');
+	std::replace(s.lastWords.begin(), s.lastWords.end(), '_', ' ');
+
+	StatueSpeech *existing = getStatueSpeechAt(worldX, worldY);
+	if (existing) *existing = s;
+	else statueSpeech.push_back(s);
+}
+
+HetuwMod::StatueSpeech* HetuwMod::getStatueSpeechAt(int tileX, int tileY) {
+	for (unsigned i=0; i<statueSpeech.size(); i++) {
+		if (statueSpeech[i].tileX == tileX && statueSpeech[i].tileY == tileY)
+			return &statueSpeech[i];
+	}
+	return NULL;
+}
+
+// A trimmed-down version of the ladder that used to live in the server's
+// playerReadsStatue().  Statues don't survive long enough for the millennia+
+// tiers to matter, so we stop there instead of hauling in numberToWords.
+static string hetuwStatueAgeString(double age) {
+	char buf[64];
+	if (age < 1) return "JUST NOW";
+	if (age < 2) return "ONE YEAR AGO";
+	if (age < 20) snprintf(buf, sizeof(buf), "%d YEARS AGO", (int)floor(age));
+	else if (age < 200) snprintf(buf, sizeof(buf), "%d DECADES AGO", (int)floor(age/10));
+	else if (age < 2000) snprintf(buf, sizeof(buf), "%d CENTURIES AGO", (int)floor(age/100));
+	else snprintf(buf, sizeof(buf), "%d MILLENNIA AGO", (int)floor(age/1000));
+	return buf;
+}
+
+// wording lifted from the server's playerReadsStatue(), typo and all
+string HetuwMod::buildStatueSpeech(const StatueSpeech &s) {
+	string who = (s.name == "-") ? "A NAMLESS PERSON" : s.name;
+
+	// the ST response is a one-shot, so keep the statue aging after it
+	double ageRate = ourLiveObject ? ourLiveObject->ageRate : 0;
+	double age = s.statueAge +
+		(game_getCurrentTime() - s.responseTime) * ageRate;
+
+	string when = hetuwStatueAgeString(age);
+
+	if (s.lastWords == "-" || s.lastWords.empty()) {
+		return who + " LEFT THE PLANET " + when + " AND SAID NOTHING. "
+			"JUST GAVE US A GLANCE... "
+			"JUST GAVE US A VERY SAD, SAD BACKWARD GLANCE...";
+	}
+	return who + " LEFT THE PLANET " + when + " AND SAID: " + s.lastWords;
+}
+
+// hover mode: chalk tooltip at the cursor, like the other hover readouts
+void HetuwMod::drawStatueSpeech() {
+	int objId = livingLifePage->hetuwGetHoveredObjectID();
+	if (objId <= 0) return;
+
+	ObjectRecord *o = getObject(objId);
+	if (o == NULL || !o->isStatue) return;
+
+	int tileX, tileY;
+	livingLifePage->hetuwGetHoveredObjectTile(tileX, tileY);
+
+	StatueSpeech *s = getStatueSpeechAt(tileX, tileY);
+	if (s == NULL) return; // ST response hasn't come back yet
+
+	string text = buildStatueSpeech(*s);
+
+	int mouseX, mouseY;
+	livingLifePage->hetuwGetMouseXY(mouseX, mouseY);
+
+	FloatColor bgColor = { 0.05, 0.05, 0.05, 1.0 };
+	FloatColor txtColor = { 1, 1, 1, 1 };
+
+	doublePair pos = { mouseX + 22*guiScale, mouseY - 48*guiScale };
+	livingLifePage->drawChalkBackgroundString( pos, text.c_str(), 1.0, 350.0, NULL, -1, &bgColor, &txtColor, true );
+}
+
+// click mode: a real speech bubble over the statue, the way the server used to
+// do it
+void HetuwMod::onStatueClick(int tileX, int tileY) {
+	StatueSpeech *s = getStatueSpeechAt(tileX, tileY);
+	if (s == NULL) return; // ST response hasn't come back yet
+
+	string text = buildStatueSpeech(*s);
+	livingLifePage->hetuwAddLocationSpeech(tileX, tileY, text.c_str());
 }
 
 void HetuwMod::drawDeathMessages() {

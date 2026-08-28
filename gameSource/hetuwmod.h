@@ -567,7 +567,7 @@ public:
 	static void onPlayerUpdate( LiveObject* o, const char* line );
 	static void onNameUpdate(LiveObject* o);
 	static void onCurseUpdate(LiveObject* o);
-	static void onStatueResponse(int birthRelX, int birthRelY, int displayID, const char* name, const char* clothing, const char* finalWords);
+	static void onStatueResponse(int birthRelX, int birthRelY, int displayID, const char* name, const char* clothing, const char* finalWords, double statueAge);
 	static void removeLastName(char *newName, const char* name );
 	static string getLastName(const char* name);
 	static void setLastNameColor( const char* lastName, float alpha );
@@ -879,6 +879,25 @@ private:
 
 	static bool bDrawUsesRemaining;
 	static void drawUsesRemaining();
+
+	// YummyLife: statue last words.  Jason disabled the server-side statue
+	// speech in Aug 2026 (server.cpp: `if( true || ...)` in playerReadsStatue)
+	// but the ST response still carries the final words, so we can say it
+	// ourselves.  0=off, 1=hover, 2=click
+	static int iStatueSpeechMode;
+	struct StatueSpeech {
+		int tileX, tileY;
+		string name;      // "-" if nameless
+		string lastWords; // "-" if they said nothing
+		// in-game years since the statue appeared, as of responseTime
+		double statueAge;
+		double responseTime;
+	};
+	static vector<StatueSpeech> statueSpeech;
+	static StatueSpeech* getStatueSpeechAt( int tileX, int tileY );
+	static string buildStatueSpeech( const StatueSpeech &s );
+	static void drawStatueSpeech();
+	static void onStatueClick( int tileX, int tileY );
 
 	static void autoNameBB();
 

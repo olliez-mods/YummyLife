@@ -3146,6 +3146,35 @@ void LivingLifePage::hetuwGetHoveredObjectTile( int &outTileX, int &outTileY ) {
 	outTileY = mCurMouseOverWorld.y;
 }
 
+// YummyLife: same path the server's LS message takes, so the bubble fades
+// and gets cleaned up by the existing location-speech stepping
+void LivingLifePage::hetuwAddLocationSpeech( int tileX, int tileY,
+											 const char *inSpeech ) {
+	LocationSpeech ls;
+
+	ls.pos.x = tileX * CELL_D;
+	ls.pos.y = tileY * CELL_D;
+
+	ls.speech = stringDuplicate( inSpeech );
+
+	ls.fade = 1.0;
+
+	// longer time for longer speech
+	ls.fadeETATime = game_getCurrentTime() + 3 + strlen( ls.speech ) / 5;
+
+	locationSpeech.push_back( ls );
+
+	// remove old location speech at same pos
+	for( int i=0; i<locationSpeech.size() - 1; i++ ) {
+		LocationSpeech other = locationSpeech.getElementDirect( i );
+		if( other.pos.x == ls.pos.x && other.pos.y == ls.pos.y ) {
+			delete [] other.speech;
+			locationSpeech.deleteElement( i );
+			i--;
+			}
+		}
+}
+
 static Image *expandToPowersOfTwoWhite( Image *inImage ) {
     
     int w = 1;
@@ -16380,7 +16409,7 @@ void LivingLifePage::step() {
 
                 GridPos thisPos = { posX, posY };
 
-                HetuwMod::onStatueResponse(posX, posY, displayID, nameBuffer, clothingBuffer, finalWordsBuffer);
+                HetuwMod::onStatueResponse(posX, posY, displayID, nameBuffer, clothingBuffer, finalWordsBuffer, statueAge);
 
                 
                 int nameLen = strlen( nameBuffer );
