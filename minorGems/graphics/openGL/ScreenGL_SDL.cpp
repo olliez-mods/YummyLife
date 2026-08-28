@@ -1911,6 +1911,18 @@ void ScreenGL::start() {
                                 asciiKey = (u & 0x7F);
                                 }
                             scanCodeMap[event.key.keysym.scancode] = asciiKey;
+
+                            // YummyLife: normalize ctrl+letter across SDL =======
+                            if( ( event.key.keysym.mod & KMOD_CTRL ) &&
+                                ! ( event.key.keysym.mod & KMOD_ALT ) ) {
+                                if( asciiKey >= 'a' && asciiKey <= 'z' ) {
+                                    asciiKey -= 'a' - 1;
+                                    }
+                                else if( asciiKey >= 'A' && asciiKey <= 'Z' ) {
+                                    asciiKey -= 'A' - 1;
+                                    }
+                                }
+                            // ===================================================
                             }
                         else {
                                 asciiKey = scanCodeMap[event.key.keysym.scancode];
