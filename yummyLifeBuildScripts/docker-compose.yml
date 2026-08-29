@@ -13,10 +13,11 @@ services:
     entrypoint: ["bash", "./setup-libs.sh"]
 
   # Anything after the service name is passed straight through to build.sh, so
-  # this one service covers every mode and target it accepts:
-  #   docker-compose run --rm build                 both, dev
-  #   docker-compose run --rm build linux           one target
-  #   docker-compose run --rm build release linux   mode and target
+  # this one service covers every build it can make. build.sh requires a mode,
+  # an OS and a target, so every one of these names all three:
+  #   docker-compose run --rm build dev linux game
+  #   docker-compose run --rm build dev windows server
+  #   docker-compose run --rm build rel linux windows game
   build:
     <<: *common
     entrypoint: ["bash", "./build.sh"]

@@ -23,9 +23,9 @@ set(YUMMYLIFE_VERSION "${CMAKE_MATCH_1}")
 string(REGEX MATCH "yumSubVersion *= *\"([^\"]*)\"" _ "${GAME_CPP_HEAD}")
 set(YUMMYLIFE_VERSION "${YUMMYLIFE_VERSION}${CMAKE_MATCH_1}")
 
-set(MINORGEMS_COMMON_SOURCE_FILES
-    minorGems/graphics/openGL/ScreenGL_SDL.cpp
-    minorGems/graphics/openGL/SingleTextureGL.cpp
+# The part of minorGems that pulls in no SDL, OpenGL or sound. The server links
+# only these; the client and editor add MINORGEMS_GRAPHICS_SOURCE_FILES on top.
+set(MINORGEMS_HEADLESS_SOURCE_FILES
     minorGems/util/stringUtils.cpp
     minorGems/util/StringBufferOutputStream.cpp
     minorGems/util/ByteBufferInputStream.cpp
@@ -45,10 +45,19 @@ set(MINORGEMS_COMMON_SOURCE_FILES
     minorGems/util/log/FileLog.cpp
     minorGems/util/log/PrintLog.cpp
     minorGems/util/printUtils.cpp
+    minorGems/game/doublePair.cpp
+    minorGems/util/StringTree.cpp
+    minorGems/util/crc32.cpp
+)
+
+# Everything the headless build leaves out: the SDL/GL screen and sprite layer,
+# sound, and the client-only crypto and auto-update code.
+set(MINORGEMS_GRAPHICS_SOURCE_FILES
+    minorGems/graphics/openGL/ScreenGL_SDL.cpp
+    minorGems/graphics/openGL/SingleTextureGL.cpp
     minorGems/game/platforms/SDL/gameSDL.cpp
     minorGems/game/platforms/openGL/gameGraphicsGL.cpp
     minorGems/game/platforms/openGL/SpriteGL.cpp
-    minorGems/game/doublePair.cpp
     minorGems/game/Font.cpp
     minorGems/game/drawUtils.cpp
     minorGems/game/platforms/SDL/DemoCodeChecker.cpp
@@ -60,8 +69,11 @@ set(MINORGEMS_COMMON_SOURCE_FILES
     minorGems/crypto/keyExchange/curve25519.cpp
     minorGems/crypto/cryptoRandom.cpp
     minorGems/game/diffBundle/client/diffBundleClient.cpp
-    minorGems/util/StringTree.cpp
-    minorGems/util/crc32.cpp
+)
+
+set(MINORGEMS_COMMON_SOURCE_FILES
+    ${MINORGEMS_HEADLESS_SOURCE_FILES}
+    ${MINORGEMS_GRAPHICS_SOURCE_FILES}
 )
 
 if (WIN32)
@@ -97,6 +109,28 @@ endif()
 set(MINORGEMS_SOURCE_FILES
     ${MINORGEMS_COMMON_SOURCE_FILES}
     ${MINORGEMS_PLATFORM_SOURCE_FILES}
+)
+
+# SocketPoll is linked by the server alone, which is why it shows up in neither
+# list above. The Linux implementation is built on epoll, so everything else
+# takes the portable one - the same choice minorGems' own Makefile.MacOSX makes
+# (POLL_PLATFORM = Unix).
+#
+# Despite living in network/unix, that file is select()-based rather than
+# poll()-based and carries its own WIN32 branch, so it serves the Windows
+# server too. Winsock's FD_SETSIZE of 64 is smaller than the Unix 1024, which
+# costs the Windows build more select calls per wait, but the file already
+# batches by FD_SETSIZE for exactly that reason.
+if(NOT WIN32 AND NOT APPLE)
+    set(MINORGEMS_SOCKET_POLL_SOURCE_FILES minorGems/network/linux/SocketPollLinux.cpp)
+else()
+    set(MINORGEMS_SOCKET_POLL_SOURCE_FILES minorGems/network/unix/SocketPollUnix.cpp)
+endif()
+
+set(MINORGEMS_SERVER_SOURCE_FILES
+    ${MINORGEMS_HEADLESS_SOURCE_FILES}
+    ${MINORGEMS_PLATFORM_SOURCE_FILES}
+    ${MINORGEMS_SOCKET_POLL_SOURCE_FILES}
 )
 
 set(CLIENT_SOURCE_FILES
@@ -184,13 +218,14 @@ set(CLIENT_SOURCE_FILES
 # list is the LAYER_SOURCE block of gameSource/makeFileListEditor, the upstream
 # recipe, so keep the two in step if that file changes.
 #
-# editorHetuwStubs.cpp is ours: the shared banks reach into a few HetuwMod
-# statics and the editor has no HetuwMod. PNGImageConverter is editor-only too,
-# the client never reads a PNG (TGAImageConverter.h is header only, which is why
-# no converter shows up in the client build at all).
+# hetuwStubs.cpp is ours: the shared banks reach into a few HetuwMod statics and
+# the editor has no HetuwMod. The server links it for the same reason.
+# PNGImageConverter is editor-only though, the client never reads a PNG
+# (TGAImageConverter.h is header only, which is why no converter shows up in the
+# client build at all).
 set(EDITOR_SOURCE_FILES
     gameSource/editor.cpp
-    gameSource/editorHetuwStubs.cpp
+    gameSource/hetuwStubs.cpp
     gameSource/PageComponent.cpp
     gameSource/GamePage.cpp
     gameSource/TextField.cpp
@@ -244,6 +279,59 @@ set(EDITOR_SOURCE_FILES
     minorGems/graphics/converters/PNGImageConverter.cpp
 )
 
+# The headless game server (OneLifeServer).
+# hetuwStubs.cpp is ours, and is here for the same reason the editor has it.
+set(SERVER_SOURCE_FILES
+    server/server.cpp
+    server/map.cpp
+    gameSource/transitionBank.cpp
+    gameSource/categoryBank.cpp
+    gameSource/objectBank.cpp
+    gameSource/animationBank.cpp
+    gameSource/ageControl.cpp
+    gameSource/folderCache.cpp
+    gameSource/SoundUsage.cpp
+    gameSource/objectMetadata.cpp
+    gameSource/GridPos.cpp
+    commonSource/fractalNoise.cpp
+    commonSource/sayLimit.cpp
+    gameSource/settingsToggle.cpp
+    gameSource/hetuwStubs.cpp
+    server/kissdb.cpp
+    server/lineardb3.cpp
+    server/lifeLog.cpp
+    server/foodLog.cpp
+    server/backup.cpp
+    server/triggers.cpp
+    server/dbCommon.cpp
+    server/playerStats.cpp
+    server/lineageLog.cpp
+    server/failureLog.cpp
+    server/names.cpp
+    server/monument.cpp
+    server/lineageLimit.cpp
+    server/curses.cpp
+    server/curseLog.cpp
+    server/spiral.cpp
+    server/objectSurvey.cpp
+    server/language.cpp
+    server/familySkipList.cpp
+    server/lifeTokens.cpp
+    server/fitnessScore.cpp
+    server/CoordinateTimeTracking.cpp
+    server/arcReport.cpp
+    server/curseDB.cpp
+    server/trustDB.cpp
+    server/eveMovingGrid.cpp
+    server/specialBiomes.cpp
+    server/cravings.cpp
+    server/offspringTracker.cpp
+    server/ipBanList.cpp
+    server/ahapGate.cpp
+    server/periodicPlacements.cpp
+    server/timeLogger.cpp
+)
+
 # These are the compile options from the original build system. Note that -O0
 # in particular is sadly necessary to prevent some OHOL crashes.
 set(CLIENT_COMPILE_OPTIONS -Wall -Wwrite-strings -Wchar-subscripts -Wparentheses -g -O0)
@@ -271,6 +359,50 @@ if(WIN32)
     target_compile_options(YummyLife_windows PRIVATE ${CLIENT_COMPILE_OPTIONS})
     target_link_libraries(YummyLife_windows opengl32 glu32 mingw32 SDLmain SDL wsock32 winmm ssl crypto ws2_32 crypt32 shell32)
     target_link_options(YummyLife_windows PRIVATE -mwindows -static-libstdc++ -static-libgcc)
+
+    # The editor, cross-compiled. Unlike the native editors there is no system
+    # libpng to find here - Debian packages none for mingw - so zlib and libpng
+    # are compiled straight into the target from the sources setup-libs.sh
+    # fetches. Two small C libraries with no configure step needed: zlib ships a
+    # ready zconf.h, and setup-libs.sh puts libpng's stock pnglibconf.h in place.
+    set(ZLIB_DIR "zlib-1.3.1")
+    set(LIBPNG_DIR "libpng-1.6.44")
+
+    get_filename_component(ZLIB_ABS_DIR "${CMAKE_SOURCE_DIR}/${ZLIB_DIR}" ABSOLUTE)
+    get_filename_component(LIBPNG_ABS_DIR "${CMAKE_SOURCE_DIR}/${LIBPNG_DIR}" ABSOLUTE)
+    if (NOT EXISTS ${ZLIB_ABS_DIR} OR NOT EXISTS ${LIBPNG_ABS_DIR})
+        message(FATAL_ERROR
+            "zlib/libpng sources not found - run yummyLifeBuildScripts/setup-libs.sh")
+    endif()
+
+    # Every .c except the ones carrying a main(): example.c and pngtest.c
+    set(ZLIB_SOURCE_FILES
+        ${ZLIB_DIR}/adler32.c ${ZLIB_DIR}/compress.c ${ZLIB_DIR}/crc32.c
+        ${ZLIB_DIR}/deflate.c ${ZLIB_DIR}/gzclose.c ${ZLIB_DIR}/gzlib.c
+        ${ZLIB_DIR}/gzread.c ${ZLIB_DIR}/gzwrite.c ${ZLIB_DIR}/infback.c
+        ${ZLIB_DIR}/inffast.c ${ZLIB_DIR}/inflate.c ${ZLIB_DIR}/inftrees.c
+        ${ZLIB_DIR}/trees.c ${ZLIB_DIR}/uncompr.c ${ZLIB_DIR}/zutil.c
+    )
+    set(LIBPNG_SOURCE_FILES
+        ${LIBPNG_DIR}/png.c ${LIBPNG_DIR}/pngerror.c ${LIBPNG_DIR}/pngget.c
+        ${LIBPNG_DIR}/pngmem.c ${LIBPNG_DIR}/pngpread.c ${LIBPNG_DIR}/pngread.c
+        ${LIBPNG_DIR}/pngrio.c ${LIBPNG_DIR}/pngrtran.c ${LIBPNG_DIR}/pngrutil.c
+        ${LIBPNG_DIR}/pngset.c ${LIBPNG_DIR}/pngtrans.c ${LIBPNG_DIR}/pngwio.c
+        ${LIBPNG_DIR}/pngwrite.c ${LIBPNG_DIR}/pngwtran.c ${LIBPNG_DIR}/pngwutil.c
+    )
+
+    # EXCLUDE_FROM_ALL like the other editors, so ask for it by name:
+    #     cmake --build <dir> --target EditOneLife_windows
+    add_executable(EditOneLife_windows EXCLUDE_FROM_ALL
+        ${EDITOR_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES}
+        ${ZLIB_SOURCE_FILES} ${LIBPNG_SOURCE_FILES} icon.rc)
+    target_compile_options(EditOneLife_windows PRIVATE ${CLIENT_COMPILE_OPTIONS})
+    target_include_directories(EditOneLife_windows PRIVATE ${ZLIB_DIR} ${LIBPNG_DIR})
+
+    # No ssl/crypto, like the other editors: nothing the editor links reaches
+    # CPP-HTTPLib
+    target_link_libraries(EditOneLife_windows opengl32 glu32 mingw32 SDLmain SDL wsock32 winmm ws2_32 shell32)
+    target_link_options(EditOneLife_windows PRIVATE -mwindows -static-libstdc++ -static-libgcc)
 elseif(APPLE)
     # enable_language(OBJC) needs CMake 3.16; only the mac build requires it
     if(CMAKE_VERSION VERSION_LESS 3.16)
@@ -443,4 +575,40 @@ else()
     include_directories(${OPENGL_INCLUDE_DIR})
 
     target_link_libraries(YummyLife_linux ${OPENGL_LIBRARIES})
+
+    # The editor, built from the same sources as the mac one above. A bare
+    # binary rather than a bundle: there is nothing to bundle, and the editor
+    # reads its data folders straight out of the working directory, so run it
+    # from the game folder.
+    #
+    # EXCLUDE_FROM_ALL like the mac editor, so ask for it by name:
+    #     cmake --build <dir> --target EditOneLife_linux
+    add_executable(EditOneLife_linux EXCLUDE_FROM_ALL
+        ${EDITOR_SOURCE_FILES} ${MINORGEMS_SOURCE_FILES})
+    target_compile_options(EditOneLife_linux PRIVATE ${CLIENT_COMPILE_OPTIONS})
+
+    target_include_directories(EditOneLife_linux PRIVATE ${SDL_INCLUDE_DIR})
+    target_link_libraries(EditOneLife_linux ${SDL_LIBRARY} ${OPENGL_LIBRARIES})
+
+    # The editor imports sprites from PNG files, so unlike the client it needs a
+    # PNG decoder. PNG::PNG pulls zlib in with it. No OpenSSL here: nothing the
+    # editor links reaches CPP-HTTPLib.
+    find_package(PNG REQUIRED)
+    target_link_libraries(EditOneLife_linux PNG::PNG)
+endif()
+
+# The headless game server. Built for all three platforms from the same tree.
+add_executable(OneLifeServer EXCLUDE_FROM_ALL
+    ${SERVER_SOURCE_FILES} ${MINORGEMS_SERVER_SOURCE_FILES})
+target_compile_options(OneLifeServer PRIVATE ${CLIENT_COMPILE_OPTIONS})
+
+if(WIN32)
+    # Sockets and timeGetTime. No -mwindows, unlike the client: the server is a
+    # console program and needs its stdout. Threads come from the win32 files in
+    # MINORGEMS_PLATFORM_SOURCE_FILES, so there is no Threads::Threads here.
+    target_link_libraries(OneLifeServer wsock32 ws2_32 winmm)
+    target_link_options(OneLifeServer PRIVATE -static-libstdc++ -static-libgcc)
+else()
+    find_package(Threads REQUIRED)
+    target_link_libraries(OneLifeServer Threads::Threads)
 endif()

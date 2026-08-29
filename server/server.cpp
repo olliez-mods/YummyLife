@@ -5,6 +5,16 @@
 #include <math.h>
 #include <assert.h>
 #include <float.h>
+#include <limits.h>
+#include <unistd.h>
+
+// for locating our own executable, so that the server can find its data
+// folders when it is launched from somewhere else (see chdirToDataFolder)
+#ifdef __mac__
+#include <mach-o/dyld.h>
+#elif defined(WIN32)
+#include <windows.h>
+#endif
 
 
 #include "minorGems/util/stringUtils.h"
@@ -19763,7 +19773,176 @@ static GridPos getAveragePopulationPos(
 
 
 
+// true if the working directory holds the game data the server reads
+static char dataFolderPresent() {
+    File objectDir( NULL, "objects" );
+
+    return objectDir.exists() && objectDir.isDirectory();
+    }
+
+
+
+// last directory separator in inPath, or NULL if it holds none.  Windows
+// accepts both, and takes backslashes from GetModuleFileName and from any
+// path a user types, so looking for '/' alone would find nothing there.
+static const char *lastPathSeparator( const char *inPath ) {
+    const char *slash = strrchr( inPath, '/' );
+
+#ifdef WIN32
+    const char *backslash = strrchr( inPath, '\\' );
+
+    if( backslash != NULL && ( slash == NULL || backslash > slash ) ) {
+        return backslash;
+        }
+#endif
+
+    return slash;
+    }
+
+// path to our own executable, or NULL if it can't be determined
+// result destroyed by caller
+static char *getExecutablePath( const char *inArg0 ) {
+
+#ifdef __mac__
+    // asking with a zero-length buffer reports the size we need, including room for the terminator
+    uint32_t size = 0;
+    _NSGetExecutablePath( NULL, &size );
+
+    if( size > 0 ) {
+        char *path = new char[ size + 1 ];
+
+        if( _NSGetExecutablePath( path, &size ) == 0 ) {
+            path[ size ] = '\0';
+            return path;
+            }
+        delete [] path;
+        }
+#elif defined(WIN32)
+    char buffer[ MAX_PATH + 1 ];
+
+    DWORD length = GetModuleFileName( NULL, buffer, MAX_PATH );
+
+    // a return of exactly MAX_PATH means the name was truncated
+    if( length > 0 && length < MAX_PATH ) {
+        buffer[ length ] = '\0';
+        return stringDuplicate( buffer );
+        }
+#else
+    char buffer[ PATH_MAX + 1 ];
+
+    ssize_t length = readlink( "/proc/self/exe", buffer, PATH_MAX );
+
+    if( length > 0 ) {
+        buffer[ length ] = '\0';
+        return stringDuplicate( buffer );
+        }
+#endif
+
+    // neither worked, fall back on how we were invoked
+    // only useful if it names a path, because a bare name came from the
+    // shell's PATH search and tells us nothing about where we live
+    if( inArg0 != NULL && lastPathSeparator( inArg0 ) != NULL ) {
+        return stringDuplicate( inArg0 );
+        }
+
+    return NULL;
+    }
+
+
+
+// chdir into the folder containing inPath, which must name a file
+// returns true if the data folders are there afterward
+// inPath is left untouched, so it can be tried again another way
+static char tryDataFolderAt( const char *inPath ) {
+    char *path = stringDuplicate( inPath );
+
+    // safe to cast the const away:  path is our own copy, made just above
+    char *lastSlash = (char *)lastPathSeparator( path );
+
+    if( lastSlash == NULL || lastSlash == path ) {
+        // no directory part, or the file sits in the root directory
+        delete [] path;
+        return false;
+        }
+
+    // terminate to leave the containing directory
+    lastSlash[0] = '\0';
+
+    char worked = ( chdir( path ) == 0 ) && dataFolderPresent();
+
+    delete [] path;
+
+    return worked;
+    }
+
+
+
+// The server reads all of its data with paths relative to the working
+// directory, make sure to set that
+static void chdirToDataFolder( const char *inArg0 ) {
+
+    if( dataFolderPresent() ) {
+        return;
+        }
+
+    char *exePath = getExecutablePath( inArg0 );
+
+    if( exePath == NULL ) {
+        return;
+        }
+
+    // resolve the executable's real location before moving anywhere, because
+    // both it and inArg0 may be relative to the directory we are standing in
+    char realPath[ PATH_MAX + 1 ];
+#ifdef WIN32
+    // no realpath in the Windows CRT, and no symlinks to resolve either -
+    // _fullpath does the part that matters, making a relative path absolute
+    char haveRealPath = ( _fullpath( realPath, exePath, PATH_MAX ) != NULL );
+#else
+    char haveRealPath = ( realpath( exePath, realPath ) != NULL );
+#endif
+
+    // where we started, to go back to if we find nothing
+    char *startDir = getcwd( NULL, 0 );
+
+    // the path we were launched through first, so that a binary symlinked
+    // into a server folder finds that folder's data and not the data sitting
+    // next to the real binary
+    char found = tryDataFolderAt( exePath );
+
+    if( ! found && haveRealPath ) {
+        found = tryDataFolderAt( realPath );
+        }
+
+    if( found ) {
+        char *cwd = getcwd( NULL, 0 );
+
+        if( cwd != NULL ) {
+            printf( "No game data in the working directory, "
+                    "running out of %s instead\n", cwd );
+            free( cwd );
+            }
+        }
+    else if( startDir != NULL ) {
+        // leave the working directory as we found it, so that the error
+        // below names the folder the user actually launched us from
+        chdir( startDir );
+        }
+
+    if( startDir != NULL ) {
+        free( startDir );
+        }
+
+    delete [] exePath;
+    }
+
+
+
 int main( int inNumArgs, const char **inArgs ) {
+    // before anything else:  every path below this point is relative to the
+    // working directory, including the settings folders checked next
+    chdirToDataFolder( inNumArgs > 0 ? inArgs[0] : NULL );
+
     // use the serverSettings folder if it's available
     setUseServerSettings();
     
@@ -20164,7 +20343,30 @@ int main( int inNumArgs, const char **inArgs ) {
     while( initObjectBankStep() < 1.0 );
     initObjectBankFinish();
 
-    
+
+    // A missing objects folder is not an error anywhere below here:
+    // initFolderCache just reports zero files, and the server runs on to
+    // spawn players with a displayID of -1, which segfaults every client
+    // that connects.  Stop here instead, and say where we were looking.
+    if( getMaxObjectID() == 0 || getRandomPersonObject() == -1 ) {
+        char *cwd = getcwd( NULL, 0 );
+
+        AppLog::errorF(
+            "No %s found in the working directory (%s).  The server reads "
+            "its data relative to where it runs, so it needs a folder "
+            "holding objects, categories, transitions and tutorialMaps, "
+            "plus settings (or serverSettings).  Exiting.",
+            ( getMaxObjectID() == 0 ) ? "objects" : "spawnable person objects",
+            ( cwd != NULL ) ? cwd : "unknown" );
+
+        if( cwd != NULL ) {
+            free( cwd );
+            }
+
+        return 1;
+        }
+
+
     initCategoryBankStart( &rebuilding );
     while( initCategoryBankStep() < 1.0 );
     initCategoryBankFinish();

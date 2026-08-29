@@ -58,5 +58,8 @@ CPP-HTTPLib
 openssl-3.0.15
 nlohmann
 
+zlib-1.3.1/
+libpng-1.6.44/
+
 # macOS:
 .DS_Store

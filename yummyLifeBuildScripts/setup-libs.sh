@@ -29,6 +29,10 @@ if [ "$host_os" != "Darwin" ]; then
   rm -rf ./openssl-3.0.15-i686.tar.gz
   rm -rf ./openssl-3.0.15-i686
   rm -rf ./openssl-3.0.15
+  rm -rf ./zlib-1.3.1.tar.gz
+  rm -rf ./zlib-1.3.1
+  rm -rf ./libpng-1.6.44.tar.gz
+  rm -rf ./libpng-1.6.44
 fi
 echo -------------------
 echo
@@ -70,6 +74,23 @@ if [ "$host_os" != "Darwin" ]; then
   rm openssl-3.0.15-i686.tar.gz
   cp -rf openssl-3.0.15-i686 openssl-3.0.15
   rm -rf openssl-3.0.15-i686
+  echo -------------------
+  echo
+fi
+
+if [ "$host_os" != "Darwin" ]; then
+  # zlib and libpng, for the Windows editor. Sources rather than a prebuilt
+  echo ------- PNG -------
+  download https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
+  tar zxf zlib-1.3.1.tar.gz
+  rm zlib-1.3.1.tar.gz
+
+  download https://github.com/pnggroup/libpng/archive/refs/tags/v1.6.44.tar.gz ./libpng-1.6.44.tar.gz
+  tar zxf libpng-1.6.44.tar.gz
+  rm libpng-1.6.44.tar.gz
+  # libpng normally generates this from its configure run; the shipped copy is
+  # the stock configuration, which is what we want
+  cp libpng-1.6.44/scripts/pnglibconf.h.prebuilt libpng-1.6.44/pnglibconf.h
   echo -------------------
   echo
 fi

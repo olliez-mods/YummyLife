@@ -4,10 +4,10 @@ WORKDIR /app
 
 # Install needed packages to build YummyLife
 # Keep this list in step with the 'Packages' step of
-# .github/workflows/windows_linux.yml, which installs the same set on the runner.
+# .github/workflows/release.yml, which installs the same set on the runner.
 RUN apt-get update && \
     apt-get install -y g++ make cmake libsdl1.2-dev libglu-dev libgl-dev \
-    g++-mingw-w64-i686-win32 curl libssl-dev libcurl4-openssl-dev wget && \
+    libpng-dev g++-mingw-w64-i686-win32 curl libssl-dev libcurl4-openssl-dev wget && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

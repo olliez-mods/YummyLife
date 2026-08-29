@@ -131,7 +131,7 @@ jobs:
       - name: Packages
         run: |
           sudo apt-get update
-          sudo apt-get install g++ make cmake libsdl1.2-dev libglu-dev libgl-dev g++-mingw-w64-i686-win32 curl libssl-dev libcurl4-openssl-dev wget zip
+          sudo apt-get install g++ make cmake libsdl1.2-dev libglu-dev libgl-dev libpng-dev g++-mingw-w64-i686-win32 curl libssl-dev libcurl4-openssl-dev wget zip
 
       - name: Libraries
         run: cd yummyLifeBuildScripts && ./setup-libs.sh
@@ -144,7 +144,7 @@ jobs:
 
       - name: Build Scripts
         run: |
-          ./build.sh release
+          ./build.sh release linux windows game
 
       # Must come after build.sh: a release build wipes relbuild/ before it starts
       - name: Package full folders
@@ -209,7 +209,7 @@ jobs:
 
       - name: Build Scripts
         run: |
-          ./build.sh release macos
+          ./build.sh release mac game
 
       - name: Package full folders
         run: |

@@ -43,9 +43,9 @@ case "$GAME" in
 esac
 
 case "$PLATFORM" in
-  linux)   BUILT=relbuild/YummyLife_linux       ; BUILD_CMD="./build.sh release linux"   ;;
-  windows) BUILT=relbuild/YummyLife_windows.exe ; BUILD_CMD="./build.sh release windows" ;;
-  mac)     BUILT=relbuild/YummyLife.app         ; BUILD_CMD="./build.sh release macos"   ;;
+  linux)   BUILT=relbuild/YummyLife_linux       ; BUILD_CMD="./build.sh release linux game"   ;;
+  windows) BUILT=relbuild/YummyLife_windows.exe ; BUILD_CMD="./build.sh release windows game" ;;
+  mac)     BUILT=relbuild/YummyLife.app         ; BUILD_CMD="./build.sh release mac game"     ;;
   *) echo "$0: unknown platform '$PLATFORM' (expected linux, windows or mac)" >&2; exit 1 ;;
 esac
 

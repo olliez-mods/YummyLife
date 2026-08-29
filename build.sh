@@ -3,191 +3,281 @@ set -e
 
 # YummyLife
 #
-#   ./build.sh                  dev build of everything this host can produce
-#   ./build.sh release          the same, as a release build
-#   ./build.sh editor           the OHOL editor
-#   ./build.sh release macos    a mode and a target
-#   ./build.sh linux windows    dev is implied
-#   ./build.sh run              build, then launch it out of the game folder
 #
-# Modes (dev, release) and targets (linux, windows, macos, editor) can be given
-# in any order. macOS binaries can only be built on a Mac (Docker/WSL cannot
-# cross-compile them), and the Linux/Windows builds are the ones the Docker
-# image provides.
+#   ./build.sh <mode> <os>... <target>... ["run"]
+#
+#   mode      dev or rel/release
+#   OS        mac/macos, linux, windows - one or more
+#   target    game, editor, server - one or more
+#   run       optional, launches everything this run built
+#
+# Every target builds for every OS, so the OSes and targets you name are built
+# as a full cross product: 'linux windows game server' is four binaries.
+#
+# What you cannot do is build for an OS this host cannot compile for. macOS
+# binaries only build on a Mac, because no container or VM can produce them,
+# and the Linux and Windows builds are the ones Docker and WSL provide - the
+# Windows one by cross-compiling with mingw, since Windows is never the host.
 #
 # Note for Docker: You may need to have this run twice, first time it runs it might
 # fail because of missing CMakeCache.txt, but it will generate it for the second run.
 
 host_os=$(uname -s)
 
-mode=dev
-build_linux=false
-build_windows=false
-build_macos=false
-build_editor=false
-have_target=false
+usage() {
+  echo "usage: ./build.sh <dev|rel> <mac|linux|windows ...> <game|editor|server ...> [run]" >&2
+  echo >&2
+  echo "  mode    dev, rel (or release)          exactly one, required" >&2
+  echo "  OS      mac (or macos), linux, windows one or more, required" >&2
+  echo "  target  game, editor, server           one or more, required" >&2
+  echo "  run     launch everything just built   optional" >&2
+  echo >&2
+  echo "  e.g.  ./build.sh dev mac editor run" >&2
+  echo "        ./build.sh rel linux windows game server" >&2
+}
+
+mode=""
+
+want_mac=false
+want_linux=false
+want_windows=false
+
+want_game=false
+want_editor=false
+want_server=false
 
 do_run=false
-run_name=""
-run_exe=""
-run_dir=""
 
 for arg in "$@"; do
   case "$arg" in
-    dev|release) mode="$arg" ;;
-    linux)       build_linux=true;   have_target=true ;;
-    windows)     build_windows=true; have_target=true ;;
-    macos|mac)   build_macos=true;   have_target=true ;;
-    # The OHOL editor, mac only for now. TEST_BUILD/PREVIEW_BUILD are only read
-    # by game.cpp, hetuwmod.cpp and yummyLife.cpp, none of which the editor links
-    editor)      build_editor=true;  have_target=true ;;
-    run)         do_run=true ;;
+    dev)             mode=dev ;;
+    rel|release)     mode=release ;;
+
+    mac|macos)       want_mac=true ;;
+    linux)           want_linux=true ;;
+    windows)         want_windows=true ;;
+
+    game)            want_game=true ;;
+    editor)          want_editor=true ;;
+    server)          want_server=true ;;
+
+    run)             do_run=true ;;
     *)
-      echo "Unknown argument '$arg' (modes: dev, release; targets: linux, windows, macos, editor; also: run)" >&2
+      echo "Unknown argument '$arg'" >&2
+      echo >&2
+      usage
       exit 1
       ;;
   esac
 done
 
-# No target named, so build whatever this host can produce
-if [ "$have_target" = false ]; then
-  if [ "$host_os" = "Darwin" ]; then
-    build_macos=true
-  else
-    build_linux=true
-    build_windows=true
-  fi
-fi
+os_list=()
+if [ "$want_mac" = true ];     then os_list+=(mac); fi
+if [ "$want_linux" = true ];   then os_list+=(linux); fi
+if [ "$want_windows" = true ]; then os_list+=(windows); fi
 
-if { [ "$build_macos" = true ] || [ "$build_editor" = true ]; } && [ "$host_os" != "Darwin" ]; then
-  echo "The macOS and editor builds have to be run natively on a Mac, Docker/WSL cannot produce them" >&2
+target_list=()
+if [ "$want_game" = true ];   then target_list+=(game); fi
+if [ "$want_editor" = true ]; then target_list+=(editor); fi
+if [ "$want_server" = true ]; then target_list+=(server); fi
+
+# All three are required
+missing=()
+if [ -z "$mode" ];                then missing+=("a mode (dev or rel)"); fi
+if [ ${#os_list[@]} -eq 0 ];      then missing+=("an OS (mac, linux or windows)"); fi
+if [ ${#target_list[@]} -eq 0 ];  then missing+=("a target (game, editor or server)"); fi
+
+if [ ${#missing[@]} -gt 0 ]; then
+  for item in "${missing[@]}"; do
+    echo "Missing $item" >&2
+  done
+  echo >&2
+  usage
   exit 1
 fi
-if { [ "$build_linux" = true ] || [ "$build_windows" = true ]; } && [ "$host_os" = "Darwin" ]; then
-  echo "The Linux/Windows builds have to be run in Docker or WSL, not on a Mac" >&2
+
+# What this host can compile for
+if [ "$want_mac" = true ] && [ "$host_os" != "Darwin" ]; then
+  echo "The macOS build has to run natively on a Mac, Docker/WSL cannot produce it" >&2
+  exit 1
+fi
+if { [ "$want_linux" = true ] || [ "$want_windows" = true ]; } && [ "$host_os" = "Darwin" ]; then
+  echo "The Linux and Windows builds have to run in Docker or WSL, not on a Mac" >&2
   exit 1
 fi
 
-# Everything that differs between a dev and a release build is one of these
+# Everything that differs between a dev and a release build is one of these.
 if [ "$mode" = release ]; then
   outdir=relbuild
   cmake_flags=""
   if [ "${PREVIEW_BUILD:-false}" = "true" ]; then
     cmake_flags="-DPREVIEW_BUILD=ON"
   fi
-  name_linux=YummyLife_linux
-  name_windows=YummyLife_windows.exe
-  # not YummyLife_mac.app, the release bundle is the plain name players see
-  name_mac=YummyLife.app
+  name_game_mac=YummyLife.app          # the plain name players see
+  name_game_linux=YummyLife_linux
+  name_game_windows=YummyLife_windows.exe
 else
   outdir=devbuild
   cmake_flags="-DTEST_BUILD=ON"
-  name_linux=YummyLife_dev_linux
-  name_windows=YummyLife_dev_windows.exe
-  name_mac=YummyLife_dev_mac.app
+  name_game_mac=YummyLife_dev_mac.app
+  name_game_linux=YummyLife_dev_linux
+  name_game_windows=YummyLife_dev_windows.exe
 fi
 
+# The whole build matrix, in one table. For an OS and a target it gives the
+# CMake target to build, what CMake calls the file it produces, what we rename
+# that to in $outdir, and - for a .app bundle - the binary inside it, which is
+# empty for everything that is already a bare executable
+resolve() {
+  case "$1:$2" in
+    mac:game)        cmake_target=YummyLife_mac;       cmake_output=YummyLife.app;           final_name=$name_game_mac;            bundle_exe=YummyLife ;;
+    linux:game)      cmake_target=YummyLife_linux;     cmake_output=YummyLife_linux;         final_name=$name_game_linux;          bundle_exe="" ;;
+    windows:game)    cmake_target=YummyLife_windows;   cmake_output=YummyLife_windows.exe;   final_name=$name_game_windows;        bundle_exe="" ;;
+
+    mac:editor)      cmake_target=EditOneLife_mac;     cmake_output=EditOneLife.app;         final_name=EditOneLife.app;           bundle_exe=EditOneLife ;;
+    linux:editor)    cmake_target=EditOneLife_linux;   cmake_output=EditOneLife_linux;       final_name=EditOneLife;               bundle_exe="" ;;
+    windows:editor)  cmake_target=EditOneLife_windows; cmake_output=EditOneLife_windows.exe; final_name=EditOneLife.exe;           bundle_exe="" ;;
+
+    mac:server)      cmake_target=OneLifeServer;       cmake_output=OneLifeServer;           final_name=OneLifeServer_macos;       bundle_exe="" ;;
+    linux:server)    cmake_target=OneLifeServer;       cmake_output=OneLifeServer;           final_name=OneLifeServer_linux;       bundle_exe="" ;;
+    windows:server)  cmake_target=OneLifeServer;       cmake_output=OneLifeServer.exe;       final_name=OneLifeServer_windows.exe; bundle_exe="" ;;
+  esac
+}
+
+# Where each OS configures CMake. Windows gets its own folder because it is the
+# one build that does not use the host's compiler.
+build_dir_for() {
+  case "$1" in
+    mac)     build_dir="$outdir/macos";   toolchain_flag="" ;;
+    linux)   build_dir="$outdir/linux";   toolchain_flag="" ;;
+    windows) build_dir="$outdir/windows"; toolchain_flag="-DCMAKE_TOOLCHAIN_FILE=mingw-cross-toolchain.cmake" ;;
+  esac
+}
+
+# What this run will produce, under $outdir, and which of those this host can
+# then launch. Worked out up front so that the cleanup below removes exactly
+# what is about to be rebuilt.
+artifacts=()
+run_names=()
+run_exes=()
+
+for os in "${os_list[@]}"; do
+  for target in "${target_list[@]}"; do
+    resolve "$os" "$target"
+    artifacts+=("$final_name")
+
+    # Nothing cross-compiled for Windows can be launched here; everything else
+    # was built by this host's own compiler, so it can
+    if [ "$os" != windows ]; then
+      run_names+=("$final_name")
+      run_exes+=("$bundle_exe")
+    fi
+  done
+done
+
 # Remove old builds. A release build starts from nothing every time; a dev build
-# keeps the per-platform folders, and with them the CMakeCache, so that it can
-# build incrementally.
+# keeps the CMake folders, and with them the CMakeCache, so that it can build
+# incrementally.
 if [ "$mode" = release ]; then
   rm -rf "$outdir"
 else
-  # Only what we are about to rebuild: clearing every YummyLife_* here would
-  # make "./build.sh editor" throw away the game app built by a previous run.
-  if [ "$build_linux" = true ];   then rm -rf "./$outdir/$name_linux"; fi
-  if [ "$build_windows" = true ]; then rm -rf "./$outdir/$name_windows"; fi
-  if [ "$build_macos" = true ];   then rm -rf "./$outdir/$name_mac"; fi
-  if [ "$build_editor" = true ];  then rm -rf "./$outdir/EditOneLife.app"; fi
+  for artifact in "${artifacts[@]}"; do
+    rm -rf "${outdir:?}/${artifact:?}"
+  done
 fi
 
-if [ "$build_windows" = true ]; then
-  echo ----- Windows -----
-  mkdir -p "$outdir/windows"
-  cmake -DCMAKE_TOOLCHAIN_FILE=mingw-cross-toolchain.cmake -B "$outdir/windows" -S . $cmake_flags
-  cmake --build "$outdir/windows" -j
-  mv "$outdir/windows/YummyLife_windows.exe" "$outdir/$name_windows"
-fi
+# One CMake configure per OS, then each target by name. Only the game targets
+# are in ALL, so naming every target is what keeps a server build from also
+# building the client.
+for os in "${os_list[@]}"; do
+  build_dir_for "$os"
+  mkdir -p "$build_dir"
+  cmake $toolchain_flag -B "$build_dir" -S . $cmake_flags
 
-if [ "$build_linux" = true ]; then
-  echo ----- Linux -----
-  mkdir -p "$outdir/linux"
-  cmake -B "$outdir/linux" -S . $cmake_flags
-  cmake --build "$outdir/linux" -j
-  mv "$outdir/linux/YummyLife_linux" "$outdir/$name_linux"
-  run_name="$name_linux"
-fi
+  for target in "${target_list[@]}"; do
+    resolve "$os" "$target"
 
-if [ "$build_macos" = true ]; then
-  echo ----- macOS -----
-  mkdir -p "$outdir/macos"
-  cmake -B "$outdir/macos" -S . $cmake_flags
-  cmake --build "$outdir/macos" -j
-  # The mac build is an .app bundle, not a bare binary, so that it can carry
-  # its own copy of SDL and OpenSSL. Drop it in the game folder and run it.
-  rm -rf "$outdir/$name_mac"
-  mv "$outdir/macos/YummyLife.app" "$outdir/$name_mac"
-  run_name="$name_mac"
-  run_exe=YummyLife
+    echo "----- $target, for $os -----"
+    cmake --build "$build_dir" --target $cmake_target -j
 
-  if [ "$mode" = release ]; then
-    # A .app is a directory, so it has to be zipped to be a release asset. ditto
-    # keeps the bundle's symlinks and signature intact, plain zip does not.
-    echo Zipping "$name_mac"
-    ditto -c -k --sequesterRsrc --keepParent "$outdir/$name_mac" "$outdir/YummyLife_mac.zip"
-  fi
-fi
+    # Replace rather than move onto: the mac builds are .app bundles, and
+    # moving onto an existing directory puts the new one inside it
+    rm -rf "${outdir:?}/${final_name:?}"
+    mv "$build_dir/$cmake_output" "$outdir/$final_name"
 
-if [ "$build_editor" = true ]; then
-  echo ----- editor -----
-  mkdir -p "$outdir/macos"
-  cmake -B "$outdir/macos" -S . $cmake_flags
-  # EXCLUDE_FROM_ALL in CMakeLists, so the target has to be named
-  cmake --build "$outdir/macos" --target EditOneLife_mac -j
-  rm -rf "$outdir/EditOneLife.app"
-  mv "$outdir/macos/EditOneLife.app" "$outdir/EditOneLife.app"
-  run_name=EditOneLife.app
-  run_exe=EditOneLife
-fi
+    if [ "$os" = mac ] && [ "$target" = game ] && [ "$mode" = release ]; then
+      # A .app is a directory, so it has to be zipped to be a release asset.
+      # ditto keeps the bundle's symlinks and signature intact, plain zip does not.
+      echo Zipping "$final_name"
+      ditto -c -k --sequesterRsrc --keepParent "$outdir/$final_name" "$outdir/YummyLife_mac.zip"
+    fi
+  done
+done
 
-# Once, at the end: the macos folder is shared by the macos and editor targets,
-# so clearing it inside either block would make the other reconfigure it.
+# Once, at the end: an OS folder is shared by every target built out of it, so
+# clearing it inside the loop would make the next target reconfigure it.
 if [ "$mode" = release ]; then
   rm -rf "$outdir/windows" "$outdir/linux" "$outdir/macos"
 fi
 
-# For development, copy to ~/ahap and ~/ohol if folder exists for quick testing
+# For development, copy to ~/ahap and ~/ohol if the folder exists, for quick
+# testing. Only what this run built goes across, so a server build does not
+# also push a game that an earlier run happened to leave in $outdir.
+copied=false
 for dst in ahap ohol; do
   if [ -e ~/$dst ]; then
+    copied=true
     echo Copying to ~/$dst
-    for built in "$outdir/$name_linux" "$outdir/$name_windows" "$outdir/$name_mac" "$outdir/EditOneLife.app"; do
-      if [ -e "$built" ]; then
-        # -R because the mac build is an .app bundle (a directory)
-        cp -R "$built" ~/$dst/
-      fi
+    for artifact in "${artifacts[@]}"; do
+      # Replace rather than copy over, for the same reason as above
+      rm -rf ~/$dst/"${artifact:?}"
+      # -R because the mac builds are bundles, which are directories
+      cp -R "$outdir/$artifact" ~/$dst/
     done
     run_dir=~/$dst
   fi
 done
 
+# Say where the build went either way. Without this the copy step is silent
+# when neither folder is there, which reads like it copied and looks the same
+# as the folder having gone missing.
+if [ "$copied" = false ]; then
+  echo "Built into $outdir/ (neither ~/ahap nor ~/ohol exists, so nothing was copied)"
+fi
+
 if [ "$do_run" = true ]; then
-  if [ -z "$run_name" ]; then
-    echo "Nothing to run: no runnable target was built (the Windows build cannot be launched here)" >&2
+  if [ ${#run_names[@]} -eq 0 ]; then
+    echo "Nothing to run: nothing cross-compiled for Windows can be launched here" >&2
     exit 1
   fi
-  if [ -z "$run_dir" ]; then
+  if [ -z "${run_dir:-}" ]; then
     echo "Nothing to run from: symlink a game folder to ~/ohol (or ~/ahap) first, e.g." >&2
     echo "  ln -s /Applications/OneLife ~/ohol" >&2
     exit 1
   fi
 
-  if [ -n "$run_exe" ]; then
-    run_path="$run_dir/$run_name/Contents/MacOS/$run_exe"
-  else
-    run_path="$run_dir/$run_name"
-  fi
-
-  echo ----- running "$run_name" -----
   cd "$run_dir"
-  exec "$run_path"
+
+  # All of them at once, so that 'game server run' brings up both. They stay in
+  # this script's process group, so a Ctrl-C at the terminal reaches every one;
+  # the trap is for the script being killed some other way.
+  pids=()
+  trap 'kill "${pids[@]}" 2>/dev/null' INT TERM
+
+  for i in "${!run_names[@]}"; do
+    run_name="${run_names[$i]}"
+    run_exe="${run_exes[$i]}"
+
+    if [ -n "$run_exe" ]; then
+      run_path="$run_dir/$run_name/Contents/MacOS/$run_exe"
+    else
+      run_path="$run_dir/$run_name"
+    fi
+
+    echo ----- running "$run_name" -----
+    "$run_path" &
+    pids+=($!)
+  done
+
+  wait
 fi
