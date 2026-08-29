@@ -39,6 +39,29 @@ row() {
     "$label" "$name" "$REPO" "$TAG" "$name" "$(humanSize "$path")" "$note"
 }
 
+# "[name](url) - size", or nothing at all if that asset was not built. The
+# servers table puts several of these in one row, which is why this is separate
+# from row() above.
+link() {
+  # link <asset-name>
+  name=$1
+  path=$(find "$ART_DIR" -type f -name "$name" -print | head -1)
+  [ -n "$path" ] || return 0
+  printf '[%s](https://github.com/%s/releases/download/%s/%s) — %s' \
+    "$name" "$REPO" "$TAG" "$name" "$(humanSize "$path")"
+}
+
+# One row of the servers table. Three downloads per platform rather than three
+# tables of one: the bare binary for a folder you already have, and a complete
+# folder for each game.
+serverRow() {
+  # serverRow <label> <binary> <ohol-zip> <ahap-zip>
+  bin=$(link "$2"); ohol=$(link "$3"); ahap=$(link "$4")
+  # nothing at all built for this platform, so no row for it
+  [ -n "$bin$ohol$ahap" ] || return 0
+  printf '| %s | %s | %s | %s |\n' "$1" "${bin:-—}" "${ohol:-—}" "${ahap:-—}"
+}
+
 if [ "$TEST" = true ]; then
   cat <<'EOT'
 # ⚠️ THIS IS A TEST RELEASE
@@ -106,6 +129,27 @@ row "Linux"   "YummyLife_AHAP_linux.zip"   "run \`./YummyLife_linux\`"
 row "macOS"   "YummyLife_AHAP_mac.zip"     "keep the \`.app\` in the folder — see note below"
 
 cat <<'EOT'
+
+---
+
+### Servers — run your own
+
+**Complete** is everything needed: unzip it and start the binary, which finds its own
+folder wherever you put it.
+
+**Server only** is the bare binary, for dropping into a server folder you already have.
+
+| Platform | Server only | OHOL — complete | AHAP — complete |
+|---|---|---|---|
+EOT
+
+serverRow "Windows" "OneLifeServer_windows.exe" "YummyLifeServer_OHOL_windows.zip" "YummyLifeServer_AHAP_windows.zip"
+serverRow "Linux"   "OneLifeServer_linux"       "YummyLifeServer_OHOL_linux.zip"   "YummyLifeServer_AHAP_linux.zip"
+serverRow "macOS"   "OneLifeServer_macos"       "YummyLifeServer_OHOL_mac.zip"     "YummyLifeServer_AHAP_mac.zip"
+
+cat <<'EOT'
+
+A server folder is not a game folder — keep it separate from a client install.
 
 ---
 

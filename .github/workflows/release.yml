@@ -144,7 +144,7 @@ jobs:
 
       - name: Build Scripts
         run: |
-          ./build.sh release linux windows game
+          ./build.sh release linux windows game server
 
       # Must come after build.sh: a release build wipes relbuild/ before it starts
       - name: Package full folders
@@ -153,6 +153,16 @@ jobs:
           for game in ohol ahap; do
             for platform in linux windows; do
               ./yummyLifeBuildScripts/makeReleaseFolder.sh \
+                "${{ needs.check.outputs.tag }}" "$platform" "$game"
+            done
+          done
+
+      - name: Package server folders
+        run: |
+          set -e
+          for game in ohol ahap; do
+            for platform in linux windows; do
+              ./yummyLifeBuildScripts/makeServerFolder.sh \
                 "${{ needs.check.outputs.tag }}" "$platform" "$game"
             done
           done
@@ -167,6 +177,8 @@ jobs:
           path: |
             ./relbuild/YummyLife_linux
             ./relbuild/YummyLife_windows.exe
+            ./relbuild/OneLifeServer_linux
+            ./relbuild/OneLifeServer_windows.exe
             ./relbuild/release/*.zip
           if-no-files-found: error
 
@@ -209,13 +221,21 @@ jobs:
 
       - name: Build Scripts
         run: |
-          ./build.sh release mac game
+          ./build.sh release mac game server
 
       - name: Package full folders
         run: |
           set -e
           for game in ohol ahap; do
             ./yummyLifeBuildScripts/makeReleaseFolder.sh \
+              "${{ needs.check.outputs.tag }}" mac "$game"
+          done
+
+      - name: Package server folders
+        run: |
+          set -e
+          for game in ohol ahap; do
+            ./yummyLifeBuildScripts/makeServerFolder.sh \
               "${{ needs.check.outputs.tag }}" mac "$game"
           done
 
@@ -226,6 +246,7 @@ jobs:
           compression-level: 0
           path: |
             ./relbuild/YummyLife_mac.zip
+            ./relbuild/OneLifeServer_macos
             ./relbuild/release/*.zip
           if-no-files-found: error
 

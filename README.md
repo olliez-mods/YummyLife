@@ -125,17 +125,20 @@ host.
 
 Here is where each one lands:
 
-| | dev build | release build |
-| --- | --- | --- |
-| `mac game` | `devbuild/YummyLife_dev_mac.app` | `relbuild/YummyLife.app` + `YummyLife_mac.zip` |
-| `linux game` | `devbuild/YummyLife_dev_linux` | `relbuild/YummyLife_linux` |
-| `windows game` | `devbuild/YummyLife_dev_windows.exe` | `relbuild/YummyLife_windows.exe` |
-| `mac editor` | `devbuild/EditOneLife.app` | `relbuild/EditOneLife.app` |
-| `linux editor` | `devbuild/EditOneLife` | `relbuild/EditOneLife` |
-| `windows editor` | `devbuild/EditOneLife.exe` | `relbuild/EditOneLife.exe` |
-| `mac server` | `devbuild/OneLifeServer_macos` | `relbuild/OneLifeServer_macos` |
-| `linux server` | `devbuild/OneLifeServer_linux` | `relbuild/OneLifeServer_linux` |
-| `windows server` | `devbuild/OneLifeServer_windows.exe` | `relbuild/OneLifeServer_windows.exe` |
+| | dev build | release build | packaged folder |
+| --- | --- | --- | --- |
+| `mac game` | `devbuild/YummyLife_dev_mac.app` | `relbuild/YummyLife.app` + `YummyLife_mac.zip` | `YummyLife_<game>_mac.zip` |
+| `linux game` | `devbuild/YummyLife_dev_linux` | `relbuild/YummyLife_linux` | `YummyLife_<game>_linux.zip` |
+| `windows game` | `devbuild/YummyLife_dev_windows.exe` | `relbuild/YummyLife_windows.exe` | `YummyLife_<game>_windows.zip` |
+| `mac editor` | `devbuild/EditOneLife.app` | `relbuild/EditOneLife.app` | — |
+| `linux editor` | `devbuild/EditOneLife` | `relbuild/EditOneLife` | — |
+| `windows editor` | `devbuild/EditOneLife.exe` | `relbuild/EditOneLife.exe` | — |
+| `mac server` | `devbuild/OneLifeServer_macos` | `relbuild/OneLifeServer_macos` | `YummyLifeServer_<game>_mac.zip` |
+| `linux server` | `devbuild/OneLifeServer_linux` | `relbuild/OneLifeServer_linux` | `YummyLifeServer_<game>_linux.zip` |
+| `windows server` | `devbuild/OneLifeServer_windows.exe` | `relbuild/OneLifeServer_windows.exe` | `YummyLifeServer_<game>_windows.zip` |
+
+The packaged folders are what the Releases page carries; `<game>` is `OHOL` or `AHAP`,
+and they are built by the two scripts described under [Making a release](#making-a-release).
 
 A dev build is compiled with `TEST_BUILD`, which marks the window title and enables
 test-only features; a release build is what the Releases page carries. Release builds
@@ -357,15 +360,37 @@ const char *yumSubVersion = ".1";   ->   v438.1
 If a release with that tag already exists, the run stops there. So bumping either of
 those two constants is what triggers a release — nothing else to fill in.
 
-The build then produces nine assets: the three drop-in binaries, plus a full
-ready-to-play folder for OHOL and for AHAP on each platform. The full folders are
-assembled by `yummyLifeBuildScripts/makeReleaseFolder.sh`, which takes the binaries
-`./build.sh rel <os> game` left in `relbuild/` and combines them with this repo's
-`gameSource` assets and the game data from Jason's data repos:
+The build then produces eighteen assets — for the client and for the server alike, the
+three drop-in binaries plus a complete folder for OHOL and for AHAP on each platform.
+Two scripts assemble the folders, both of which package what `./build.sh rel` left in
+`relbuild/` rather than compiling anything themselves:
 
 ```
-./yummyLifeBuildScripts/makeReleaseFolder.sh v438.1 windows ohol
+./yummyLifeBuildScripts/makeReleaseFolder.sh v438.1 windows ohol   # a game folder
+./yummyLifeBuildScripts/makeServerFolder.sh  v438.1 windows ohol   # a server folder
 ```
+
+They are separate scripts because the two folders barely overlap. A server folder is
+about 47MB against the client's ~700MB: it carries `objects`, `categories`,
+`transitions`, `tutorialMaps` and `contentSettings` and none of the sprites, sounds,
+music, ground or graphics — nor animations, which the server links a bank for but which
+upstream's own server setup leaves out. What it adds is everything from this repo's
+`server/` folder that no client ever ships: the 224 settings, the name lists and the
+curse word list.
+
+The settings go in as `serverSettings/`, which `server.cpp` prefers over `settings/`
+when it exists, so a server folder can sit beside a client one without their settings
+colliding. `makeServerFolder.sh` overrides the handful the repo tunes for the official
+servers — the six `use*Server` calls out to the central services, `allowVOGMode` and
+`vogAllowAccounts`, the placeholder `clientPassword`, and `mapCellForgottenSeconds`,
+which goes from a week to effectively never so a small world persists.
+
+`serverCodeVersionNumber.txt` is written from `versionNumber` in `game.cpp` rather than
+copied from `server/`, because the client and server refuse each other when their code
+versions differ and the checked-in copy goes stale silently. It takes `versionNumber`
+alone and not `yumSubVersion` — a release tagged `v438.1` writes `438`, since the
+sub-version is a YummyLife label on top of an OHOL release and the server knows nothing
+about it.
 
 The data is not vendored here — the workflow checks it out into `dataRepos/` at the
 latest `OneLife_v*` / `AnotherPlanet_v*` tag. To run the script by hand, clone it there
