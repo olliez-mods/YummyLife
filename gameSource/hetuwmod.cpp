@@ -511,7 +511,7 @@ void HetuwMod::initHelpText() {
 	helpTextSearch[0] += toupper(charKey_Search);
 	helpTextSearch[0] += " and activated SEARCH";
 
-	helpTextSearch[1] = "Abort with ESC or clicking";
+	helpTextSearch[1] = "Abort with ESC";
 	helpTextSearch[2] = "Type in the name of the object you want to find";
 	helpTextSearch[3] = "Put a . at the end for an exact search";
 
@@ -5567,9 +5567,10 @@ void HetuwMod::drawSearchHistory() {
 	customFont->hetuwSetScaleFactor(scale);
 }
 
-// YummyLife: while the search prompt is open the mouse belongs to it
+// YummyLife: clicking a history entry while the search prompt is open
 // left click searches an entry right away, right click only puts it in the
 // input string so it can be edited first
+// clicking anywhere else is left alone, the prompt is closed with ESC
 bool HetuwMod::searchHistoryMouseDown( float mX, float mY ) {
 	if (getSearchInput <= 0) return false;
 
@@ -5589,9 +5590,7 @@ bool HetuwMod::searchHistoryMouseDown( float mX, float mY ) {
 		return true;
 	}
 
-	// clicked anywhere else -> abort the search instead of clicking the world
-	closeSearchInput();
-	return true;
+	return false;
 }
 
 void HetuwMod::drawSearchList() {
