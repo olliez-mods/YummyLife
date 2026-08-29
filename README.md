@@ -410,5 +410,17 @@ Similarly, the minorGems repo can be merged with `git pull minorGems master`. No
 will need to move (as in `git mv`) any _new_ files added to that repo into the `minorGems`
 directory.
 
-Since YummyLife uses CMake instead of Jason's build scripts, manual updates to `CMakeLists.txt`
-are needed when upstream source files are added, removed, or moved.
+Since YummyLife uses CMake instead of Jason's build scripts, manual updates are needed when
+upstream source files are added, removed, or moved. The source lists are the only part that
+changes for that, and they live beside the build rather than in it:
+
+| file | what it holds |
+| --- | --- |
+| `cmake/MinorGemsSources.cmake` | which parts of `minorGems/` each program compiles |
+| `cmake/GameSources.cmake` | the client, editor and server source lists |
+| `cmake/MacBundle.cmake` | the `.app` icon, plist and signing machinery |
+| `CMakeLists.txt` | compile options, the per-platform branch, and the targets |
+
+`cmake/GameSources.cmake` mirrors upstream's `makeFileList`, `makeFileListEditor` and
+`server/makeFileList`, and each list says so in a comment, so the two can be checked against
+each other after a merge.

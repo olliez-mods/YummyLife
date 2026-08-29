@@ -23,314 +23,9 @@ set(YUMMYLIFE_VERSION "${CMAKE_MATCH_1}")
 string(REGEX MATCH "yumSubVersion *= *\"([^\"]*)\"" _ "${GAME_CPP_HEAD}")
 set(YUMMYLIFE_VERSION "${YUMMYLIFE_VERSION}${CMAKE_MATCH_1}")
 
-# The part of minorGems that pulls in no SDL, OpenGL or sound. The server links
-# only these; the client and editor add MINORGEMS_GRAPHICS_SOURCE_FILES on top.
-set(MINORGEMS_HEADLESS_SOURCE_FILES
-    minorGems/util/stringUtils.cpp
-    minorGems/util/StringBufferOutputStream.cpp
-    minorGems/util/ByteBufferInputStream.cpp
-    minorGems/util/TranslationManager.cpp
-    minorGems/network/NetworkFunctionLocks.cpp
-    minorGems/network/LookupThread.cpp
-    minorGems/network/web/WebRequest.cpp
-    minorGems/network/web/WebRequestCompletionThread.cpp
-    minorGems/network/web/URLUtils.cpp
-    minorGems/util/SettingsManager.cpp
-    minorGems/system/FinishedSignalThread.cpp
-    minorGems/system/StopSignalThread.cpp
-    minorGems/crypto/hashes/sha1.cpp
-    minorGems/formats/encodingUtils.cpp
-    minorGems/util/log/Log.cpp
-    minorGems/util/log/AppLog.cpp
-    minorGems/util/log/FileLog.cpp
-    minorGems/util/log/PrintLog.cpp
-    minorGems/util/printUtils.cpp
-    minorGems/game/doublePair.cpp
-    minorGems/util/StringTree.cpp
-    minorGems/util/crc32.cpp
-)
-
-# Everything the headless build leaves out: the SDL/GL screen and sprite layer,
-# sound, and the client-only crypto and auto-update code.
-set(MINORGEMS_GRAPHICS_SOURCE_FILES
-    minorGems/graphics/openGL/ScreenGL_SDL.cpp
-    minorGems/graphics/openGL/SingleTextureGL.cpp
-    minorGems/game/platforms/SDL/gameSDL.cpp
-    minorGems/game/platforms/openGL/gameGraphicsGL.cpp
-    minorGems/game/platforms/openGL/SpriteGL.cpp
-    minorGems/game/Font.cpp
-    minorGems/game/drawUtils.cpp
-    minorGems/game/platforms/SDL/DemoCodeChecker.cpp
-    minorGems/sound/formats/aiff.cpp
-    minorGems/sound/audioNoClip.cpp
-    minorGems/sound/filters/SoundSamples.cpp
-    minorGems/sound/filters/ReverbSoundFilter.cpp
-    minorGems/sound/filters/coefficientFilters.cpp
-    minorGems/crypto/keyExchange/curve25519.cpp
-    minorGems/crypto/cryptoRandom.cpp
-    minorGems/game/diffBundle/client/diffBundleClient.cpp
-)
-
-set(MINORGEMS_COMMON_SOURCE_FILES
-    ${MINORGEMS_HEADLESS_SOURCE_FILES}
-    ${MINORGEMS_GRAPHICS_SOURCE_FILES}
-)
-
-if (WIN32)
-    set(MINORGEMS_PLATFORM_SOURCE_FILES
-        minorGems/io/win32/TypeIOWin32.cpp
-        minorGems/io/file/win32/PathWin32.cpp
-        minorGems/system/win32/TimeWin32.cpp
-        minorGems/system/win32/ThreadWin32.cpp
-        minorGems/system/win32/MutexLockWin32.cpp
-        minorGems/system/win32/BinarySemaphoreWin32.cpp
-        minorGems/network/win32/SocketWin32.cpp
-        minorGems/network/win32/HostAddressWin32.cpp
-        minorGems/network/win32/SocketClientWin32.cpp
-        minorGems/network/win32/SocketServerWin32.cpp
-        minorGems/io/file/win32/DirectoryWin32.cpp
-    )
-else()
-    set(MINORGEMS_PLATFORM_SOURCE_FILES
-        minorGems/io/linux/TypeIOLinux.cpp
-        minorGems/io/file/linux/PathLinux.cpp
-        minorGems/system/linux/ThreadLinux.cpp
-        minorGems/system/linux/MutexLockLinux.cpp
-        minorGems/system/linux/BinarySemaphoreLinux.cpp
-        minorGems/network/linux/SocketLinux.cpp
-        minorGems/network/linux/HostAddressLinux.cpp
-        minorGems/network/linux/SocketClientLinux.cpp
-        minorGems/network/linux/SocketServerLinux.cpp
-        minorGems/system/unix/TimeUnix.cpp
-        minorGems/io/file/unix/DirectoryUnix.cpp
-    )
-endif()
-
-set(MINORGEMS_SOURCE_FILES
-    ${MINORGEMS_COMMON_SOURCE_FILES}
-    ${MINORGEMS_PLATFORM_SOURCE_FILES}
-)
-
-# SocketPoll is linked by the server alone, which is why it shows up in neither
-# list above. The Linux implementation is built on epoll, so everything else
-# takes the portable one - the same choice minorGems' own Makefile.MacOSX makes
-# (POLL_PLATFORM = Unix).
-#
-# Despite living in network/unix, that file is select()-based rather than
-# poll()-based and carries its own WIN32 branch, so it serves the Windows
-# server too. Winsock's FD_SETSIZE of 64 is smaller than the Unix 1024, which
-# costs the Windows build more select calls per wait, but the file already
-# batches by FD_SETSIZE for exactly that reason.
-if(NOT WIN32 AND NOT APPLE)
-    set(MINORGEMS_SOCKET_POLL_SOURCE_FILES minorGems/network/linux/SocketPollLinux.cpp)
-else()
-    set(MINORGEMS_SOCKET_POLL_SOURCE_FILES minorGems/network/unix/SocketPollUnix.cpp)
-endif()
-
-set(MINORGEMS_SERVER_SOURCE_FILES
-    ${MINORGEMS_HEADLESS_SOURCE_FILES}
-    ${MINORGEMS_PLATFORM_SOURCE_FILES}
-    ${MINORGEMS_SOCKET_POLL_SOURCE_FILES}
-)
-
-set(CLIENT_SOURCE_FILES
-    gameSource/minitech.cpp
-    gameSource/hetuwmod.cpp
-    gameSource/hetuwFont.cpp
-    gameSource/hetuwTCPConnection.cpp
-    gameSource/phex.cpp
-    gameSource/yummyLife.cpp
-    gameSource/yummyGPS.cpp
-    gameSource/yumBlob.cpp
-    gameSource/yumConfig.cpp
-    gameSource/yumRebirthComponent.cpp
-    gameSource/game.cpp
-    gameSource/spriteBank.cpp
-    gameSource/objectBank.cpp
-    gameSource/transitionBank.cpp
-    gameSource/animationBank.cpp
-    gameSource/whiteSprites.cpp
-    gameSource/message.cpp
-    gameSource/serialWebRequests.cpp
-    gameSource/accountHmac.cpp
-    gameSource/PageComponent.cpp
-    gameSource/GamePage.cpp
-    gameSource/LivingLifePage.cpp
-    gameSource/pathFind.cpp
-    gameSource/ageControl.cpp
-    gameSource/ExtendedMessagePage.cpp
-    gameSource/buttonStyle.cpp
-    gameSource/Button.cpp
-    gameSource/TextButton.cpp
-    gameSource/RebirthChoicePage.cpp
-    gameSource/TextField.cpp
-    gameSource/LoadingPage.cpp
-    gameSource/folderCache.cpp
-    gameSource/binFolderCache.cpp
-    gameSource/liveObjectSet.cpp
-    commonSource/fractalNoise.cpp
-    commonSource/sayLimit.cpp
-    gameSource/ExistingAccountPage.cpp
-    gameSource/KeyEquivalentTextButton.cpp
-    gameSource/ServerActionPage.cpp
-    gameSource/FinalMessagePage.cpp
-    gameSource/AutoUpdatePage.cpp
-    gameSource/soundBank.cpp
-    gameSource/convolution.cpp
-    gameSource/fft.cpp
-    gameSource/ogg.cpp
-    gameSource/musicPlayer2.cpp
-    gameSource/groundSprites.cpp
-    gameSource/SettingsPage.cpp
-    gameSource/CheckboxButton.cpp
-    gameSource/ValueSlider.cpp
-    gameSource/SpriteButton.cpp
-    gameSource/SpriteToggleButton.cpp
-    gameSource/categoryBank.cpp
-    gameSource/liveAnimationTriggers.cpp
-    gameSource/ReviewPage.cpp
-    gameSource/TextArea.cpp
-    gameSource/RadioButtonSet.cpp
-    gameSource/spellCheck.cpp
-    gameSource/SoundUsage.cpp
-    gameSource/TwinPage.cpp
-    gameSource/objectMetadata.cpp
-    gameSource/emotion.cpp
-    gameSource/Picker.cpp
-    gameSource/PickableStatics.cpp
-    gameSource/photos.cpp
-    gameSource/lifeTokens.cpp
-    gameSource/PollPage.cpp
-    gameSource/fitnessScore.cpp
-    gameSource/GeneticHistoryPage.cpp
-    gameSource/ServicesPage.cpp
-    gameSource/photoCache.cpp
-    gameSource/exporter.cpp
-    gameSource/importer.cpp
-    gameSource/settingsToggle.cpp
-    gameSource/AHAPResultPage.cpp
-    gameSource/AHAPSettingsPage.cpp
-    gameSource/rocketAnimation.cpp
-    gameSource/GridPos.cpp
-)
-
-# The editor (EditOneLife) is a second program built from the same tree. This
-# list is the LAYER_SOURCE block of gameSource/makeFileListEditor, the upstream
-# recipe, so keep the two in step if that file changes.
-#
-# hetuwStubs.cpp is ours: the shared banks reach into a few HetuwMod statics and
-# the editor has no HetuwMod. The server links it for the same reason.
-# PNGImageConverter is editor-only though, the client never reads a PNG
-# (TGAImageConverter.h is header only, which is why no converter shows up in the
-# client build at all).
-set(EDITOR_SOURCE_FILES
-    gameSource/editor.cpp
-    gameSource/hetuwStubs.cpp
-    gameSource/PageComponent.cpp
-    gameSource/GamePage.cpp
-    gameSource/TextField.cpp
-    gameSource/Button.cpp
-    gameSource/TextButton.cpp
-    gameSource/whiteSprites.cpp
-    gameSource/serialWebRequests.cpp
-    gameSource/message.cpp
-    gameSource/accountHmac.cpp
-    gameSource/EditorImportPage.cpp
-    gameSource/spriteBank.cpp
-    gameSource/Picker.cpp
-    gameSource/objectBank.cpp
-    gameSource/EditorObjectPage.cpp
-    gameSource/transitionBank.cpp
-    gameSource/EditorTransitionPage.cpp
-    gameSource/SpriteButton.cpp
-    gameSource/SpriteToggleButton.cpp
-    gameSource/CheckboxButton.cpp
-    gameSource/animationBank.cpp
-    gameSource/EditorAnimationPage.cpp
-    gameSource/EditorSpriteTrimPage.cpp
-    gameSource/ValueSlider.cpp
-    gameSource/ageControl.cpp
-    gameSource/overlayBank.cpp
-    gameSource/keyLegend.cpp
-    gameSource/LoadingPage.cpp
-    gameSource/folderCache.cpp
-    gameSource/binFolderCache.cpp
-    gameSource/PickableStatics.cpp
-    gameSource/soundBank.cpp
-    gameSource/SoundWidget.cpp
-    gameSource/convolution.cpp
-    gameSource/fft.cpp
-    gameSource/ogg.cpp
-    gameSource/zoomView.cpp
-    gameSource/categoryBank.cpp
-    gameSource/EditorCategoryPage.cpp
-    gameSource/RadioButtonSet.cpp
-    gameSource/EditorScenePage.cpp
-    gameSource/groundSprites.cpp
-    commonSource/fractalNoise.cpp
-    gameSource/spellCheck.cpp
-    gameSource/SoundUsage.cpp
-    gameSource/objectMetadata.cpp
-    gameSource/emotion.cpp
-    gameSource/exporter.cpp
-    gameSource/EditorExportPage.cpp
-    gameSource/importer.cpp
-    gameSource/settingsToggle.cpp
-    minorGems/graphics/converters/PNGImageConverter.cpp
-)
-
-# The headless game server (OneLifeServer).
-# hetuwStubs.cpp is ours, and is here for the same reason the editor has it.
-set(SERVER_SOURCE_FILES
-    server/server.cpp
-    server/map.cpp
-    gameSource/transitionBank.cpp
-    gameSource/categoryBank.cpp
-    gameSource/objectBank.cpp
-    gameSource/animationBank.cpp
-    gameSource/ageControl.cpp
-    gameSource/folderCache.cpp
-    gameSource/SoundUsage.cpp
-    gameSource/objectMetadata.cpp
-    gameSource/GridPos.cpp
-    commonSource/fractalNoise.cpp
-    commonSource/sayLimit.cpp
-    gameSource/settingsToggle.cpp
-    gameSource/hetuwStubs.cpp
-    server/kissdb.cpp
-    server/lineardb3.cpp
-    server/lifeLog.cpp
-    server/foodLog.cpp
-    server/backup.cpp
-    server/triggers.cpp
-    server/dbCommon.cpp
-    server/playerStats.cpp
-    server/lineageLog.cpp
-    server/failureLog.cpp
-    server/names.cpp
-    server/monument.cpp
-    server/lineageLimit.cpp
-    server/curses.cpp
-    server/curseLog.cpp
-    server/spiral.cpp
-    server/objectSurvey.cpp
-    server/language.cpp
-    server/familySkipList.cpp
-    server/lifeTokens.cpp
-    server/fitnessScore.cpp
-    server/CoordinateTimeTracking.cpp
-    server/arcReport.cpp
-    server/curseDB.cpp
-    server/trustDB.cpp
-    server/eveMovingGrid.cpp
-    server/specialBiomes.cpp
-    server/cravings.cpp
-    server/offspringTracker.cpp
-    server/ipBanList.cpp
-    server/ahapGate.cpp
-    server/periodicPlacements.cpp
-    server/timeLogger.cpp
-)
+# The source lists live next door, in cmake/.
+include(cmake/MinorGemsSources.cmake)
+include(cmake/GameSources.cmake)
 
 # These are the compile options from the original build system. Note that -O0
 # in particular is sadly necessary to prevent some OHOL crashes.
@@ -417,6 +112,11 @@ elseif(APPLE)
 
     enable_language(OBJC)
 
+    # The .app machinery both mac targets share: the icon, the bundle
+    # properties, and copying the Homebrew libraries in before signing.
+    # Defines mac_icon and yummylife_mac_bundle().
+    include(cmake/MacBundle.cmake)
+
     # MACOSX_BUNDLE makes this YummyLife.app rather than a bare binary, so it
     # can carry its own copy of SDL and an icon. The bundle is dropped into the
     # OHOL/AHAP folder next to the vanilla OneLife_<version>.app and chdirs to
@@ -426,17 +126,7 @@ elseif(APPLE)
         minorGems/game/platforms/SDL/mac/MenuBarHelper.m)
     target_compile_options(YummyLife_mac PRIVATE ${CLIENT_COMPILE_OPTIONS})
 
-    # The target keeps the _mac suffix to stay consistent with the Linux and
-    # Windows targets, but the bundle players see is plain YummyLife.app.
-    set_target_properties(YummyLife_mac PROPERTIES
-        OUTPUT_NAME "YummyLife"
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/Info.plist.in"
-        MACOSX_BUNDLE_BUNDLE_NAME "YummyLife"
-        MACOSX_BUNDLE_EXECUTABLE_NAME "YummyLife"
-        MACOSX_BUNDLE_GUI_IDENTIFIER "com.olliez-mods.YummyLife"
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "${YUMMYLIFE_VERSION}"
-        MACOSX_BUNDLE_BUNDLE_VERSION "${YUMMYLIFE_VERSION}"
-    )
+    yummylife_mac_bundle(YummyLife_mac "YummyLife")
 
     # SDL 1.2 API provided by sdl12-compat (brew install sdl12-compat).
     # FindSDL resolves it from the Homebrew prefix and adds SDLmain plus
@@ -466,49 +156,6 @@ elseif(APPLE)
 
     target_link_libraries(YummyLife_mac "-framework OpenGL")
 
-    # Build the .icns the bundle's CFBundleIconFile points at. macOS wants
-    # every size in one file, sips resizes and iconutil packs them.
-    set(MAC_ICON_PNG "${CMAKE_SOURCE_DIR}/mac_icon.png")
-    set(MAC_ICON_ICNS "${CMAKE_BINARY_DIR}/mac_icon.icns")
-    set(MAC_ICONSET_DIR "${CMAKE_BINARY_DIR}/mac_icon.iconset")
-    add_custom_command(OUTPUT ${MAC_ICON_ICNS}
-        COMMAND ${CMAKE_COMMAND} -E rm -rf "${MAC_ICONSET_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${MAC_ICONSET_DIR}"
-        COMMAND sips -z 16 16     "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_16x16.png"
-        COMMAND sips -z 32 32     "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_16x16@2x.png"
-        COMMAND sips -z 32 32     "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_32x32.png"
-        COMMAND sips -z 64 64     "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_32x32@2x.png"
-        COMMAND sips -z 128 128   "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_128x128.png"
-        COMMAND sips -z 256 256   "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_128x128@2x.png"
-        COMMAND sips -z 256 256   "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_256x256.png"
-        COMMAND sips -z 512 512   "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_256x256@2x.png"
-        COMMAND sips -z 512 512   "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_512x512.png"
-        COMMAND sips -z 1024 1024 "${MAC_ICON_PNG}" --out "${MAC_ICONSET_DIR}/icon_512x512@2x.png"
-        COMMAND iconutil -c icns "${MAC_ICONSET_DIR}" -o "${MAC_ICON_ICNS}"
-        COMMAND ${CMAKE_COMMAND} -E rm -rf "${MAC_ICONSET_DIR}"
-        DEPENDS "${MAC_ICON_PNG}"
-        COMMENT "Generating mac_icon.icns"
-        VERBATIM
-    )
-    add_custom_target(mac_icon DEPENDS ${MAC_ICON_ICNS})
-    add_dependencies(YummyLife_mac mac_icon)
-
-    add_custom_command(TARGET YummyLife_mac POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_DIR:YummyLife_mac>/Contents/Resources"
-        COMMAND ${CMAKE_COMMAND} -E copy "${MAC_ICON_ICNS}" "$<TARGET_BUNDLE_DIR:YummyLife_mac>/Contents/Resources/"
-        COMMENT "Copying mac_icon.icns into the bundle"
-        VERBATIM
-    )
-
-    # Copy the Homebrew libraries the app needs into the bundle and re-sign it,
-    # so it runs on a machine with no Homebrew installed. Runs last, everything
-    # else that writes into the bundle has to happen before the signing.
-    add_custom_command(TARGET YummyLife_mac POST_BUILD
-        COMMAND "${CMAKE_SOURCE_DIR}/mac-bundle.sh" "$<TARGET_BUNDLE_DIR:YummyLife_mac>" "YummyLife"
-        COMMENT "Bundling libraries into YummyLife.app"
-        VERBATIM
-    )
-
     # The OHOL editor. EXCLUDE_FROM_ALL keeps it out of the normal build; ask
     # for it by name:
     #     cmake --build <dir> --target EditOneLife_mac
@@ -523,15 +170,7 @@ elseif(APPLE)
         minorGems/game/platforms/SDL/mac/MenuBarHelper.m)
     target_compile_options(EditOneLife_mac PRIVATE ${CLIENT_COMPILE_OPTIONS})
 
-    set_target_properties(EditOneLife_mac PROPERTIES
-        OUTPUT_NAME "EditOneLife"
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/Info.plist.in"
-        MACOSX_BUNDLE_BUNDLE_NAME "EditOneLife"
-        MACOSX_BUNDLE_EXECUTABLE_NAME "EditOneLife"
-        MACOSX_BUNDLE_GUI_IDENTIFIER "com.olliez-mods.EditOneLife"
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "${YUMMYLIFE_VERSION}"
-        MACOSX_BUNDLE_BUNDLE_VERSION "${YUMMYLIFE_VERSION}"
-    )
+    yummylife_mac_bundle(EditOneLife_mac "EditOneLife")
 
     target_include_directories(EditOneLife_mac PRIVATE ${SDL_INCLUDE_DIR})
     target_link_libraries(EditOneLife_mac ${SDL_LIBRARY})
@@ -543,20 +182,6 @@ elseif(APPLE)
     find_package(PNG REQUIRED)
     target_link_libraries(EditOneLife_mac PNG::PNG)
 
-    add_dependencies(EditOneLife_mac mac_icon)
-
-    add_custom_command(TARGET EditOneLife_mac POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_DIR:EditOneLife_mac>/Contents/Resources"
-        COMMAND ${CMAKE_COMMAND} -E copy "${MAC_ICON_ICNS}" "$<TARGET_BUNDLE_DIR:EditOneLife_mac>/Contents/Resources/"
-        COMMENT "Copying mac_icon.icns into the bundle"
-        VERBATIM
-    )
-
-    add_custom_command(TARGET EditOneLife_mac POST_BUILD
-        COMMAND "${CMAKE_SOURCE_DIR}/mac-bundle.sh" "$<TARGET_BUNDLE_DIR:EditOneLife_mac>" "EditOneLife"
-        COMMENT "Bundling libraries into EditOneLife.app"
-        VERBATIM
-    )
 else()
     add_definitions(-DLINUX -DCPPHTTPLIB_OPENSSL_SUPPORT)
 
