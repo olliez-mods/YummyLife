@@ -3,16 +3,17 @@ set -e
 
 # YummyLife
 #
+#   ./build.sh [mode] [os]... [target]... ["run"]
 #
-#   ./build.sh <mode> <os>... <target>... ["run"]
-#
-#   mode      dev or rel/release
-#   OS        mac/macos, linux, windows - one or more
-#   target    game, editor, server - one or more
+#   mode      dev (the default) or rel/release
+#   OS        mac/macos, linux, windows - defaults to what this host builds
+#   target    game (the default), editor, server
 #   run       optional, launches everything this run built
 #
 # Every target builds for every OS, so the OSes and targets you name are built
 # as a full cross product: 'linux windows game server' is four binaries.
+# Anything left out takes its default, and defaults apply per kind - 'server'
+# builds the server for this host, not the game as well.
 #
 # What you cannot do is build for an OS this host cannot compile for. macOS
 # binaries only build on a Mac, because no container or VM can produce them,
@@ -25,14 +26,15 @@ set -e
 host_os=$(uname -s)
 
 usage() {
-  echo "usage: ./build.sh <dev|rel> <mac|linux|windows ...> <game|editor|server ...> [run]" >&2
+  echo "usage: ./build.sh [dev|rel] [mac|linux|windows ...] [game|editor|server ...] [run]" >&2
   echo >&2
-  echo "  mode    dev, rel (or release)          exactly one, required" >&2
-  echo "  OS      mac (or macos), linux, windows one or more, required" >&2
-  echo "  target  game, editor, server           one or more, required" >&2
+  echo "  mode    dev, rel (or release)          default: dev" >&2
+  echo "  OS      mac (or macos), linux, windows default: what this host builds" >&2
+  echo "  target  game, editor, server           default: game" >&2
   echo "  run     launch everything just built   optional" >&2
   echo >&2
-  echo "  e.g.  ./build.sh dev mac editor run" >&2
+  echo "  e.g.  ./build.sh" >&2
+  echo "        ./build.sh mac editor run" >&2
   echo "        ./build.sh rel linux windows game server" >&2
 }
 
@@ -62,6 +64,8 @@ for arg in "$@"; do
     server)          want_server=true ;;
 
     run)             do_run=true ;;
+
+    help|-h|--help)  usage; exit 0 ;;
     *)
       echo "Unknown argument '$arg'" >&2
       echo >&2
@@ -81,19 +85,22 @@ if [ "$want_game" = true ];   then target_list+=(game); fi
 if [ "$want_editor" = true ]; then target_list+=(editor); fi
 if [ "$want_server" = true ]; then target_list+=(server); fi
 
-# All three are required
-missing=()
-if [ -z "$mode" ];                then missing+=("a mode (dev or rel)"); fi
-if [ ${#os_list[@]} -eq 0 ];      then missing+=("an OS (mac, linux or windows)"); fi
-if [ ${#target_list[@]} -eq 0 ];  then missing+=("a target (game, editor or server)"); fi
+# Anything not named takes its default, per kind
+if [ -z "$mode" ]; then
+  mode=dev
+fi
 
-if [ ${#missing[@]} -gt 0 ]; then
-  for item in "${missing[@]}"; do
-    echo "Missing $item" >&2
-  done
-  echo >&2
-  usage
-  exit 1
+if [ ${#os_list[@]} -eq 0 ]; then
+  # A Mac builds macOS and nothing else; a Linux host builds its own binaries and cross compiles windows
+  if [ "$host_os" = "Darwin" ]; then
+    os_list=(mac)
+  else
+    os_list=(linux windows)
+  fi
+fi
+
+if [ ${#target_list[@]} -eq 0 ]; then
+  target_list=(game)
 fi
 
 # What this host can compile for

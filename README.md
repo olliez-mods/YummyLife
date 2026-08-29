@@ -83,28 +83,33 @@ Open a bug report using the Issues tab above.
 
 # Building from source
 
-Everything is driven by one script, `./build.sh`, on every platform. Every build says
-what it is, in full — there are no defaults and nothing is inferred. Name a mode, at
-least one OS and at least one target, and you get exactly that and nothing else:
+Everything is driven by one script, `./build.sh`, on every platform. Name a mode, any
+number of OSes and any number of targets, in any order; anything you leave out takes
+its default:
 
-| | values | |
+| | values | default |
 | --- | --- | --- |
-| mode | `dev`, `rel` (or `release`) | exactly one, required |
-| OS | `mac` (or `macos`), `linux`, `windows` | one or more, required |
-| target | `game`, `editor`, `server` | one or more, required |
-| run | `run` | optional |
+| mode | `dev`, `rel` (or `release`) | `dev` |
+| OS | `mac` (or `macos`), `linux`, `windows` | what this host builds |
+| target | `game`, `editor`, `server` | `game` |
+| run | `run` | off |
 
 ```
-./build.sh dev mac game run          # build the client and launch it
-./build.sh dev mac editor            # just the editor
+./build.sh                           # a dev build of the client, for this host
+./build.sh rel                       # the same, as a release build
+./build.sh mac editor run            # just the editor, then launch it
 ./build.sh rel linux windows game    # the release clients for both
-./build.sh rel windows server        # the server, for Windows
-./build.sh dev linux game server run # two targets, launched together
+./build.sh linux game server run     # two targets, launched together
 ```
 
-The OSes and targets you name are built as a full **cross product**, because all three
+The OS default is what this host can produce: `mac` on a Mac, and `linux windows` on a
+Linux host, so a bare `./build.sh` there cross-compiles the Windows client too, as it
+always has. Defaults apply per kind, so naming a target leaves the OS defaulted and the
+other way round — `./build.sh server` is the server for this host, not the game as well.
+
+The OSes and targets in play are built as a full **cross product**, because all three
 targets build for all three platforms — `linux windows game server` is four binaries.
-Order does not matter.
+`./build.sh --help` prints the summary.
 
 | target | what it is |
 | --- | --- |
@@ -218,8 +223,9 @@ Run from the `yummyLifeBuildScripts` folder. Anything after `build` goes straigh
 `build.sh`, so every command in the reference at the top of this section works here too:
 
 ```
-docker compose run --rm build dev linux game           # the Linux client
-docker compose run --rm build dev windows server      # the Windows server
+docker compose run --rm build                         # Linux + Windows clients
+docker compose run --rm build linux game              # just the Linux client
+docker compose run --rm build windows server          # the Windows server
 docker compose run --rm build rel linux windows game  # both release clients
 docker compose run --rm shell                  # a shell in the container, to poke around
 ```
@@ -230,7 +236,7 @@ Two things worth knowing:
 
 - The container runs as root, so on a Linux host the build output ends up root-owned.
   To build as yourself instead:
-  `DOCKER_USER="$(id -u):$(id -g)" docker compose run --rm build dev linux game`
+  `DOCKER_USER="$(id -u):$(id -g)" docker compose run --rm build`
 - On an Apple Silicon Mac, Docker produces **arm64** Linux binaries, not the x86_64 ones
   the Releases page carries. Fine for checking that something compiles, not for shipping.
 
