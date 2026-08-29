@@ -127,7 +127,7 @@ cp no_copyright.txt         "$FOLDER/"
 
 ##### Game data, from the data repo
 
-for d in sprites objects categories transitions animations music sounds ground; do
+for d in sprites objects categories transitions animations music sounds ground contentSettings; do
   if [ ! -d "$DATA_DIR/$d" ]; then
     echo "$0: $DATA_DIR/$d is missing, so the data checkout is incomplete" >&2
     dataCheckoutHint
