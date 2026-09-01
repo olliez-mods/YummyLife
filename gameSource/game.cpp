@@ -192,6 +192,18 @@ AHAPSettingsPage *ahapSettingsPage;
 
 GamePage *currentGamePage = NULL;
 
+// YummyLife: page drawn *behind* currentGamePage, so that the frozen world
+// stays visible underneath the death/reconnect screens.  NULL when nothing
+static GamePage *backgroundGamePage = NULL;
+
+// world position of the camera at the moment backgroundGamePage was frozen
+// (the overlaid menu pages draw in screen space around { 0, 0 }, so we have
+//  to swap lastScreenViewCenter back and forth between the two draws)
+static doublePair backgroundViewCenter = { 0, 0 };
+
+static double backgroundGamePageDim = 0.75;
+
+
 int loadingPhase = 0;
 
 int loadingStepBatchSize = 1;
@@ -207,6 +219,12 @@ SpriteHandle instructionsSprite;
 
 // position of view in world
 doublePair lastScreenViewCenter = {0, 0 };
+
+// YummyLife
+static void setBackgroundGamePage( GamePage *inPage ) {
+    backgroundGamePage = inPage;
+    backgroundViewCenter = lastScreenViewCenter;
+    }
 
 
 
@@ -1402,6 +1420,13 @@ static void startConnecting() {
 void showDiedPage() {
     userReconnect = false;
     
+    // YummyLife: keep the world we just died in visible behind the message
+    int dsop = HetuwMod::iDeathScreenOpacity;
+    if(dsop > 0 && dsop < 100) {
+        backgroundGamePageDim = (HetuwMod::iDeathScreenOpacity / 100.0);
+        setBackgroundGamePage( livingLifePage );
+    }
+
     lastScreenViewCenter.x = 0;
     lastScreenViewCenter.y = 0;
     
@@ -2606,6 +2631,13 @@ void drawFrame( char inUpdate ) {
             else if( livingLifePage->checkSignal( "died" ) ) {
                 existingAccountPage->setStatus( NULL, false );
                 if (livingLifePage->yumSkipDeathMessage()) {
+                    // YummyLife: keep the world visible behind the choices.
+                    setBackgroundGamePage( livingLifePage );
+                    lastScreenViewCenter.x = 0;
+                    lastScreenViewCenter.y = 0;
+                    setViewCenterPosition( lastScreenViewCenter.x, 
+                                           lastScreenViewCenter.y );
+                    
                     currentGamePage = rebirthChoicePage;
                     currentGamePage->base_makeActive( true );
                     }
@@ -2782,6 +2814,45 @@ void drawFrame( char inUpdate ) {
 
 
 void drawFrameNoUpdate( char inUpdate ) {
+
+    // YummyLife: the frozen world is only kept behind the pages that make up
+    // the post-death flow.  Anything else (main menu, a fresh life, ...) drops
+    // it, which also means we don't have to clear it at every transition.
+    if( backgroundGamePage != NULL &&
+        currentGamePage != extendedMessagePage &&
+        currentGamePage != pollPage &&
+        currentGamePage != geneticHistoryPage &&
+        currentGamePage != rebirthChoicePage ) {
+        
+        backgroundGamePage = NULL;
+        }
+    
+    if( backgroundGamePage != NULL &&
+        backgroundGamePage != currentGamePage ) {
+        
+        doublePair pageViewCenter = lastScreenViewCenter;
+        
+        // LivingLifePage draws relative to the world camera, and reads it
+        // straight out of lastScreenViewCenter
+        lastScreenViewCenter = backgroundViewCenter;
+        
+        // no HUD, no overlays, no mod interface - just the world, the way a photo is taken
+        char worldOnly = ( backgroundGamePage == livingLifePage );
+        
+        if( worldOnly ) livingLifePage->setWorldOnlyDraw( true );
+        backgroundGamePage->base_draw( lastScreenViewCenter, viewWidth );
+        if( worldOnly ) livingLifePage->setWorldOnlyDraw( false );
+        
+        lastScreenViewCenter = pageViewCenter;
+        setViewCenterPosition( lastScreenViewCenter.x, 
+                               lastScreenViewCenter.y );
+        
+        setDrawColor( 0, 0, 0, backgroundGamePageDim );
+        drawSquare( lastScreenViewCenter, viewWidth );
+        
+        setDrawColor( 1, 1, 1, 1 );
+        }
+    
     if( currentGamePage != NULL ) {
         currentGamePage->base_draw( lastScreenViewCenter, viewWidth );
         }

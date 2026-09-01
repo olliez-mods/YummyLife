@@ -261,6 +261,17 @@ static char waitingForPhotoID = false;
 
 void LivingLifePage::hetuwSetTakingPhoto(bool b) { takingPhoto = b; }
 
+// YummyLife: draw the bare world - no HUD, no overlays, no mod interface
+static char worldOnlyDraw = false;
+
+void LivingLifePage::setWorldOnlyDraw( char inWorldOnly ) {
+    worldOnlyDraw = inWorldOnly;
+    }
+
+static char hideWorldOverlays() {
+    return takingPhoto || worldOnlyDraw;
+    }
+
 // no moving for first 20 seconds of life
 static double noMoveAge = 0.20;
 
@@ -5053,7 +5064,7 @@ void LivingLifePage::drawMapCell( int inMapI,
         char flip = mMapTileFlips[ inMapI ];
         
         ObjectRecord *obj = getObject( oID );
-		if (!takingPhoto && HetuwMod::bxRay && obj->cachedHeight > CELL_D) {
+		if (!hideWorldOverlays() && HetuwMod::bxRay && obj->cachedHeight > CELL_D) {
 			if (HetuwMod::xRayOpacity == 0.0f) return;
 			HetuwMod::drawColorAlpha = HetuwMod::xRayOpacity;
 		}
@@ -5130,7 +5141,7 @@ void LivingLifePage::drawMapCell( int inMapI,
             highlight = false;
             }
 
-		if (takingPhoto) highlight = false; // hetuw mod
+		if (hideWorldOverlays()) highlight = false; // hetuw mod
         
         int numPasses = 1;
         int startPass = 0;
@@ -5668,7 +5679,7 @@ ObjectAnimPack LivingLifePage::drawLiveObject(
         targetY = inObj->actionTargetY;
         }
     else {
-		if (!takingPhoto) // hetuw mod
+		if (!hideWorldOverlays()) // hetuw mod
         setClothingHighlightFades( inObj->clothingHighlightFades );
         }
     
@@ -9111,7 +9122,7 @@ void LivingLifePage::draw( doublePair inViewCenter,
                         }
                     }
 
-				if ( !takingPhoto && o != ourLiveObject && HetuwMod::iDrawNames > 0 ) 
+				if ( !hideWorldOverlays() && o != ourLiveObject && HetuwMod::iDrawNames > 0 ) 
 					HetuwMod::drawPlayerNames( o );
 
                 ignoreWatchedObjectDraw( false );
@@ -9307,7 +9318,7 @@ void LivingLifePage::draw( doublePair inViewCenter,
     
 
     // finally, draw any highlighted our-placements
-    if( ! takingPhoto )
+    if( ! hideWorldOverlays() )
     if( mCurMouseOverID > 0 && ! mCurMouseOverSelf && mCurMouseOverBehind ) {
         int worldY = mCurMouseOverSpot.y + mMapOffsetY - mMapD / 2;
         
@@ -9321,7 +9332,7 @@ void LivingLifePage::draw( doublePair inViewCenter,
         drawMapCell( mapI, screenX, screenY, true );
         }
 
-    if( ! takingPhoto )
+    if( ! hideWorldOverlays() )
     for( int i=0; i<mPrevMouseOverSpots.size(); i++ ) {
         if( mPrevMouseOverSpotsBehind.getElementDirect( i ) ) {
                 
@@ -9346,7 +9357,7 @@ void LivingLifePage::draw( doublePair inViewCenter,
     for( int i=0; i<2; i++ ) {
         
 		if( !minitech::minitechEnabled ) //minitech
-        if( ! takingPhoto && mCurrentHintTargetObject[i] > 0 ) {
+        if( ! hideWorldOverlays() && mCurrentHintTargetObject[i] > 0 ) {
             // draw pointer to closest hint target object
         
             char drawn = false;
@@ -9420,7 +9431,7 @@ void LivingLifePage::draw( doublePair inViewCenter,
             }
         }
     
-    if( !takingPhoto ) {
+    if( !hideWorldOverlays() ) {
         for( int i=0; i<mOldHintArrows.size(); i++ ) {
             OldHintArrow *h = mOldHintArrows.getElement( i );
 
@@ -9463,7 +9474,7 @@ void LivingLifePage::draw( doublePair inViewCenter,
 
 
     
-    if( ! takingPhoto )
+    if( ! hideWorldOverlays() )
     for( int i=0; i<speakers.size(); i++ ) {
         LiveObject *o = speakers.getElementDirect( i );
         if(o->id == ourID && Phex::lastSayString != "" && strcmp( o->currentSpeech, Phex::lastSayString.c_str() ) == 0) continue;
@@ -9517,7 +9528,7 @@ void LivingLifePage::draw( doublePair inViewCenter,
 
 
 
-    if( ! takingPhoto )
+    if( ! hideWorldOverlays() )
     for( int i=0; i<locationSpeech.size(); i++ ) {
         LocationSpeech *ls = locationSpeech.getElement( i );
         
@@ -9549,7 +9560,7 @@ void LivingLifePage::draw( doublePair inViewCenter,
     if( showFPS ) runningPixelCount += endCountingSpritePixelsDrawn();
 
     
-    if( ! takingPhoto )
+    if( ! hideWorldOverlays() )
     drawOffScreenSounds();
     
     
@@ -10332,7 +10343,7 @@ void LivingLifePage::draw( doublePair inViewCenter,
     
 
     
-    if( hideGuiPanel ) {
+    if( hideGuiPanel || worldOnlyDraw ) {
         // skip gui
         return;
         }    
@@ -20425,6 +20436,11 @@ void LivingLifePage::step() {
                         // next
                         closeSocket( mServerSocket );
                         mServerSocket = -1;
+
+                        // YummyLife: our corpse is a map object now, so don't 
+                        // keep drawing the player on top of it
+                        getOurLiveObject()->hide = true;
+
                         handleOurDeath();
                         }
                     else {

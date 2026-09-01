@@ -329,6 +329,7 @@ public:
 	static bool bDrawLeaderboardNames;
 	static bool bStoreEatenYums;
 	static bool bGalleryEnabled;
+	static int iDeathScreenOpacity;
 	static bool bCheckGitHubForUpdates;
 	static bool filterSprites;
 	static vector<int> filteredSprites;

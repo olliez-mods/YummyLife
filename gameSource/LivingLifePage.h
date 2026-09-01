@@ -635,6 +635,9 @@ class LivingLifePage : public GamePage, public ActionListener {
         int hetuwGetYumBonus();
         bool hetuwIsAutoClick();
         bool yumSkipDeathMessage(void);
+
+        // YummyLife: draw the bare world, with no HUD, overlays or mod interface
+        void setWorldOnlyDraw( char inWorldOnly );
 		char getTransHintable( TransRecord *inTrans ); // hetuw mod - changed from static and made visible to public
 		
         virtual void actionPerformed( GUIComponent *inTarget );

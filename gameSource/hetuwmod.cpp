@@ -158,6 +158,7 @@ int HetuwMod::iDrawPhexNames;
 bool HetuwMod::bDrawLeaderboardNames;
 bool HetuwMod::bStoreEatenYums;
 bool HetuwMod::bGalleryEnabled;
+int HetuwMod::iDeathScreenOpacity;
 bool HetuwMod::bCheckGitHubForUpdates;
 bool HetuwMod::filterSprites;
 bool bFilterSprites;
@@ -452,6 +453,7 @@ void HetuwMod::init() {
 	bDrawLeaderboardNames = true;
 	bStoreEatenYums = true;
 	bGalleryEnabled = true;
+	iDeathScreenOpacity = 75;
 	bCheckGitHubForUpdates = true;
 	bFilterSprites = false;
 	vFilteredSprites = {"592", "593", "594", "595", "596", "597", "598", "599", "600"};
@@ -995,6 +997,7 @@ void HetuwMod::initSettings() {
 	const char *yummyGroupComment2 =   "// ^^^^^^^^ YummyLife Config ^^^^^^^^\n\n";
 	yumConfig::registerSetting("init_store_eaten_yums", bStoreEatenYums, {preComment: yummyGroupComment1, postComment: " // Store the eaten foods in 'lastYums.txt' so findYum works accross restarts"});
 	yumConfig::registerSetting("init_enable_gallery", bGalleryEnabled, {postComment: " // Should the main menu gallery be enabled"});
+	yumConfig::registerSetting("death_screen_opacity", iDeathScreenOpacity, {postComment: " // Opacity of the death screen (0-100), 0 = disabled"});
 	yumConfig::registerSetting("init_check_github", bCheckGitHubForUpdates, {postComment: " // Automatically check for updates on GitHub"});
 	yumConfig::registerSetting("sprite_ids_to_filter", vFilteredSprites, {preComment: "\n//Sprite IDs that will be skipped when drawing each frame\n"});
 	yumConfig::registerSetting("enable_sprite_filter", bFilterSprites, {postComment: " // Filtering enabled - can be toggled in settings menu"});
