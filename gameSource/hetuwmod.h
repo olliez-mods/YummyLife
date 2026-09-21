@@ -311,6 +311,7 @@ public:
 
 	static unsigned char charKey_CreateHome;
 	static unsigned char charKey_FixCamera;
+	static unsigned char charKey_CameraPan; // YummyLife
 
 	static unsigned char charKey_ConfirmExit;
 
@@ -628,6 +629,18 @@ public:
 	static void setSearchArray();
 
 	static bool cameraIsFixed;
+
+	// YummyLife: hold-to-pan, the view leans toward the mouse and eases back
+	static bool bCameraPanning;
+	static bool bCameraPanReturning;
+	static float cameraPanSensitivity;
+	static float cameraPanSpeed;
+	static double getCameraPanSpeedFactor();
+	static doublePair cameraPanFixedBase;
+	static void startCameraPan();
+	static void stopCameraPan();
+	static doublePair applyCameraPan( doublePair inTarget,
+	                                  bool inCameraFollowsPlayer );
 	static void SetFixCamera(bool b);
 
 	static void Say(const char *text);

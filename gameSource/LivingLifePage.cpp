@@ -23077,6 +23077,14 @@ void LivingLifePage::step() {
             screenTargetPos = lastScreenViewCenter;
             }
         
+        // YummyLife: hold the pan key and the view leans toward the mouse.
+        // Feeding it in as a target rather than moving the camera directly
+        // means the game's own easing carries it out and back again.
+        screenTargetPos = HetuwMod::applyCameraPan( screenTargetPos,
+                                                    shouldMoveCamera );
+        screenTargetPos.x = round( screenTargetPos.x );
+        screenTargetPos.y = round( screenTargetPos.y );
+        
 
         doublePair dir = sub( screenTargetPos, lastScreenViewCenter );
 		if (vogMode && length(dir) > 500) { // hetuw mod - to prevent the camera from lagging behind - not the best fix but i couldnt find the camera moving code
@@ -23096,6 +23104,10 @@ void LivingLifePage::step() {
             moveSpeedFactor = 1 * frameRateFactor;
             }
 
+        // YummyLife: this speed is derived from how fast the player is walking,
+        // so it bottoms out exactly when you pan.  1x unless a pan is running.
+        moveSpeedFactor *= HetuwMod::getCameraPanSpeedFactor();
+
         if( fabs( dir.x ) > maxRX ) {
             double moveScale = moveSpeedFactor * sqrt( fabs(dir.x) - maxRX );
 
@@ -23104,6 +23116,13 @@ void LivingLifePage::step() {
             // whole pixels
 
             moveStep.x = lrint( moveStep.x );
+
+            // YummyLife: never step past the target.  sqrt( dir - 1 ) is close
+            // to 1 for a two pixel gap, so any speed above 1x would jump the
+            // camera over the mark and sit there jittering back and forth.
+            if( fabs( moveStep.x ) > fabs( dir.x ) ) {
+                moveStep.x = dir.x;
+                }
                         
             if( fabs( moveStep.x ) > 0 ) {
                 lastScreenViewCenter.x += moveStep.x;
@@ -23118,6 +23137,11 @@ void LivingLifePage::step() {
             // whole pixels
 
             moveStep.y = lrint( moveStep.y );
+
+            // YummyLife: see above
+            if( fabs( moveStep.y ) > fabs( dir.y ) ) {
+                moveStep.y = dir.y;
+                }
                         
             if( fabs( moveStep.y ) > 0 ) {
                 lastScreenViewCenter.y += moveStep.y;

@@ -120,6 +120,7 @@ unsigned char HetuwMod::charKey_Phex = '#';
 
 unsigned char HetuwMod::charKey_CreateHome = 'r';
 unsigned char HetuwMod::charKey_FixCamera = 'f';
+unsigned char HetuwMod::charKey_CameraPan = ';';
 
 unsigned char HetuwMod::charKey_ShowMap = 'm';
 unsigned char HetuwMod::charKey_MapZoomIn = 'u';
@@ -274,6 +275,11 @@ bool HetuwMod::bHidePlayers = false;
 char HetuwMod::ourGender;
 
 bool HetuwMod::cameraIsFixed;
+bool HetuwMod::bCameraPanning = false;
+bool HetuwMod::bCameraPanReturning = false;
+float HetuwMod::cameraPanSensitivity = 1.0f;
+float HetuwMod::cameraPanSpeed = 5.0f;
+doublePair HetuwMod::cameraPanFixedBase = { 0, 0 };
 
 bool HetuwMod::bMoveClick = false;
 bool HetuwMod::bMoveClickAlpha;
@@ -488,6 +494,8 @@ void HetuwMod::init() {
 	takingPhoto = false;
 	bxRay = false;
 	bHidePlayers = false;
+	bCameraPanning = false;
+	bCameraPanReturning = false;
 	objIsBeingSearched = NULL;
 	clearSayBuffer = false;
 	selectedPlayerID = 0;
@@ -911,6 +919,7 @@ void HetuwMod::initSettings() {
 
 	yumConfig::registerSetting("key_remembercords", charKey_CreateHome, {preComment: "\n"});
 	yumConfig::registerSetting("key_fixcamera", charKey_FixCamera);
+	yumConfig::registerSetting("key_campan", charKey_CameraPan);
 	yumConfig::registerSetting("key_xray", charKey_xRay);
 	yumConfig::registerSetting("key_search", charKey_Search);
 	// yumConfig::registerSetting("key_teachlanguage", charKey_TeachLanguage);
@@ -1057,6 +1066,9 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("keep_button_pressed_to_findyum", bHoldDownTo_FindYum);
 	yumConfig::registerSetting("keep_button_pressed_to_showgrid", bHoldDownTo_ShowGrid);
 
+	yumConfig::registerScaledSetting("campan_speed", cameraPanSpeed, 10, {preComment: "\n// How quickly the view chases the mouse while panning, a multiplier on the\n// camera easing the game already uses.  10 = the stock follow speed, which\n// is tuned for walking and feels slow here.  10 - 200.\n"});
+	yumConfig::registerScaledSetting("campan_sensitivity", cameraPanSensitivity, 10, {preComment: "\n// How far the view leans while the pan key is held, 10 = the spot under\n// the mouse comes all the way to the middle of the screen.  0 - 50.\n"});
+
 	yumConfig::registerSetting("keep_button_pressed_to_xray", bHoldDownTo_XRay, {preComment: "\n"});
 	yumConfig::registerScaledSetting("xray_opacity", xRayOpacity, 10, {postComment: " // how visible objects should be, can be 0 - 10"});
 
@@ -1166,6 +1178,8 @@ void HetuwMod::initSettings() {
 
 	// value clamping/validation
 	delayReduction = std::max(0, std::min(100, delayReduction));
+	cameraPanSensitivity = std::max(0.0f, std::min(5.0f, cameraPanSensitivity));
+	cameraPanSpeed = std::max(1.0f, std::min(20.0f, cameraPanSpeed));
 	zoomLimit = std::max(0, std::min(maxZoomLevel, zoomLimit));
 	if (fontFilename != defaultFontFilename) {
 		std::ifstream ifs(std::string("graphics/") + fontFilename);
@@ -1319,6 +1333,8 @@ void HetuwMod::initOnServerJoin() { // will be called from LivingLifePage.cpp an
 	takingPhoto = false;
 	bxRay = false;
 	bHidePlayers = false;
+	bCameraPanning = false;
+	bCameraPanReturning = false;
 
  	ourLiveObject = livingLifePage->getOurLiveObject();
 	if (ourLiveObject) {
@@ -3929,6 +3945,10 @@ bool HetuwMod::livingLifeKeyDown(unsigned char inASCII) {
 		else if (!cameraIsFixed) livingLifePage->hetuwToggleFixCamera();
 		return true;
 	}
+	if (!commandKey && isCharKey(inASCII, charKey_CameraPan)) {
+		startCameraPan();
+		return true;
+	}
 	if (!bDrawMap && !commandKey && isCharKey(inASCII, charKey_ShowHostileTiles)) {
 		bDrawHostileTiles = !bDrawHostileTiles;
 		return true;
@@ -4168,6 +4188,12 @@ bool HetuwMod::livingLifeKeyUp(unsigned char inASCII) {
 	if (!commandKey && isCharKey(inASCII, charKey_FixCamera)) {
 		if (bHoldDownTo_FixCamera && cameraIsFixed) {
 			livingLifePage->hetuwToggleFixCamera();
+			r = true;
+		}
+	}
+	if (!commandKey && isCharKey(inASCII, charKey_CameraPan)) {
+		if (bCameraPanning) {
+			stopCameraPan();
 			r = true;
 		}
 	}
@@ -5735,6 +5761,57 @@ void HetuwMod::drawGrid() {
 	}
 }
 
+// YummyLife: the camera easing derives its speed from how fast the player is
+// walking, so standing still - which is when you actually pan - leaves it at
+// its slowest.  Scale it up for the duration of the pan and the trip back.
+double HetuwMod::getCameraPanSpeedFactor() {
+	if (!bCameraPanning && !bCameraPanReturning) return 1.0;
+	return cameraPanSpeed;
+}
+
+// YummyLife: hold-to-pan.
+void HetuwMod::startCameraPan() {
+	if (bCameraPanning) return;
+	bCameraPanning = true;
+	bCameraPanReturning = false;
+	cameraPanFixedBase = lastScreenViewCenter;
+}
+
+void HetuwMod::stopCameraPan() {
+	bCameraPanning = false;
+	bCameraPanReturning = cameraIsFixed;
+}
+
+doublePair HetuwMod::applyCameraPan( doublePair inTarget,
+                                     bool inCameraFollowsPlayer ) {
+	if (!bCameraPanning) {
+		if (bCameraPanReturning) {
+			// the camera was unfixed mid-return, so it can steer itself now
+			if (inCameraFollowsPlayer) bCameraPanReturning = false;
+			// close enough - the easing stops moving below a pixel or two anyway
+			else if (fabs(lastScreenViewCenter.x - cameraPanFixedBase.x) < 2 &&
+			         fabs(lastScreenViewCenter.y - cameraPanFixedBase.y) < 2) {
+				bCameraPanReturning = false;
+			}
+			else return cameraPanFixedBase;
+		}
+		return inTarget;
+	}
+
+	// with a fixed camera there is no moving target to hang the offset off, so
+	// we pan out from wherever the view was sitting when the key went down
+	doublePair base = inCameraFollowsPlayer ? inTarget : cameraPanFixedBase;
+
+	int mouseX, mouseY;
+	livingLifePage->hetuwGetMouseXY( mouseX, mouseY );
+
+	const float sensativityMultiplyer = 3;
+	base.x += (mouseX - lastScreenViewCenter.x) * cameraPanSensitivity * sensativityMultiplyer;
+	base.y += (mouseY - lastScreenViewCenter.y) * cameraPanSensitivity * sensativityMultiplyer;
+
+	return base;
+}
+
 void HetuwMod::SetFixCamera(bool b) {
 	cameraIsFixed = !b;
 }
@@ -5853,6 +5930,12 @@ void HetuwMod::drawHelp() {
 	if (cameraIsFixed) setHelpColorSpecial();
 	else setHelpColorNormal();
 	snprintf(str, sizeof(str), "%c TOGGLE FIX CAMERA", toupper(charKey_FixCamera));
+	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
+	drawPos.y -= lineHeight;
+
+	if (bCameraPanning) setHelpColorSpecial();
+	else setHelpColorNormal();
+	snprintf(str, sizeof(str), "%c HOLD TO PAN CAMERA WITH MOUSE", toupper(charKey_CameraPan));
 	livingLifePage->hetuwDrawScaledHandwritingFont( str, drawPos, guiScale );
 	drawPos.y -= lineHeight;
 
