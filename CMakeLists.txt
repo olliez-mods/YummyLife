@@ -126,7 +126,10 @@ elseif(APPLE)
         minorGems/game/platforms/SDL/mac/MenuBarHelper.m)
     target_compile_options(YummyLife_mac PRIVATE ${CLIENT_COMPILE_OPTIONS})
 
-    yummylife_mac_bundle(YummyLife_mac "YummyLife")
+    # OHOL is only sold for Windows on Steam, so unlike steam_api.dll on that platform there is no copy
+    # already sitting in a mac game folder. Drop one in here and it ships inside the .app
+    yummylife_mac_bundle(YummyLife_mac "YummyLife"
+        "${CMAKE_SOURCE_DIR}/mac/libsteam_api.dylib")
 
     # SDL 1.2 API provided by sdl12-compat (brew install sdl12-compat).
     # FindSDL resolves it from the Homebrew prefix and adds SDLmain plus
@@ -155,6 +158,10 @@ elseif(APPLE)
     target_link_libraries(YummyLife_mac OpenSSL::SSL OpenSSL::Crypto)
 
     target_link_libraries(YummyLife_mac "-framework OpenGL")
+
+    # gameSource/steamAPI.cpp loads libsteam_api.dylib at runtime rather than
+    # linking the Steamworks SDK, so all the build needs is dlopen.
+    target_link_libraries(YummyLife_mac ${CMAKE_DL_LIBS})
 
     # The OHOL editor. EXCLUDE_FROM_ALL keeps it out of the normal build; ask
     # for it by name:
@@ -200,6 +207,10 @@ else()
     include_directories(${OPENGL_INCLUDE_DIR})
 
     target_link_libraries(YummyLife_linux ${OPENGL_LIBRARIES})
+
+    # gameSource/steamAPI.cpp loads libsteam_api.so at runtime rather than
+    # linking the Steamworks SDK, so all the build needs is dlopen.
+    target_link_libraries(YummyLife_linux ${CMAKE_DL_LIBS})
 
     # The editor, built from the same sources as the mac one above. A bare
     # binary rather than a bundle: there is nothing to bundle, and the editor

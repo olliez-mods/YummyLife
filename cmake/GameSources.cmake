@@ -27,6 +27,8 @@ set(CLIENT_SOURCE_FILES
     gameSource/message.cpp
     gameSource/serialWebRequests.cpp
     gameSource/accountHmac.cpp
+    gameSource/steamAPI.cpp
+    gameSource/steamCredentials.cpp
     gameSource/PageComponent.cpp
     gameSource/GamePage.cpp
     gameSource/LivingLifePage.cpp

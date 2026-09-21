@@ -9,6 +9,7 @@ YummyLife (by OliverZ) was originally forked from YumLife (By Selb) to reintrodu
 
 - **[Installing (and updating)](#installing-and-updating)** — [Steam](#steam-users) · [direct download](#direct-download-users) · [no game installed?](#no-game-installed)
 - **[Usage](#usage)**
+- **[Logging in through Steam](#logging-in-through-steam)**
 - **[Troubleshooting](#troubleshooting)** — [update the base game](#make-sure-the-base-game-is-updated) · [clear cache files](#clear-cache-files) · [reinstall](#reinstall) · [still stuck](#still-not-working)
 - **[Building from source](#building-from-source)** — [which platform builds what](#which-platform-builds-what) · [setup](#setup) · [Docker](#building-with-docker) · [macOS](#building-on-macos) · [the editor](#the-ohol-editor) · [the server](#the-game-server)
 - **[Making a release](#making-a-release)**
@@ -24,6 +25,10 @@ YummyLife (by OliverZ) was originally forked from YumLife (By Selb) to reintrodu
 4. Install the mod into the OHOL/AHAP installation folder (Steam users: right click game > Manage > Browse local files)
 5. Run the mod from the OHOL/AHAP installation folder.
 
+If you would rather not run vanilla first, or you play the macOS or Linux build where
+vanilla cannot set your account up at all, the mod can fetch the details itself — see
+[logging in through Steam](#logging-in-through-steam).
+
 ## Direct download users:
 
 1. Download the latest version of the mod from [the Releases page](https://github.com/olliez-mods/YummyLife/releases). For Windows this is YummyLife_windows.exe, for Linux YummyLife_linux, and for macOS YummyLife_mac.zip (unzip it to get YummyLife.app).
@@ -37,9 +42,9 @@ the game data already in it, one per platform for OHOL and for AHAP. Unzip it an
 and run it; nothing else is needed.
 
 These are much larger than the drop-in builds, and they ship without an account key, so
-you will be asked to log in on first launch. **If you own the game on Steam, use the
-drop-in build above instead** — installing into the Steam folder is what lets the mod
-pick up your Steam login.
+you will be asked to log in on first launch. If you own the game on Steam, the mod can
+fetch the details for you instead — see
+[logging in through Steam](#logging-in-through-steam).
 
 macOS note: the app is not notarized, so the first launch needs a right-click > Open
 instead of a double-click (or `xattr -dr com.apple.quarantine YummyLife.app`).
@@ -48,6 +53,20 @@ instead of a double-click (or `xattr -dr com.apple.quarantine YummyLife.app`).
 
 Press `H` in-game to see everything the mod can do. A `yummylife.cfg` file is
 generated in the OHOL/AHAP install folder and can be tweaked to your liking.
+
+# Logging in through Steam
+
+If you own OHOL or AHAP on Steam, the mod can fetch your server account details for you
+instead of you typing an email and account key. Press **GENERATE CREDS** on the settings
+page. Steam only needs to be **running and logged in** — it does not have to be the
+thing that launched the mod, and you do not have to run the vanilla game first.
+
+It works by doing the same thing vanilla's `steamGateClient.exe` does: it asks Steam
+for an authentication ticket, sends it to `onehouronelife.com`, and gets back the same
+account you would have got by launching the base game through Steam.
+
+Family-shared copies resolve to the account of whoever owns the game, which is Valve's
+behaviour and matches vanilla.
 
 # Troubleshooting
 
@@ -261,6 +280,13 @@ the bundle's symlinks and code signature where a plain `zip` would not.
 
 To sign with a real Developer ID instead of the default ad-hoc signature, set
 `YUMMYLIFE_CODESIGN` to the identity name before building.
+
+The macOS build also picks up `mac/libsteam_api.dylib` if you put one there, and copies
+it into `YummyLife.app/Contents/Frameworks` so that GENERATE CREDS works for players who
+own the game on Steam (see [logging in through Steam](#logging-in-through-steam)). The
+file is not in the repository — grab the macOS one from the Steamworks SDK
+redistributables, or copy it out of any Steam game you already have. Leave it out and
+the build still works; GENERATE CREDS just has nothing to talk to.
 
 ### Running it
 

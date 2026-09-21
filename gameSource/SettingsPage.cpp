@@ -19,10 +19,15 @@
 
 #include "hetuwmod.h"
 
+#include "steamCredentials.h"
+#include "ExistingAccountPage.h"
+
 #include "minorGems/io/file/File.h"
 
 
 extern Font *mainFont;
+
+extern ExistingAccountPage *existingAccountPage;
 
 extern float musicLoudness;
 
@@ -36,6 +41,7 @@ SettingsPage::SettingsPage()
           mRestartButton( mainFont, 128, 128, translate( "restartButton" ) ),
           mRedetectButton( mainFont, 173, 249, translate( "redetectButton" ) ),
           mDeleteCacheButton( mainFont, -495, 30, translateWithDefault( "deleteCacheButton", "Delete Cache" ) ),
+          mGenerateCredsButton( mainFont, -476, 110, translateWithDefault( "yummyLifeGenerateCredsButton", "Generate Creds" ) ),
           mVsyncBox( 0, 208, 4 ),
           mFullscreenBox( 0, 128, 4 ),
           mBorderlessBox( 0, 168, 4 ),
@@ -89,6 +95,7 @@ SettingsPage::SettingsPage()
     setButtonStyle( &mRestartButton );
     setButtonStyle( &mRedetectButton );
     setButtonStyle( &mDeleteCacheButton );
+    setButtonStyle( &mGenerateCredsButton );
     setButtonStyle( &mCopyButton );
     setButtonStyle( &mPasteButton );
     setButtonStyle( &mFilterSpritesBox );
@@ -121,6 +128,13 @@ SettingsPage::SettingsPage()
 
     addComponent( &mDeleteCacheButton );
     mDeleteCacheButton.addActionListener( this );
+
+    addComponent( &mGenerateCredsButton );
+    mGenerateCredsButton.addActionListener( this );
+
+    mGenerateCredsButton.setMouseOverTip(
+        translateWithDefault( "yummyLifeGenerateCredsTip",
+                              "This will replace current details" ) );
 
     addComponent( &mFilterSpritesBox );
     mFilterSpritesBox.addActionListener( this );
@@ -367,6 +381,24 @@ void SettingsPage::actionPerformed( GUIComponent *inTarget ) {
         }
         printf( "YummyLife: Deleted %d cache files\n", numDeleted );
     }
+    else if( inTarget == &mGenerateCredsButton ) {
+        // Asks Steam who this is and trades that for an account
+        if( fetchSteamCredentials() ) {
+            char *email = SettingsManager::getStringSetting( "email", "" );
+            char *key = SettingsManager::getStringSetting( "accountKey", "" );
+
+            // fetchSteamCredentials has already saved these, this is to apply globaly without a restart
+            existingAccountPage->updateLoginInfo( email, key );
+
+            delete [] email;
+            delete [] key;
+
+            displayTipMessage( "New account details generated from Steam.", "green", 5000 );
+            }
+        else {
+            displayTipMessage( "Could not reach Steam. See gameLog.txt.", "red", 5000 );
+            }
+        }
     else if( inTarget == &mRestartButton ) {
              
         int newVsyncSetting = 

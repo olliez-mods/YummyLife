@@ -48,6 +48,7 @@ class SettingsPage : public GamePage, public ActionListener {
 
         // YummyLife
         TextButton mDeleteCacheButton;
+        TextButton mGenerateCredsButton;
 
         CheckboxButton mVsyncBox;
         CheckboxButton mFullscreenBox;

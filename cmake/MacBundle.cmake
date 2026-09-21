@@ -36,7 +36,12 @@ add_custom_target(mac_icon DEPENDS ${MAC_ICON_ICNS})
 
 # Finish a declared MACOSX_BUNDLE target into a runnable .app:
 #
-#     yummylife_mac_bundle(<target> <name>)
+#     yummylife_mac_bundle(<target> <name> [<extra library>])
+#
+# <extra library>, if given and present on disk, is copied into
+# Contents/Frameworks before signing. Used for libsteam_api.dylib, which is
+# opened by name at runtime rather than linked, so the dependency walk in
+# mac-bundle.sh cannot discover it.
 #
 # <name> is what the bundle is called on disk and in Info.plist, so the target
 # can keep its _mac suffix - matching the Linux and Windows target names -
@@ -46,6 +51,7 @@ add_custom_target(mac_icon DEPENDS ${MAC_ICON_ICNS})
 # that writes into the bundle: the last thing this attaches is the signing, and
 # anything that writes into a bundle after it has been signed invalidates it.
 function(yummylife_mac_bundle target name)
+    set(extra_library "${ARGV2}")
     set_target_properties(${target} PROPERTIES
         OUTPUT_NAME "${name}"
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/Info.plist.in"
@@ -64,6 +70,19 @@ function(yummylife_mac_bundle target name)
         COMMENT "Copying mac_icon.icns into the bundle"
         VERBATIM
     )
+
+    # A runtime-loaded library, if one was supplied and is actually there.
+    # Before the signing below, like everything else that writes into the
+    # bundle.
+    if(extra_library AND EXISTS "${extra_library}")
+        message(STATUS "Bundling ${extra_library} into ${name}.app")
+        add_custom_command(TARGET ${target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_DIR:${target}>/Contents/Frameworks"
+            COMMAND ${CMAKE_COMMAND} -E copy "${extra_library}" "$<TARGET_BUNDLE_DIR:${target}>/Contents/Frameworks/"
+            COMMENT "Copying ${extra_library} into the bundle"
+            VERBATIM
+        )
+    endif()
 
     # Copy the Homebrew libraries the app needs into the bundle and re-sign it,
     # so it runs on a machine with no Homebrew installed. Runs last, everything

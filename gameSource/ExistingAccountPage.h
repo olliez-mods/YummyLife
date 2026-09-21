@@ -19,6 +19,12 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         
         void clearFields();
 
+        // YummyLife: show an account in the login fields and make it the one
+        // the rest of the game uses. Also called from the settings page,
+        // after GENERATE CREDS saves a new account.
+        void updateLoginInfo( const char* inEmail, const char* inKey,
+                              bool saveToSettings = false );
+
 
         // defaults to true
         void showReviewButton( char inShow );
@@ -143,7 +149,6 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         void onAccountDeleteStarted();
 
         void selectAccountAtIndex(int index);
-        void updateLoginInfo(const char* inEmail, const char* inKey, bool saveToSettings = false);
         void updateCenterInfoStates();
         void deleteOwnedSharedAccount();
 
