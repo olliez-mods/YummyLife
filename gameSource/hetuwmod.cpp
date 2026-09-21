@@ -28,6 +28,7 @@
 
 #include "yummyLife.h"
 #include "yummyGPS.h"
+#include "YumSettingsPage.h"
 
 // Funky syntax bug, VSCode marks M_PI as undefined
 #ifndef M_PI
@@ -890,11 +891,25 @@ static void validateFilteredIDs(std::vector<std::string>& ids) {
 	HetuwMod::filteredSprites = filteredIDs;
 }
 
+// YummyLife: a handful of settings are copied into working variables or need
+// clamping once they are read.
+void HetuwMod::onSettingsChanged() {
+	delayReduction = std::max(0, std::min(100, delayReduction));
+	zoomLimit = std::max(0, std::min(maxZoomLevel, zoomLimit));
+
+	validateNames(autoMaleNames);
+	validateNames(autoFemaleNames);
+	yumRebirthComponent::registerDefaults(defaultAutoDieOptions);
+
+	validateFilteredIDs(vFilteredSprites);
+	filterSprites = bFilterSprites;
+}
+
 void HetuwMod::initSettings() {
 	const int cfgVersionLatest = 9;
 	static int cfgVersionActive = cfgVersionLatest;
 
-	yumConfig::registerSetting("cfg_version", cfgVersionActive, {preComment: "// this file will be created whenever you start the mod\n// if you want to reset this file, just delete it\n\n"});
+	yumConfig::registerSetting("cfg_version", cfgVersionActive, {hidden: true, preComment: "// this file will be created whenever you start the mod\n// if you want to reset this file, just delete it\n\n"});
 
 	yumConfig::registerSetting("key_up", charKey_Up, {preComment: "\n"});
 	yumConfig::registerSetting("key_down", charKey_Down);
@@ -1040,7 +1055,7 @@ void HetuwMod::initSettings() {
 	};
 	yumConfig::registerMappedSetting("restore_statue_speech", iStatueSpeechMode, statueSpeechModeMap, {postComment: " // last words on rocket statues, which the server no longer speaks: off, hover, click"});
 	yumConfig::registerSetting("log_chat", HetuwMod::bPrintChatLogToFile, {postComment: " // write speech to " hetuwLogFileName});
-	yumConfig::registerScaledSetting("qol_text_scale", qolTextScale, 10, {postComment: " // text size of the chat log overlay, 10 = full size, default 7"});
+	yumConfig::registerScaledSetting("qol_text_scale", qolTextScale, 10, 0.0f, 1.0f, {postComment: " // text size of the chat log overlay, 10 = full size, default 7"});
 	// ... to here
 
 	static std::map<std::string, int> drawNamesMap = {
@@ -1066,11 +1081,11 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("keep_button_pressed_to_findyum", bHoldDownTo_FindYum);
 	yumConfig::registerSetting("keep_button_pressed_to_showgrid", bHoldDownTo_ShowGrid);
 
-	yumConfig::registerScaledSetting("campan_speed", cameraPanSpeed, 10, {preComment: "\n// How quickly the view chases the mouse while panning, a multiplier on the\n// camera easing the game already uses.  10 = the stock follow speed, which\n// is tuned for walking and feels slow here.  10 - 200.\n"});
-	yumConfig::registerScaledSetting("campan_sensitivity", cameraPanSensitivity, 10, {preComment: "\n// How far the view leans while the pan key is held, 10 = the spot under\n// the mouse comes all the way to the middle of the screen.  0 - 50.\n"});
+	yumConfig::registerScaledSetting("campan_speed", cameraPanSpeed, 10, 1.0f, 20.0f, {preComment: "\n// How quickly the view chases the mouse while panning, a multiplier on the\n// camera easing the game already uses.  10 = the stock follow speed, which\n// is tuned for walking and feels slow here.  10 - 200.\n"});
+	yumConfig::registerScaledSetting("campan_sensitivity", cameraPanSensitivity, 10, 0.0f, 5.0f, {preComment: "\n// How far the view leans while the pan key is held, 10 = the spot under\n// the mouse comes all the way to the middle of the screen.  0 - 50.\n"});
 
 	yumConfig::registerSetting("keep_button_pressed_to_xray", bHoldDownTo_XRay, {preComment: "\n"});
-	yumConfig::registerScaledSetting("xray_opacity", xRayOpacity, 10, {postComment: " // how visible objects should be, can be 0 - 10"});
+	yumConfig::registerScaledSetting("xray_opacity", xRayOpacity, 10, 0.0f, 1.0f, {postComment: " // how visible objects should be, can be 0 - 10"});
 
 	yumConfig::registerSetting("draw_yumcolor", b_drawYumColor, {preComment: "\n"});
 	yumConfig::registerSetting("draw_yumpulsate", b_drawYumPulsate);
@@ -1086,7 +1101,7 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("automatic_data_update", bAutoDataUpdate, {preComment: "\n"});
 	yumConfig::registerSetting("hetuw_log", bWriteLogs, {postComment: " // will create a log file '" hetuwLogFileName "' that logs different events"});
 
-	yumConfig::registerScaledSetting("chat_delay", sayDelay, 10, {postComment: " // wait atleast X time before sending the next text (10 = 1 second) - set it to 0 to deactivate it"});
+	yumConfig::registerScaledSetting("chat_delay", sayDelay, 10, 0.0f, 1.0f, {postComment: " // wait atleast X time before sending the next text (10 = 1 second) - set it to 0 to deactivate it"});
 
 	yumConfig::registerSetting("draw_mushroom_effect", bRemapStart, {preComment: "\n"});
 	yumConfig::registerSetting("draw_hunger_warning", bDrawHungerWarning);
@@ -1181,6 +1196,7 @@ void HetuwMod::initSettings() {
 	cameraPanSensitivity = std::max(0.0f, std::min(5.0f, cameraPanSensitivity));
 	cameraPanSpeed = std::max(1.0f, std::min(20.0f, cameraPanSpeed));
 	zoomLimit = std::max(0, std::min(maxZoomLevel, zoomLimit));
+
 	if (fontFilename != defaultFontFilename) {
 		std::ifstream ifs(std::string("graphics/") + fontFilename);
 		if (!ifs.good()) {
@@ -1188,14 +1204,10 @@ void HetuwMod::initSettings() {
 		}
 		ifs.close();
 	}
-	validateNames(autoMaleNames);
-	validateNames(autoFemaleNames);
-	yumRebirthComponent::registerDefaults(defaultAutoDieOptions);
 
 	phexIsEnabled = phexIsEnabledAsConfigured;
 
-	validateFilteredIDs(vFilteredSprites);
-	filterSprites = bFilterSprites;
+	onSettingsChanged();
 
 	cfgVersionActive = cfgVersionLatest;
 	yumConfig::saveSettings(yummylifeSettingsFileName);
@@ -1643,6 +1655,9 @@ void HetuwMod::stepHttpRequests() {
 }
 
 void HetuwMod::onScroll(int dir) {
+	// YummyLife: the wheel never reaches a GamePage on its own, and the mod
+	// settings list is the one page that needs it
+	if (YumSettingsPage::handleScroll(dir)) return;
 	if (Phex::onScroll(dir)) return;
 
 	// ChatLog is open, and not holding shift

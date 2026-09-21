@@ -134,6 +134,9 @@ ExistingAccountPage::ExistingAccountPage()
           mShareAccountButton( mainFont, 540, 135, translateWithDefault( "yummyLifeShareAccountButton", "SHARE") ),
           mCancelButton( mainFont, -530, -280, translate( "quit" ) ),
           mSettingsButton( mainFont, -522, 275, translate( "settingsButton" ) ),
+          mYumConfigButton( mainFont, -346, 275,
+                            translateWithDefault( "yummyLifeConfigButton",
+                                                  "CONFIG" ) ),
           mReviewButton( mainFont, -400, -200, 
                          translate( "postReviewButton" ) ),
           mRetryButton( mainFont, -100, 198, translate( "retryButton" ) ),
@@ -142,7 +145,7 @@ ExistingAccountPage::ExistingAccountPage()
           mTutorialButton( mainFont, 205, -280, translate( "tutorial" ) ),
           mTutOneButton( mainFont, 165, -220, translateWithDefault( "yummyLifeTutOneButton", "T#1" ) ),
           mTutTwoButton( mainFont, 245, -220, translateWithDefault( "yummyLifeTutTwoButton", "T#2" ) ),
-          mServicesButton( mainFont, -330, 275, translate( "services" ) ),
+          mServicesButton( mainFont, -175, 275, translate( "services" ) ),
           mAHAPSettingsButton( mainFont, -522, 0, 
                                translate( "ahapSettings" ) ),
           mNextImageButton( mainFont, -340, -160, translateWithDefault("yummyNextImageButton", "NEXT")),
@@ -196,6 +199,7 @@ ExistingAccountPage::ExistingAccountPage()
     setButtonStyle( &mShareAccountButton );
     setButtonStyle( &mCancelButton );
     setButtonStyle( &mSettingsButton );
+    setButtonStyle( &mYumConfigButton );
     setButtonStyle( &mReviewButton );
     setButtonStyle( &mAtSignButton );
     setButtonStyle( &mPasteButton );
@@ -250,6 +254,7 @@ ExistingAccountPage::ExistingAccountPage()
     addComponent( &mShareAccountButton );
     addComponent( &mCancelButton );
     addComponent( &mSettingsButton );
+    addComponent( &mYumConfigButton );
     // addComponent( &mReviewButton ); YummyLife: Disabled for now
     addComponent( &mAtSignButton );
     addComponent( &mPasteButton );
@@ -301,6 +306,7 @@ ExistingAccountPage::ExistingAccountPage()
     
     mCancelButton.addActionListener( this );
     mSettingsButton.addActionListener( this );
+    mYumConfigButton.addActionListener( this );
     mReviewButton.addActionListener( this );
     
     mAtSignButton.addActionListener( this );
@@ -386,6 +392,9 @@ ExistingAccountPage::ExistingAccountPage()
     mAcntCloseButton.setMouseOverTip( translateWithDefault("yummyLifeAcntCloseButtonTip", "CLOSE WINDOW"));
     
     
+    mYumConfigButton.setMouseOverTip(
+        translateWithDefault( "yummyLifeConfigButtonTip",
+                              "YUMMYLIFE MOD SETTINGS" ) );
     mServicesButton.setMouseOverTip( translate( "servicesTip" ) );
     
 
@@ -634,6 +643,7 @@ void ExistingAccountPage::hideLeftScreenItems(bool hide) {
     mNextImageButton.setVisible(!hide);
     mPrevImageButton.setVisible(!hide);
     mSettingsButton.setVisible(!hide);
+    mYumConfigButton.setVisible(!hide);
     mServicesButton.setVisible(!hide);
 }
 
@@ -893,6 +903,9 @@ void ExistingAccountPage::actionPerformed( GUIComponent *inTarget ) {
         }
     else if( inTarget == &mSettingsButton ) {
         setSignal( "settings" );
+        }
+    else if( inTarget == &mYumConfigButton ) {
+        setSignal( "yumSettings" );
         }
     else if( inTarget == &mReviewButton ) {
         if( userEmail != NULL ) {

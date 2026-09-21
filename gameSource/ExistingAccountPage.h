@@ -77,6 +77,7 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         TextButton mCancelButton;
 
         TextButton mSettingsButton;
+        TextButton mYumConfigButton;
         TextButton mReviewButton;
         
         TextButton mRetryButton;

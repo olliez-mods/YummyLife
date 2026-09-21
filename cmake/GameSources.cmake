@@ -58,6 +58,7 @@ set(CLIENT_SOURCE_FILES
     gameSource/musicPlayer2.cpp
     gameSource/groundSprites.cpp
     gameSource/SettingsPage.cpp
+    gameSource/YumSettingsPage.cpp
     gameSource/CheckboxButton.cpp
     gameSource/ValueSlider.cpp
     gameSource/SpriteButton.cpp

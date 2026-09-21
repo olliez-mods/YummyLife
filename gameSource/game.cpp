@@ -109,6 +109,7 @@ CustomRandomSource randSource( 34957197 );
 #include "ExtendedMessagePage.h"
 #include "RebirthChoicePage.h"
 #include "SettingsPage.h"
+#include "YumSettingsPage.h"
 #include "ReviewPage.h"
 #include "TwinPage.h"
 #include "PollPage.h"
@@ -180,6 +181,7 @@ ExistingAccountPage *existingAccountPage;
 ExtendedMessagePage *extendedMessagePage;
 RebirthChoicePage *rebirthChoicePage;
 SettingsPage *settingsPage;
+YumSettingsPage *yumSettingsPage;
 ReviewPage *reviewPage;
 TwinPage *twinPage;
 PollPage *pollPage;
@@ -511,6 +513,7 @@ char hetuwGetConfirmExitKey() {
 }
 
 char yumEscapeConsumed() {
+	if( currentGamePage == yumSettingsPage ) return true;
 	return HetuwMod::escapeConsumed();
 }
 
@@ -799,6 +802,7 @@ void initFrameDrawer( int inWidth, int inHeight, int inTargetFrameRate,
     extendedMessagePage = new ExtendedMessagePage;
     rebirthChoicePage = new RebirthChoicePage;
     settingsPage = new SettingsPage;
+    yumSettingsPage = new YumSettingsPage;
 
 
     char *reviewURL;
@@ -918,6 +922,7 @@ void freeFrameDrawer() {
     delete extendedMessagePage;
     delete rebirthChoicePage;
     delete settingsPage;
+    delete yumSettingsPage;
     delete reviewPage;
     delete twinPage;
     delete pollPage;
@@ -2172,6 +2177,20 @@ void drawFrame( char inUpdate ) {
                 }
 
             }
+        else if( currentGamePage == yumSettingsPage ) {
+            if( yumSettingsPage->checkSignal( "back" ) ) {
+                existingAccountPage->setStatus( NULL, false );
+                currentGamePage = existingAccountPage;
+                currentGamePage->base_makeActive( true );
+                }
+            else if( yumSettingsPage->checkSignal( "relaunchFailed" ) ) {
+                currentGamePage = finalMessagePage;
+
+                finalMessagePage->setMessageKey( "manualRestartMessage" );
+
+                currentGamePage->base_makeActive( true );
+                }
+            }
         else if( currentGamePage == reviewPage ) {
             if( reviewPage->checkSignal( "back" ) ) {
                 existingAccountPage->setStatus( NULL, false );
@@ -2235,6 +2254,10 @@ void drawFrame( char inUpdate ) {
                 }
             else if( existingAccountPage->checkSignal( "settings" ) ) {
                 currentGamePage = settingsPage;
+                currentGamePage->base_makeActive( true );
+                }
+            else if( existingAccountPage->checkSignal( "yumSettings" ) ) {
+                currentGamePage = yumSettingsPage;
                 currentGamePage->base_makeActive( true );
                 }
             else if( existingAccountPage->checkSignal( "review" ) ) {

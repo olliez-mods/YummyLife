@@ -319,6 +319,9 @@ public:
 
 	static bool isCharKey( unsigned char c, unsigned char charKey );
 
+	// YummyLife: re-derive the working copies after settings are edited live
+	static void onSettingsChanged();
+
 	static time_t lastSpecialEmote;
 
 	static bool stopAutoRoadRun;
