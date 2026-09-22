@@ -206,9 +206,12 @@ class YummyLife {
 
 // Returns true if this objectID should be tracked at all:
 //   - has autoDecaySeconds > 0 and is not epoch-based
-//   - cannot be held in hand (can't be picked up), OR
-//     can be held but when dropped produces a different ID
-//     (so the server restarts decay on placement → our MAP_CHANGE is fresh)
+//
+// Held objects used to be excluded here, because a player can carry one for
+// most of its life and set it down looking brand new. That is now handled
+// precisely instead: yumOnMapChange carries the ETA into the player's hand on
+// pickup and back out on set-down, so a carried object keeps its real ETA and
+// one we never saw picked up gets no timer at all.
 bool yumIsDecayTrackable( int objectID );
 
 // Returns true if the timer is reliable across chunk reloads:
@@ -220,7 +223,26 @@ bool yumDecaySurvivesChunkReload( int objectID );
 // Called from MAP_CHANGE handler.
 // newID / oldID are what's at the cell now vs before the message.
 // worldX / worldY are the full world-coordinate tile position.
-void yumOnMapChange( int worldX, int worldY, int newID, int oldID );
+//
+// inResponsiblePlayerID is the MAP_CHANGE responsible-player field, with the
+// server's sign convention (see LivingLifePage.cpp MX handling):
+//    -1  no player — the object auto-decayed into place, ETA is fresh
+//   < -1 player -inResponsiblePlayerID ran a transition here, ETA is fresh
+//   > 0  that player SET AN OBJECT DOWN — the ETA came out of their hand
+// inResponsibleHoldingID is that player's holdingID as of this message (0 if
+// there is no responsible player or they are not currently tracked), which is
+// what tells us a vanished object went into a hand rather than being consumed.
+void yumOnMapChange( int worldX, int worldY, int newID, int oldID,
+                     int inResponsiblePlayerID, int inResponsibleHoldingID );
+
+// Called from PLAYER_UPDATE when a tracked player's held object changes.
+// Objects like firebrands and hot metal in tongs are created by a transition
+// while already in someone's hand and never touch the map, so their decay has
+// to start here or they would only ever be set down with an unknown age.
+// Ground pickups (inOldHeldID <= 0) are deliberately ignored — yumOnMapChange
+// already moves the real ETA off the map for those, and starting a fresh one
+// here would clobber it depending on message order.
+void yumOnPlayerHoldingChange( int playerID, int inOldHeldID, int inNewHeldID );
 
 // Called from MAP_CHUNK cell handler.
 // newID / oldID are chart-based: newID is from the chunk, oldID was in mMap.
