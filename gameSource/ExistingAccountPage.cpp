@@ -145,7 +145,7 @@ ExistingAccountPage::ExistingAccountPage()
           mTutorialButton( mainFont, 205, -280, translate( "tutorial" ) ),
           mTutOneButton( mainFont, 165, -220, translateWithDefault( "yummyLifeTutOneButton", "T#1" ) ),
           mTutTwoButton( mainFont, 245, -220, translateWithDefault( "yummyLifeTutTwoButton", "T#2" ) ),
-          mServicesButton( mainFont, -175, 275, translate( "services" ) ),
+          mServicesButton( mainFont, -175, 275, translateWithDefault( "services", "SERVICES" ) ),
           mAHAPSettingsButton( mainFont, -522, 0, 
                                translate( "ahapSettings" ) ),
           mNextImageButton( mainFont, -340, -160, translateWithDefault("yummyNextImageButton", "NEXT")),
