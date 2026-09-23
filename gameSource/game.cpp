@@ -322,11 +322,17 @@ char isNonIntegerScalingAllowed() {
 
 
 static char *windowTitle = NULL;
+static void updateDataVersionNumber();
 const char *getWindowTitle() {
 	if (windowTitle == NULL) {
 		HetuwMod::detectGameMode();
+		if (dataVersionNumber == 0) updateDataVersionNumber();
+		char gameMode[64] = "";
+		if (dataVersionNumber > 0) snprintf(gameMode, sizeof(gameMode), "%s d%d", HetuwMod::getGameModeName(), dataVersionNumber);
+		else snprintf(gameMode, sizeof(gameMode), "%s", HetuwMod::getGameModeName());
+
 		char title[256] = "";
-		snprintf(title, sizeof(title), "YummyLife v%d%s (%s) - Oliver", binVersionNumber, yumSubVersion, HetuwMod::getGameModeName());
+		snprintf(title, sizeof(title), "YummyLife v%d%s (%s) - Oliver", binVersionNumber, yumSubVersion, gameMode);
 
         #ifdef TEST_BUILD
         strcat(title, " (TEST BUILD)");
@@ -424,6 +430,12 @@ static void updateDataVersionNumber() {
             sscanf( contents, "%d", &dataVersionNumber );
         
             delete [] contents;
+
+            // YummyLife: the title shows the data version, rebuild it after a data update
+            if( windowTitle != NULL ) {
+                free( windowTitle );
+                windowTitle = NULL;
+            }
 
             if( ! isAHAP ) {
                 // dataVersionNumber and versionNumber are incremented in an
