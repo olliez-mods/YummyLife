@@ -442,6 +442,10 @@ public:
 	}
 
 	static void init();
+	// YummyLife: sets isAHAP and tholCompat from the game folder. Called
+	static void detectGameMode();
+	static const char *getGameModeName(); // "OHOL", "AHAP" or "2HOL"
+
 	static void initHelpText();
 	static void initOnBirth();
 	static void initOnServerJoin();

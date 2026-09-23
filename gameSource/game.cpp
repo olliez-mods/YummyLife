@@ -324,8 +324,9 @@ char isNonIntegerScalingAllowed() {
 static char *windowTitle = NULL;
 const char *getWindowTitle() {
 	if (windowTitle == NULL) {
+		HetuwMod::detectGameMode();
 		char title[256] = "";
-		snprintf(title, sizeof(title), "YummyLife v%d%s - Oliver", binVersionNumber, yumSubVersion);
+		snprintf(title, sizeof(title), "YummyLife v%d%s (%s) - Oliver", binVersionNumber, yumSubVersion, HetuwMod::getGameModeName());
 
         #ifdef TEST_BUILD
         strcat(title, " (TEST BUILD)");

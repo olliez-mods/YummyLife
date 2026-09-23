@@ -439,19 +439,25 @@ static char detectTholCompat() {
 	return result;
 }
 
-void HetuwMod::init() {
+void HetuwMod::detectGameMode() {
 	/* this is from vanilla initFrameDrawer(), which is just too late for us */
 	File isAHAPFile( NULL, "isAHAP.txt" );
     if( isAHAPFile.exists() ) {
         int val = isAHAPFile.readFileIntContents( 0 );
-        if( val == 1 ) {
-            isAHAP = true;
-            }
-        }
-
+        if( val == 1 ) isAHAP = true;
+    }
 	tholCompat = detectTholCompat();
-	printf( "This game is running in %s mode\n",
-			tholCompat ? "2HOL" : ( isAHAP ? "AHAP" : "OHOL" ) );
+}
+
+const char *HetuwMod::getGameModeName() {
+	if( tholCompat ) return "2HOL";
+	if( isAHAP ) return "AHAP";
+	return "OHOL";
+}
+
+void HetuwMod::init() {
+	detectGameMode();
+	printf( "This game is running in %s mode\n", getGameModeName() );
 
 	blobs::font_32_64_yum.write("graphics/font_32_64_yum.tga");
 
