@@ -2,6 +2,7 @@
 #include "settingsToggle.h"
 
 #include <math.h>
+#include <stdio.h>
 
 
 static double babyHeadDownFactor = 0.6;
@@ -14,26 +15,146 @@ static double oldHeadForwardFactor = 2;
 
 
 #include "minorGems/util/SettingsManager.h"
+#include "minorGems/util/SimpleVector.h"
+#include "minorGems/util/stringUtils.h"
+
+
+// YummyLife:  one (real age, drawn age) pair from the ageScaling setting.
+typedef struct AgeScalePoint {
+        double realAge;
+        double displayAge;
+    } AgeScalePoint;
+
+
+// YummyLife:  2HOL runs a 120-year life, but draws its people with art laid
+// out on the same 0-60 scale as OneLife, so it maps one age onto the other
+// before drawing.
+
+// That map is the ageScaling setting, one
+// "<realAge> <displayAge> <label>" line per milestone.  There is no such
+// setting on OneLife or AHAP, where the two scales already agree, and
+// getDisplayAge is then the identity.
+static SimpleVector<AgeScalePoint> ageScalePoints;
+
+// YummyLife:  these numbers live in contentSettings on OneLife, but 2HOL
+// ships no such folder and keeps them in settings instead.
+static double getContentOrMainSetting( const char *inSettingName,
+                                       double inDefaultValue ) {
+    char found = false;
+
+    useContentSettings();
+    double value = SettingsManager::getDoubleSetting( inSettingName, &found );
+
+    if(!found) {
+        useMainSettings();
+        value = SettingsManager::getDoubleSetting( inSettingName, &found );
+    }
+
+    useMainSettings();
+
+    if(!found) return inDefaultValue;
+    return value;
+}
+
+static char *getContentOrMainContents( const char *inSettingName ) {
+    useContentSettings();
+    char *contents = SettingsManager::getSettingContents( inSettingName );
+
+    if(contents == NULL) {
+        useMainSettings();
+        contents = SettingsManager::getSettingContents( inSettingName );
+    }
+
+    useMainSettings();
+    return contents;
+}
+
+static void initAgeScaling() {
+    ageScalePoints.deleteAll();
+
+    char *contents = getContentOrMainContents( "ageScaling" );
+
+    if(contents == NULL) return;
+
+    int numLines;
+    char **lines = split( contents, "\n", &numLines );
+
+    for( int i=0; i<numLines; i++ ) {
+        AgeScalePoint p;
+        if( sscanf( lines[i], "%lf %lf", &( p.realAge ), &( p.displayAge ) ) == 2 && p.realAge > 0 ) {
+            ageScalePoints.push_back( p );
+        }
+        delete [] lines[i];
+    }
+    delete [] lines;
+    delete [] contents;
+
+
+    // getDisplayAge walks these in order, so sort by real age rather than
+    // trusting the file to be written that way.  Only a handful of points.
+    for( int i=1; i<ageScalePoints.size(); i++ ) {
+        AgeScalePoint p = ageScalePoints.getElementDirect( i );
+
+        int j = i - 1;
+
+        while( j >= 0 && ageScalePoints.getElementDirect( j ).realAge > p.realAge ) {
+            *( ageScalePoints.getElement( j + 1 ) ) = ageScalePoints.getElementDirect( j );
+            j --;
+        }
+        *( ageScalePoints.getElement( j + 1 ) ) = p;
+    }
+
+    if( ageScalePoints.size() > 0 ) {
+        AgeScalePoint last = ageScalePoints.getElementDirect( ageScalePoints.size() - 1 );
+        printf( "Loaded %d age scaling points, "
+                "drawing a real age of %.0f as %.0f\n",
+                ageScalePoints.size(), last.realAge, last.displayAge );
+    }
+}
 
 
 void initAgeControl() {
+    babyHeadDownFactor = getContentOrMainSetting( "babyHeadDownFactor", 0.6 );
+    babyBodyDownFactor = getContentOrMainSetting( "babyBodyDownFactor", 0.75 );
+    oldHeadDownFactor = getContentOrMainSetting( "oldHeadDownFactor", 0.35 );
+    oldHeadForwardFactor = getContentOrMainSetting( "oldHeadForwardFactor", 2 );
+    initAgeScaling();
+}
 
-    useContentSettings();
-    
-    babyHeadDownFactor = 
-        SettingsManager::getFloatSetting( "babyHeadDownFactor", 0.6 );
-    
-    babyBodyDownFactor = 
-        SettingsManager::getFloatSetting( "babyBodyDownFactor", 0.75 );
+double getDisplayAge( double inRealAge ) {
+    // -1 means "not a person" throughout the drawing code, so it, and
+    // anything else before birth, passes straight through
+    if( inRealAge < 0 ) return inRealAge;
 
-    oldHeadDownFactor = 
-        SettingsManager::getFloatSetting( "oldHeadDownFactor", 0.35 );
+    int numPoints = ageScalePoints.size();
 
-    oldHeadForwardFactor = 
-        SettingsManager::getFloatSetting( "oldHeadForwardFactor", 2 );
-    
-    useMainSettings();
+    // nothing configured, so the two scales are the same
+    if( numPoints == 0 ) return inRealAge;
+
+    // birth is the same moment on both scales, and anchors the first segment
+    double prevReal = 0;
+    double prevDisplay = 0;
+
+    for( int i=0; i<numPoints; i++ ) {
+        AgeScalePoint p = ageScalePoints.getElementDirect( i );
+
+        if( inRealAge <= p.realAge ) {
+            double span = p.realAge - prevReal;
+
+            if( span <= 0 ) return p.displayAge;
+            return prevDisplay +
+                ( inRealAge - prevReal ) *
+                ( p.displayAge - prevDisplay ) / span;
+        }
+
+        prevReal = p.realAge;
+        prevDisplay = p.displayAge;
     }
+
+    // past the last point, which is death - hold there
+    return prevDisplay;
+}
+// YummyLife: changes end here
 
 
 

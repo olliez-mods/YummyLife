@@ -672,6 +672,10 @@ static int totalToolSlots = 0;
 static char rocketAnimationStarted = false;
 
 
+// YummyLife:  true when this is a Two Hours One Life game folder, there's certain protocol changes
+extern char tholCompat;
+
+
 typedef struct Homeland {
         int x, y;
         char *familyName;
@@ -1670,6 +1674,15 @@ double computeCurrentAge( LiveObject *inObj ) {
         return computeCurrentAgeNoOverride( inObj );
         }
     
+    }
+
+
+
+// YummyLife:  the age to draw a person at, which is not always the age the
+// server counts for them.  2HOL runs a 120-year life over its two hours, but
+// its character art is laid out on OneLife's 0-60 scale.
+static double computeCurrentDisplayAge( LiveObject *inObj ) {
+    return getDisplayAge( computeCurrentAge( inObj ) );
     }
 
 double LivingLifePage::hetuwGetAge( LiveObject *inObj ) {
@@ -3410,7 +3423,7 @@ LivingLifePage::LivingLifePage()
         }
 
 
-    mTutorialSound = loadSoundSprite( "otherSounds", "tutorialChime.aiff" );
+    mTutorialSound = YummyLife::loadChimeSound();
 
     if( mTutorialSound != NULL ) {
         toggleVariance( mTutorialSound, true );
@@ -5785,7 +5798,7 @@ ObjectAnimPack LivingLifePage::drawLiveObject(
     //mainFont->drawString( string, 
     //                      pos, alignCenter );
                 
-    double age = computeCurrentAge( inObj );
+    double age = computeCurrentDisplayAge( inObj );
 
 
     ObjectRecord *heldObject = NULL;
@@ -6318,7 +6331,7 @@ ObjectAnimPack LivingLifePage::drawLiveObject(
                                 0,
                                 false,
                                 heldFlip,
-                                computeCurrentAge( babyO ),
+                                computeCurrentDisplayAge( babyO ),
                                 hideClosestArmBaby,
                                 hideAllLimbsBaby,
                                 false,
@@ -6846,7 +6859,7 @@ doublePair getSpeechOffset( LiveObject *inPlayer ) {
     ObjectRecord *displayObj = getObject( o->displayID );
     
     
-    double age = computeCurrentAge( o );
+    double age = computeCurrentDisplayAge( o );
     
     doublePair headPos = 
         displayObj->spritePos[ getHeadIndex( displayObj, age ) ];
@@ -15932,11 +15945,15 @@ void LivingLifePage::step() {
                 loginWord = "RLOGIN";
                 }
 
+            // YummyLife:  THOL's server rejects the LOGIN message if tag is included
+            char *loginPrefix = tholCompat
+                ? autoSprintf( "%s", loginWord )
+                : autoSprintf( "%s %s", loginWord, clientTag );
 
             if( strlen( userEmail ) <= 80 ) {    
-                outMessage = autoSprintf( "%s %s %-80s %s %s %d%s#",
-                                          loginWord,
-                                          clientTag, tempEmail.c_str(), pwHash, keyHash.c_str(),
+                outMessage = autoSprintf( "%s %-80s %s %s %d%s#",
+                                          loginPrefix,
+                                          tempEmail.c_str(), pwHash, keyHash.c_str(),
                                           mTutorialNumber, twinExtra );
                 }
             else {
@@ -15944,11 +15961,13 @@ void LivingLifePage::step() {
                 // don't cut it off.
                 // but note that the playback will fail if email.ini
                 // doesn't match on the playback machine
-                outMessage = autoSprintf( "%s %s %s %s %s %d%s#",
-                                          loginWord,
-                                          clientTag, tempEmail.c_str(), pwHash, keyHash.c_str(),
+                outMessage = autoSprintf( "%s %s %s %s %d%s#",
+                                          loginPrefix,
+                                          tempEmail.c_str(), pwHash, keyHash.c_str(),
                                           mTutorialNumber, twinExtra );
                 }
+
+            delete [] loginPrefix;
             
             //delete [] tempEmail;
             delete [] twinExtra;
@@ -23382,7 +23401,7 @@ void LivingLifePage::step() {
                 
                 handleAnimSound( o->id, 
                                  o->displayID,
-                                 computeCurrentAge( o ),
+                                 computeCurrentDisplayAge( o ),
                                  t,
                                  oldFrameCount, o->animationFrameCount,
                                  pos.x,
@@ -25099,7 +25118,7 @@ void LivingLifePage::checkForPointerHit( PointerHitRecord *inRecord,
                         NULL,
                         o->clothingContained,
                         false,
-                        computeCurrentAge( o ),
+                        computeCurrentDisplayAge( o ),
                         -1,
                         o->holdingFlip,
                         personClickOffsetX,
@@ -25296,7 +25315,7 @@ void LivingLifePage::checkForPointerHit( PointerHitRecord *inRecord,
                             NULL,
                             o->clothingContained,
                             false,
-                            computeCurrentAge( o ),
+                            computeCurrentDisplayAge( o ),
                             -1,
                             o->holdingFlip,
                             clickOffsetX,
@@ -26967,7 +26986,10 @@ void LivingLifePage::pointerDown( float inX, float inY ) {
                 if( ourLiveObject->holdingID != 0 ) {
 
                     if( destObjInClickedTile != 0 ) {
-                        action = "SWAP";
+                        // YummyLife:  THOL doesn't know SWAP, and would
+                        // drop the message on the floor.  DROP does the
+                        // same thing server-side here.
+                        action = tholCompat ? "DROP" : "SWAP";
                         }
                     else {
                         // just plain drop

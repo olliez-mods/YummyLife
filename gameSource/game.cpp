@@ -32,6 +32,10 @@ int softwareVersionNumber = versionNumber;
 
 char isAHAP = false;
 
+// YummyLife:  true when this game folder is Two Hours One Life, set in
+// HetuwMod::init
+char tholCompat = false;
+
 
 
 #include <stdio.h>

@@ -65,6 +65,8 @@ SpriteHandle galleryImageSprite;
 
 SoundSpriteHandle YummyLife::screenshotSound;
 
+extern char tholCompat;
+
 std::vector<int> YummyLife::lastYums;
 int YummyLife::lastYumsLifeID = -1; // Life ID's can't be below 0 (or 1 maybe)
 
@@ -460,11 +462,13 @@ void YummyLife::cleanUp() {
         freeSoundSprite(screenshotSound);
 }
 
-void YummyLife::takingScreenshot() {
-    if(screenshotSound == NULL)
-        screenshotSound = loadSoundSprite( "otherSounds", "tutorialChime.aiff" );
+SoundSpriteHandle YummyLife::loadChimeSound() {
+    return loadSoundSprite("otherSounds", tholCompat ? "chime.aiff" : "tutorialChime.aiff");
+}
 
-    playSoundSprite(screenshotSound, 0.1 * getSoundEffectsLoudness());
+void YummyLife::takingScreenshot() {
+    if(screenshotSound == NULL) screenshotSound = loadChimeSound();
+    if(screenshotSound != NULL) playSoundSprite(screenshotSound, 0.1 * getSoundEffectsLoudness());
 }
 
 

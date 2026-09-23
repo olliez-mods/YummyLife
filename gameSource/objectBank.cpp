@@ -1088,6 +1088,18 @@ ObjectRecord *scanObjectRecordFromString( const char *inString ) {
                         
     char **lines = split( inString, "\n", &numLines );
 
+    // YummyLife:  Make sure to work with Windows style line endings, for THOL support
+    for( int i=0; i<numLines; i++ ) {
+        int lineLen = strlen( lines[i] );
+
+        while( lineLen > 0 &&
+               ( lines[i][ lineLen - 1 ] == '\r' ||
+                 lines[i][ lineLen - 1 ] == '\n' ) ) {
+            lines[i][ lineLen - 1 ] = '\0';
+            lineLen --;
+            }
+        }
+
     ObjectRecord *r = NULL;
     
     if( numLines >= 14 ) {
@@ -1233,6 +1245,12 @@ ObjectRecord *scanObjectRecordFromString( const char *inString ) {
         next++;
 
 
+        // YummyLife: 2HOL compatability: Fix later
+        if( strstr( lines[next], "ridingAnimationIndex=" ) != NULL ) {
+            next++;
+            }
+
+
         int blocksWalkingRead = 0;                            
                 
         r->leftBlockingRadius = 0;
@@ -1372,6 +1390,11 @@ ObjectRecord *scanObjectRecordFromString( const char *inString ) {
             }
 
 
+        // YummyLife: 2HOL compatability: Fix later
+        if( strstr( lines[next], "tapoutTrigger=" ) != NULL ) {
+            next++;
+            }
+
 
         r->floor = false;
                 
@@ -1383,6 +1406,12 @@ ObjectRecord *scanObjectRecordFromString( const char *inString ) {
                     
             r->floor = floorRead;
                     
+            next++;
+            }
+
+
+        // YummyLife: 2HOL compatability: Fix later
+        if( strstr( lines[next], "partialFloor=" ) != NULL ) {
             next++;
             }
 
@@ -1403,6 +1432,29 @@ ObjectRecord *scanObjectRecordFromString( const char *inString ) {
 
         setupWall( r );
 
+
+        // YummyLife:  2HOL stores these two explicitly, where setupWall above
+        // infers them from floorHugging and the description tags.  When the
+        // file states them, the file wins.  frontWall only ever follows a
+        // wallLayer line, so it is read nested inside it.
+        if( strstr( lines[next], "wallLayer=" ) != NULL ) {
+            int flagRead = 0;
+            sscanf( lines[next], "wallLayer=%d", &flagRead );
+
+            r->wallLayer = flagRead;
+
+            next++;
+
+            if( strstr( lines[next], "frontWall=" ) != NULL ) {
+                flagRead = 0;
+                sscanf( lines[next], "frontWall=%d", &flagRead );
+
+                r->frontWall = flagRead;
+
+                next++;
+                }
+            }
+
                             
         sscanf( lines[next], "foodValue=%d", 
                 &( r->foodValue ) );
@@ -1421,6 +1473,17 @@ ObjectRecord *scanObjectRecordFromString( const char *inString ) {
                             
         next++;
 
+
+        // YummyLife:  2HOL carries the contained-item offset as a field,
+        // where we take it from +containOffsetX_/+containOffsetY_ tags in
+        // setupContainOffset above.  Same meaning, so the field wins.
+        if( strstr( lines[next], "containOffset=" ) != NULL ) {
+            sscanf( lines[next], "containOffset=%d,%d",
+                    &( r->containOffsetX ),
+                    &( r->containOffsetY ) );
+
+            next++;
+            }
 
 
         r->heldOffset.x = 0;
@@ -1557,6 +1620,11 @@ ObjectRecord *scanObjectRecordFromString( const char *inString ) {
                             
         next++;
 
+        // YummyLife: 2HOL compatability: Fix later
+        if( strstr( lines[next], "slotStyle=" ) != NULL ) {
+            next++;
+            }
+
         r->slotsLocked = 0;
         if( strstr( lines[next], 
                     "slotsLocked=" ) != NULL ) {
@@ -1568,6 +1636,12 @@ ObjectRecord *scanObjectRecordFromString( const char *inString ) {
                     
             r->slotsLocked = flagRead;
                             
+            next++;
+            }
+
+
+        // YummyLife: 2HOL compatability: Fix later
+        if( strstr( lines[next], "slotsNoSwap=" ) != NULL ) {
             next++;
             }
                 
@@ -1754,6 +1828,11 @@ ObjectRecord *scanObjectRecordFromString( const char *inString ) {
                 }
             else {
                 r->spriteInvisibleWhenContained[i] = 0;
+                }
+
+            // YummyLife: 2HOL compatability: Fix later
+            if( strstr( lines[next], "ignoredCont=" ) != NULL ) {
+                next++;
                 }
             }
                 
@@ -5009,6 +5088,29 @@ HoldingPos drawObject( ObjectRecord *inObject, int inDrawBehindSlots,
 
 
 
+// YummyLife:  a container on the map can name an object ID that isn't in our
+// bank.  That happens whenever our data doesn't match the server's, which the
+// hetuw version-check bypass allows.  getObject returns NULL for such an ID,
+// and the slot-drawing code below dereferences what it gets back, so those
+// slots are skipped instead of crashing.  Each unknown ID is reported once, so
+// the log shows how far out of sync we are without a message per frame.
+static SimpleVector<int> reportedMissingObjectIDs;
+
+static char haveObjectToDraw( ObjectRecord *inObject, int inID ) {
+    if( inObject != NULL ) return true;
+
+    if( reportedMissingObjectIDs.getElementIndex( inID ) == -1 ) {
+        reportedMissingObjectIDs.push_back( inID );
+        printf( "Contained object ID %d is not in our object bank, "
+                "skipping it (our data does not match the server's)\n",
+                inID );
+        }
+
+    return false;
+    }
+
+
+
 HoldingPos drawObject( ObjectRecord *inObject, doublePair inPos, double inRot,
                        char inWorn, char inFlipH, double inAge,
                        int inHideClosestArm,
@@ -5054,6 +5156,7 @@ HoldingPos drawObject( ObjectRecord *inObject, doublePair inPos, double inRot,
 
         ObjectRecord *contained = getObject( inContainedIDs[i] );
         
+        if( ! haveObjectToDraw( contained, inContainedIDs[i] ) ) continue;
 
         doublePair centerOffset;
 
@@ -5121,6 +5224,9 @@ HoldingPos drawObject( ObjectRecord *inObject, doublePair inPos, double inRot,
                     ObjectRecord *subContained = getObject( 
                         inSubContained[i].getElementDirect( s ) );
                     
+                    if(!haveObjectToDraw(subContained, inSubContained[i].getElementDirect(s))) continue;
+                        
+
                     doublePair subCenterOffset =
                         getObjectCenterOffset( subContained );
                     
@@ -6615,6 +6721,9 @@ doublePair getObjectCenterOffset( ObjectRecord *inObject ) {
     for( int i=0; i<inObject->numSprites; i++ ) {
         SpriteRecord *sprite = getSpriteRecord( inObject->sprites[i] );
     
+        // sprite ID that isn't in our bank - skip it rather than dereference nothing
+        if( sprite == NULL ) continue;
+
         if( sprite->multiplicativeBlend ) {
             // don't consider translucent sprites when computing wideness
             continue;
@@ -6697,6 +6806,9 @@ doublePair getObjectBottomCenterOffset( ObjectRecord *inObject ) {
     for( int i=0; i<inObject->numSprites; i++ ) {
         SpriteRecord *sprite = getSpriteRecord( inObject->sprites[i] );
     
+        // sprite ID that isn't in our bank - skip it rather than dereference nothing
+        if( sprite == NULL ) continue;
+
         if( sprite->multiplicativeBlend ) {
             // don't consider translucent sprites when finding bottom
             continue;

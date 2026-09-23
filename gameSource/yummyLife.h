@@ -179,6 +179,9 @@ class YummyLife {
         static void cleanUp();
         static void takingScreenshot();
 
+        // OneLife ships otherSounds/tutorialChime.aiff, 2HOL only has chime.aiff
+        static SoundSpriteHandle loadChimeSound();
+
 
         static void yumEaten(int objectID, int lifeID);
         static std::vector<int> getLastYums(int lifeID);

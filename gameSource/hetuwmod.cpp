@@ -425,6 +425,19 @@ static unordered_set<std::string> namesSeen;
 static bool pendingDropAcknowledgement;
 
 extern char isAHAP;
+extern char tholCompat;
+
+// YummyLife:  2HOL's build stamps binary.txt with its own name
+// ("2HOL_v20327 built on ..."), where OneLife's says "OneLife_v..." or something else.
+static char detectTholCompat() {
+	File binaryFile( NULL, "binary.txt" );
+	char *contents = binaryFile.readFileContents();
+	if( contents == NULL ) return false;
+
+	char result = strncmp( contents, "2HOL", 4 ) == 0;
+	delete [] contents;
+	return result;
+}
 
 void HetuwMod::init() {
 	/* this is from vanilla initFrameDrawer(), which is just too late for us */
@@ -435,6 +448,10 @@ void HetuwMod::init() {
             isAHAP = true;
             }
         }
+
+	tholCompat = detectTholCompat();
+	printf( "This game is running in %s mode\n",
+			tholCompat ? "2HOL" : ( isAHAP ? "AHAP" : "OHOL" ) );
 
 	blobs::font_32_64_yum.write("graphics/font_32_64_yum.tga");
 
