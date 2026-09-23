@@ -932,7 +932,7 @@ void HetuwMod::initSettings() {
 	const int cfgVersionLatest = 9;
 	static int cfgVersionActive = cfgVersionLatest;
 
-	yumConfig::registerSetting("cfg_version", cfgVersionActive, {hidden: true, preComment: "// this file will be created whenever you start the mod\n// if you want to reset this file, just delete it\n\n"});
+	yumConfig::registerSetting("cfg_version", cfgVersionActive, {preComment: "// this file will be created whenever you start the mod\n// if you want to reset this file, just delete it\n\n", hidden: true});
 
 	yumConfig::registerSetting("key_up", charKey_Up, {preComment: "\n"});
 	yumConfig::registerSetting("key_down", charKey_Down);

@@ -139,7 +139,7 @@ folder wherever you put it.
 
 **Server only** is the bare binary, for dropping into a server folder you already have.
 
-| Platform | Server only | OHOL — complete | AHAP — complete |
+| Platform | Server only | OHOL Server — complete | AHAP Server — complete |
 |---|---|---|---|
 EOT
 
