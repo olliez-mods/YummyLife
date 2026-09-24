@@ -37,7 +37,7 @@ extern int targetFramesPerSecond;
 
 SettingsPage::SettingsPage()
         : mBackButton( mainFont, -542, -280, translate( "backButton" ) ),
-          mEditAccountButton( mainFont, -463, 129, translate( "editAccount" ) ),
+          mEditAccountButton( mainFont, -463, 200, translate( "editAccount" ) ),
           mRestartButton( mainFont, 128, 128, translate( "restartButton" ) ),
           mRedetectButton( mainFont, 173, 249, translate( "redetectButton" ) ),
           mDeleteCacheButton( mainFont, -495, 30, translateWithDefault( "deleteCacheButton", "Delete Cache" ) ),
