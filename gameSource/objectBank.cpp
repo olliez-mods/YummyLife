@@ -1456,8 +1456,10 @@ ObjectRecord *scanObjectRecordFromString( const char *inString ) {
             }
 
                             
-        sscanf( lines[next], "foodValue=%d", 
-                &( r->foodValue ) );
+        r->foodValue = 0;
+        r->bonusValue = 0;
+        sscanf( lines[next], "foodValue=%d,%d", 
+                &( r->foodValue ), &( r->bonusValue ) );
                 
         if( r->foodValue > maxFoodValue ) {
             maxFoodValue = r->foodValue;
@@ -2099,7 +2101,7 @@ float initObjectBankStep() {
                 allPossibleDeathMarkerIDs.push_back( r->id );
                 }
                 
-            if( r->foodValue > 0 ) {
+            if( r->foodValue > 0 || r->bonusValue > 0 ) {
                 allPossibleFoodIDs.push_back( r->id );
                 }
 
@@ -4327,6 +4329,7 @@ int addObject( const char *inDescription,
     r->floor = inFloor;
     r->floorHugging = inFloorHugging;
     r->foodValue = inFoodValue;
+    r->bonusValue = 0;
 
     
     // do NOT add to food list

@@ -660,7 +660,6 @@ public:
 
 	static int getObjYumID(ObjectRecord *obj);
 	static void initBecomesFood();
-	static int becomesFood( int objectID, int depth );
 	static int *becomesFoodID;
 	static SimpleVector<int> yummyFoodChain;
 	static bool isYummy(int objID);

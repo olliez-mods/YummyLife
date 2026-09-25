@@ -71,6 +71,10 @@ typedef struct TransRecord {
         char *comment;
         
         char *authorTag;
+
+        // YummyLife:  2HOL's containment transitions (_CONT, _CONTF, _CONTL,
+        // _CONTS files).  0 for normal, 1 F, 2 L, 3 S, 4 plain _CONT
+        int contTransFlag;
         
     } TransRecord;
 
@@ -212,7 +216,8 @@ void addTrans( int inActor, int inTarget,
                float inTargetChangeChance = 1.0f,
                int inNewActorNoChange = -1,
                int inNewTargetNoChange = -1,
-               char inNoWriteToFile = false );
+               char inNoWriteToFile = false,
+               int inContTransFlag = 0 );
 
 
 

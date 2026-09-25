@@ -122,6 +122,15 @@ float initTransBankStep() {
             // _L means last use of target
             lastUseTarget = true;
             }
+
+        // YummyLife:  2HOL containment transitions, same flags as 2HOL uses
+        int contTransFlag = 0;
+        if( strstr( txtFileName, "_CONT" ) != NULL ) {
+            if( strstr( txtFileName, "_CONTF" ) != NULL ) contTransFlag = 1;
+            else if( strstr( txtFileName, "_CONTL" ) != NULL ) contTransFlag = 2;
+            else if( strstr( txtFileName, "_CONTS" ) != NULL ) contTransFlag = 3;
+            else contTransFlag = 4;
+        }
         
         sscanf( txtFileName, "%d_%d", &actor, &target );
         
@@ -176,6 +185,7 @@ float initTransBankStep() {
                     r->epochAutoDecay = epochAutoDecay;
                     r->lastUseActor = lastUseActor;
                     r->lastUseTarget = lastUseTarget;
+                    r->contTransFlag = contTransFlag;
 
                     r->move = move;
                     r->desiredMoveDist = desiredMoveDist;
@@ -502,7 +512,8 @@ void initTransBankFinish() {
                                   tr->targetChangeChance,
                                   tr->newActorNoChange,
                                   tr->newTargetNoChange,
-                                  true );
+                                  true,
+                                  tr->contTransFlag );
                         }
 
                     actor = tr->actor;
@@ -540,7 +551,8 @@ void initTransBankFinish() {
                                   tr->targetChangeChance,
                                   tr->newActorNoChange,
                                   tr->newTargetNoChange,
-                                  true );
+                                  true,
+                                  tr->contTransFlag );
                         }
 
                     actor = tr->actor;
@@ -577,7 +589,8 @@ void initTransBankFinish() {
                                   tr->targetChangeChance,
                                   tr->newActorNoChange,
                                   tr->newTargetNoChange,
-                                  true );
+                                  true,
+                                  tr->contTransFlag );
                         }
                     }
                 }
@@ -692,7 +705,8 @@ void initTransBankFinish() {
                                   tr->targetChangeChance,
                                   tr->newActorNoChange,
                                   tr->newTargetNoChange,
-                                  true );
+                                  true,
+                                  tr->contTransFlag );
                         }
                     
                     }
@@ -844,7 +858,8 @@ void initTransBankFinish() {
                       tr.targetChangeChance,
                       tr.newActorNoChange,
                       tr.newTargetNoChange,
-                      true );
+                      true,
+                      tr.contTransFlag );
             }
         
 
@@ -1486,7 +1501,8 @@ void initTransBankFinish() {
                       newTrans->targetChangeChance,
                       newTrans->newActorNoChange,
                       newTrans->newTargetNoChange,
-                      true );
+                      true,
+                      newTrans->contTransFlag );
             numGenerated++;
             }
 
@@ -1655,7 +1671,8 @@ void initTransBankFinish() {
                       newTrans->targetChangeChance,
                       newTrans->newActorNoChange,
                       newTrans->newTargetNoChange,
-                      true );
+                      true,
+                      newTrans->contTransFlag );
             numGenerated++;
             }
         
@@ -2593,7 +2610,8 @@ void addTrans( int inActor, int inTarget,
                float inTargetChangeChance,
                int inNewActorNoChange,
                int inNewTargetNoChange,
-               char inNoWriteToFile ) {
+               char inNoWriteToFile,
+               int inContTransFlag ) {
     
     // exapand id-indexed maps if a bigger ID is being added    
     if( inActor >= mapSize || inTarget >= mapSize 
@@ -2665,6 +2683,7 @@ void addTrans( int inActor, int inTarget,
         
         t->lastUseActor = inLastUseActor;
         t->lastUseTarget = inLastUseTarget;
+        t->contTransFlag = inContTransFlag;
 
         t->reverseUseActor = inReverseUseActor;
         t->reverseUseTarget = inReverseUseTarget;

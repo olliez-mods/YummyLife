@@ -170,6 +170,9 @@ typedef struct ObjectRecord {
 
         
         int foodValue;
+
+        // YummyLife:  2HOL writes foodValue=food,bonus.  Always 0 for OHOL.
+        int bonusValue;
         
         // multiplier on walking speed when holding
         float speedMult;

@@ -2231,102 +2231,195 @@ int HetuwMod::getObjYumID(ObjectRecord *obj) {
 }
 
 
-// thanks to https://raw.githubusercontent.com/JustinLove/onelife-client-patches/master/yum-hover
-void HetuwMod::initBecomesFood() {
-    becomesFoodID = new int[maxObjects];
-    for (int i=0; i<maxObjects; i++) {
-		becomesFoodID[i] = becomesFood( i, 3 );
-    }
+// YummyLife:  ported from 2HOL's regenerateBecomeFoodMap() (transitionBank.cpp).
+// Works back from each food through the recipes that produce it, instead of
+// forward from every object, so tools and shared ingredients that lead to
+// several foods are left out.  Used for OHOL and 2HOL alike.
+// becomesFoodID[i] is the yum ID of the food object i leads to, or -1.
+
+// YummyLife:  true when inID comes out of t unchanged, like a bow drill used on
+// a coconut or a fire used to cook.  Such tools aren't on the way to becoming
+// food, and neither is whatever they were made from.  Objects with several
+// uses (a bowl of berries) come out as the same ID with one use fewer, so
+// they still count as ingredients.
+static bool isToolInTrans(TransRecord *t, int inID) {
+	if (inID <= 0) return false;
+
+	char unchanged = false;
+	char noUse = false;
+	if (getObjectParent(t->actor) == inID && t->newActor == t->actor) {
+		unchanged = true;
+		noUse = t->noUseActor;
+	} else if (getObjectParent(t->target) == inID && t->newTarget == t->target) {
+		unchanged = true;
+		noUse = t->noUseTarget;
+	}
+	if (!unchanged) return false;
+
+	ObjectRecord *o = getObject(inID, true);
+	return o != NULL && (o->numUses <= 1 || noUse);
 }
 
-// TransRecord: (all of the following can be 0 or below if they dont exist)
-// transRecord->actor = objectID holding in your hand - is 0 or smaller when not holding anything
-// transRecord->target = objectID of obj on the ground that is being targeted
-// transRecord->newActor = objectID of new obj holding in your hand (after transition)
-// transRecord->newTarget = objectID of new item on the ground
-int HetuwMod::becomesFood( int objectID, int depth ) {
-    if( objectID < 0) return -1;
+void HetuwMod::initBecomesFood() {
+	becomesFoodID = new int[maxObjects];
+	for (int i=0; i<maxObjects; i++) becomesFoodID[i] = 0;
 
-    ObjectRecord* obj = getObject( objectID );
-    if( obj == NULL ) return -1;
+	SimpleVector<int> *allFoods = getAllPossibleFoodIDs();
 
-    if( obj->isUseDummy ) {
-        objectID = obj->useDummyParent;
-        obj = getObject( objectID );
-        }
+	// the foods themselves
+	for (int j=0; j<allFoods->size(); j++) {
+		int foodID = allFoods->getElementDirect(j);
+		if (foodID < maxObjects) becomesFoodID[foodID] = foodID;
+	}
 
-	if (objectID == OBJID_SharpStone) return -1;
-	if (objectID == OBJID_ClayBowl) return -1;
-	if (objectID == OBJID_ClayPlate) return -1;
-	if (objectID == OBJID_HotAdobeOven) return -1;
-	if (objectID == OBJID_Fire) return -1;
-	if (objectID == OBJID_HotCoals) return -1;
+	// objects a bare hand can pick food from
+	SimpleVector<int> bareHandSources;
+	for (int j=0; j<allFoods->size(); j++) {
+		int foodID = allFoods->getElementDirect(j);
+		SimpleVector<TransRecord*> *prodTrans = getAllProduces(foodID);
+		if (prodTrans == NULL) continue;
 
-    if( obj->foodValue > 0 ) {
-		return getObjYumID(obj);
-        }
+		for (int i=0; i<prodTrans->size(); i++) {
+			TransRecord *t = prodTrans->getElementDirect(i);
+			if (t->actor != 0 || t->newActor != foodID) continue;
 
-    if( depth < 1) return -1;
+			int target = getObjectParent(t->target);
+			if (target <= 0 || target >= maxObjects) continue;
+			if (bareHandSources.getElementIndex(target) != -1) continue;
+			bareHandSources.push_back(target);
+			becomesFoodID[target] = foodID;
+		}
+	}
 
-    SimpleVector<TransRecord*> *trans = getAllUses( objectID );
-    if( trans == NULL ) return -1;
+	// objects one step from food; ones leading to several foods are
+	// common ancestors and don't count as any of them
+	SimpleVector<int> commonAncestors;
+	for (int j=0; j<allFoods->size(); j++) {
+		int foodID = allFoods->getElementDirect(j);
+		SimpleVector<TransRecord*> *prodTrans = getAllProduces(foodID);
+		if (prodTrans == NULL) continue;
+		int foodDepth = getObjectDepth(foodID);
 
-    if( trans->size() < 1 ) return -1;
+		for (int i=0; i<prodTrans->size(); i++) {
+			TransRecord *t = prodTrans->getElementDirect(i);
 
-    if( trans->size() == 1) {
-        TransRecord* t = trans->getElementDirect( 0 );
-        if( ! livingLifePage->getTransHintable( t ) ) return -1;
+			int ingredients[2] = { getObjectParent(t->actor), getObjectParent(t->target) };
 
-        int targetEdible = becomesFood( t->newTarget, depth - 1 );
-        if( targetEdible > 0 ) return targetEdible;
+			// look through from-scratch transitions only
+			char fromScratch = true;
+			for (int k=0; k<2; k++) {
+				if (ingredients[k] > 0 && getObjectDepth(ingredients[k]) >= foodDepth) fromScratch = false;
+			}
+			if (!fromScratch) continue;
 
-        int actorEdible = becomesFood( t->newActor, depth - 1 );
-        if( actorEdible > 0 ) return actorEdible;
-        }
-    else { // trans > 1
-        int lastTarget = -1;
-        int targetCount = 0;
-        int lastActor = -1;
-        int actorCount = 0;
-        for( int i = 0; i<trans->size(); i++) {
-            TransRecord* t = trans->getElementDirect( i );
-            if( ! livingLifePage->getTransHintable( t ) ) continue;
+			for (int k=0; k<2; k++) {
+				int id = ingredients[k];
+				if (id <= 0 || id >= maxObjects) continue; // not an object
+				if (becomesFoodID[id] == id) continue; // object is food
+				if (isToolInTrans(t, id)) continue;
+				if (commonAncestors.getElementIndex(id) != -1) continue;
 
-            if( t->newActor != lastActor ) {
-                actorCount += 1;
-                }
-            lastActor = t->newActor;
-
-            if( t->newTarget != lastTarget ) {
-                targetCount += 1;
-                }
-            lastTarget = t->newTarget;
-
-            //int actorEdible = becomesFood( t->newActor, 0 );
-            //if( actorEdible > 0 ) return actorEdible;
-			if ((t->actor <= 0 || t->actor == OBJID_ClayBowl || t->actor == OBJID_ClayPlate || t->actor == OBJID_SharpStone) && t->newActor > 0) { // becomes food when using empty hand, clay bowl, clay plate, or sharp stone on it
-				int returnID = becomesFood(t->newActor, depth - 1);
-				if (returnID > 0) return returnID;
-				returnID = becomesFood(t->newTarget, depth - 1);
-				if (returnID > 0) return returnID;
+				if (becomesFoodID[id] == 0) {
+					becomesFoodID[id] = foodID;
+				} else if (becomesFoodID[id] != foodID &&
+						   bareHandSources.getElementIndex(id) == -1) {
+					commonAncestors.push_back(id);
+					becomesFoodID[id] = 0;
 				}
-			if (t->target == OBJID_HotAdobeOven || t->target == OBJID_Fire || t->target == OBJID_HotCoals) { // becomes food when used on hot adobe oven or fire or hot coals
-				int returnID = becomesFood(t->newActor, depth - 1);
-				if (returnID > 0) return returnID;
-				}
-            }
+			}
+		}
+	}
 
-        if( actorCount == 1) {
-            int actorEdible = becomesFood( lastActor, depth - 1 );
-            if( actorEdible > 0 ) return actorEdible;
-            }
-        if( targetCount == 1) {
-            int targetEdible = becomesFood( lastTarget, depth - 1 );
-            if( targetEdible > 0 ) return targetEdible;
-            }
-        }
+	// walk back through the tech tree, up to 2 steps before each food
+	SimpleVector<int> horizon;
+	SimpleVector<int> depths;
+	for (int i=0; i<allFoods->size(); i++) {
+		horizon.push_back(allFoods->getElementDirect(i));
+		depths.push_back(2);
+	}
 
-    return -1;
+	for (int index=0; index<horizon.size(); index++) {
+		int nextID = horizon.getElementDirect(index);
+		int nextDepth = depths.getElementDirect(index) - 1;
+		if (nextDepth < 0) continue;
+
+		nextID = getObjectParent(nextID);
+		SimpleVector<TransRecord*> *prodTrans = getAllProduces(nextID);
+		if (prodTrans == NULL) continue;
+
+		for (int i=0; i<prodTrans->size(); i++) {
+			TransRecord *t = prodTrans->getElementDirect(i);
+
+			// ignore containment transitions
+			if (t->contTransFlag != 0) continue;
+
+			// ignore raw last use transitions, the auto-generated ones cover them
+			if (t->lastUseActor || t->lastUseTarget) continue;
+
+			int actor = t->actor;
+			int target = t->target;
+			if (actor > 0) actor = getObjectParent(actor);
+			if (target > 0) target = getObjectParent(target);
+
+			char actorIsCommon = commonAncestors.getElementIndex(actor) != -1;
+			char targetIsCommon = commonAncestors.getElementIndex(target) != -1;
+
+			int nextToCheck = -1;
+
+			if (actor == -1 || actor == 0) {
+				// decay or bare hand transition, look at target
+				nextToCheck = target;
+			} else if (target == -1) {
+				// set down transition (no decay/move for actor), look at actor
+				if (getTrans(-1, actor) == NULL) nextToCheck = actor;
+			} else if (t->newActor == nextID && t->target == t->newTarget && !actorIsCommon) {
+				// target is not used in crafting, look at actor
+				nextToCheck = actor;
+			} else if (t->newTarget == nextID && t->actor == t->newActor && !targetIsCommon) {
+				// actor is not used in crafting, look at target
+				nextToCheck = target;
+			} else if (actorIsCommon && !targetIsCommon) {
+				nextToCheck = target;
+			} else if (!actorIsCommon && targetIsCommon) {
+				nextToCheck = actor;
+			}
+
+			if (nextToCheck <= 0 || nextToCheck >= maxObjects) continue;
+			if (isToolInTrans(t, nextToCheck)) continue;
+
+			if (becomesFoodID[nextToCheck] == 0) {
+				becomesFoodID[nextToCheck] = becomesFoodID[nextID];
+			}
+			if (horizon.getElementIndex(nextToCheck) == -1) {
+				horizon.push_back(nextToCheck);
+				depths.push_back(nextDepth);
+			}
+		}
+	}
+
+	int numLeadToFood = 0;
+	for (int i=0; i<maxObjects; i++) {
+		int food = becomesFoodID[i];
+		ObjectRecord *o = getObject(i, true);
+		ObjectRecord *foodObj = food > 0 ? getObject(food, true) : NULL;
+
+		// objects with probabilistic uses are most likely tools, e.g. a knife
+		if (o == NULL || foodObj == NULL ||
+			( o->useChance != 1.0 && o->useChance != 0.0 )) {
+			becomesFoodID[i] = -1;
+			continue;
+		}
+
+		becomesFoodID[i] = getObjYumID(foodObj);
+	}
+
+	// use and variable dummies (e.g. a half-eaten pie) follow their parent
+	for (int i=0; i<maxObjects; i++) {
+		int parent = getObjectParent(i);
+		if (parent != i && parent > 0 && parent < maxObjects) becomesFoodID[i] = becomesFoodID[parent];
+		if (becomesFoodID[i] > 0) numLeadToFood++;
+	}
+	printf("YummyLife: %d of %d objects lead to food\n", numLeadToFood, maxObjects);
 }
 
 bool HetuwMod::isYummy(int objID) {
