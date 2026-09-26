@@ -427,16 +427,17 @@ static bool pendingDropAcknowledgement;
 extern char isAHAP;
 extern char tholCompat;
 
-// YummyLife:  2HOL's build stamps binary.txt with its own name
-// ("2HOL_v20327 built on ..."), where OneLife's says "OneLife_v..." or something else.
+// YummyLife:  2HOL numbers its data releases from 20000 up (v20327 and so on,
+// since mid 2019), where OneLife's are in the hundreds and grow a few a year.
 static char detectTholCompat() {
-	File binaryFile( NULL, "binary.txt" );
-	char *contents = binaryFile.readFileContents();
+	File versionFile( NULL, "dataVersionNumber.txt" );
+	char *contents = versionFile.readFileContents();
 	if( contents == NULL ) return false;
 
-	char result = strncmp( contents, "2HOL", 4 ) == 0;
+	int version = 0;
+	sscanf( contents, "%d", &version );
 	delete [] contents;
-	return result;
+	return version >= 20000;
 }
 
 void HetuwMod::detectGameMode() {

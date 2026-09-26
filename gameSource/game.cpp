@@ -328,7 +328,8 @@ const char *getWindowTitle() {
 		HetuwMod::detectGameMode();
 		if (dataVersionNumber == 0) updateDataVersionNumber();
 		char gameMode[64] = "";
-		if (dataVersionNumber > 0) snprintf(gameMode, sizeof(gameMode), "%s d%d", HetuwMod::getGameModeName(), dataVersionNumber);
+		// YummyLife:  2HOL gets its data version shown, OHOL/AHAP don't need it
+		if (tholCompat && dataVersionNumber > 0) snprintf(gameMode, sizeof(gameMode), "%s d%d", HetuwMod::getGameModeName(), dataVersionNumber);
 		else snprintf(gameMode, sizeof(gameMode), "%s", HetuwMod::getGameModeName());
 
 		char title[256] = "";
