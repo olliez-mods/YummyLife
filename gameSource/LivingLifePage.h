@@ -618,6 +618,9 @@ class LivingLifePage : public GamePage, public ActionListener {
 		int hetuwGetHoveredObjectID();
 		// world tile coords of the object returned by hetuwGetHoveredObjectID()
 		void hetuwGetHoveredObjectTile( int &outTileX, int &outTileY );
+		// YummyLife: middle click / Option-click opens the hovered object in
+		// minitech, returns true if the click was used for that
+		char hetuwMinitechLookupClick( float inX, float inY );
 		// YummyLife: post a fading speech bubble anchored to a world tile,
 		// exactly like the server's LS message does
 		void hetuwAddLocationSpeech( int tileX, int tileY,
@@ -1100,6 +1103,9 @@ class LivingLifePage : public GamePage, public ActionListener {
         
         // forces next pointerDown call to avoid everything but ground clicks
         char mForceGroundClick;
+        
+        // YummyLife: an Option-click minitech lookup is waiting for its release
+        char mMinitechAltClickDown;
         
 
 		public: // hetuw mod

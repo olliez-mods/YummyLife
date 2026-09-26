@@ -692,6 +692,10 @@ class ScreenGL {
             return mLastMouseButtonRight;
             }
 
+        char isLastMouseButtonMiddle() {
+            return mLastMouseButtonMiddle;
+            }
+
 		HetuwMouseActionBuffer* hetuwGetMouseActionBuffer() {
 			return &mHetuwMouseBuffer;
 		}
@@ -870,6 +874,7 @@ class ScreenGL {
 
 
         char mLastMouseButtonRight;
+        char mLastMouseButtonMiddle;
         
 		HetuwMouseActionBuffer mHetuwMouseBuffer;
 

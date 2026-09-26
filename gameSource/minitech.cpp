@@ -64,6 +64,9 @@ string minitech::lastHintStr;
 bool minitech::lastHintSearchNoResults = false;
 bool minitech::changeHintObjOnTouch;
 vector<minitech::mouseListener*> minitech::twotechMouseListeners;
+bool minitech::panelVisible = false;
+doublePair minitech::panelTL;
+doublePair minitech::panelBR;
 minitech::mouseListener* minitech::prevListener = NULL;
 minitech::mouseListener* minitech::nextListener = NULL;
 
@@ -989,6 +992,8 @@ void minitech::updateDrawTwoTech() {
 	posLT.x = posLT.x + viewWidth/2;
 	posLT.y = posLT.y - viewHeight/2;
 	
+	panelVisible = true;
+	
 	if (minitechMinimized) {
 		
 		recWidth = paddingX + 7*iconSize + paddingX;
@@ -998,6 +1003,8 @@ void minitech::updateDrawTwoTech() {
 		posLT.x = posLT.x - recWidth;
 		doublePair posCenter = {posLT.x + recWidth / 2, posLT.y - recHeight / 2};
 		doublePair posBR = {posLT.x + recWidth, posLT.y - recHeight};
+		panelTL = sub(posLT, screenPos);
+		panelBR = sub(posBR, screenPos);
 		setDrawColor( 0, 0, 0, 0.8 );
 		drawRect( posCenter, recWidth/2, recHeight/2);
 		
@@ -1398,6 +1405,11 @@ void minitech::updateDrawTwoTech() {
 	doublePair headerCen = {headerLT.x + headerWidth / 2, headerLT.y - headerHeight / 2};
 	setDrawColor( 0, 0, 0, 0.8 );
 	drawRect( headerCen, headerWidth/2, headerHeight/2);
+	
+	// header on top down to the bottom of the main rect, gap included
+	doublePair panelBRWorld = {posLT.x + recWidth, posLT.y - recHeight};
+	panelTL = sub(headerLT, screenPos);
+	panelBR = sub(panelBRWorld, screenPos);
 
 	string useStr = "HOW DO I USE:";
 	string makeStr = "HOW DO I MAKE:";
@@ -1597,6 +1609,8 @@ void minitech::changeCurrentHintObjId(int objID) {
 
 void minitech::livingLifeDraw(float mX, float mY) {
 	
+	panelVisible = false;
+	
 	if (!minitechEnabled) return;
 
 	ourLiveObject = livingLifePage->getOurLiveObject();
@@ -1634,7 +1648,7 @@ void minitech::livingLifeDraw(float mX, float mY) {
 	
 	// currentHintObjId = getDummyParent(currentHintObjId);
 	
-	if ( lastHintObjId == 0 && currentHintObjId != 0 && !HetuwMod::minitechStayMinimized ) minitechMinimized = false;
+	if ( lastHintObjId == 0 && currentHintObjId != 0 && HetuwMod::minitechAutoOpen ) minitechMinimized = false;
 	
 	if ( (lastHintObjId != currentHintObjId || lastUseOrMake != useOrMake) && !minitechMinimized ) {
 		lastHintObjId = currentHintObjId;
@@ -1739,6 +1753,26 @@ bool minitech::livingLifeKeyDown(unsigned char inASCII) {
 	// }
 	
 	return false;
+}
+
+bool minitech::isPosOverPanel( float mX, float mY ) {
+	if (!panelVisible) return false;
+	
+	doublePair screenPos = livingLifePage->minitechGetLastScreenViewCenter();
+	doublePair mousePos = {mX, mY};
+	return posWithinArea(sub(mousePos, screenPos), panelTL, panelBR);
+}
+
+// objId > 0 looks that object up, 0 minimizes, < 0 does nothing
+void minitech::onLookupClick( int objId ) {
+	if (!minitechEnabled) return;
+	
+	if (objId > 0) {
+		changeCurrentHintObjId(objId);
+		minitechMinimized = false;
+	} else if (objId == 0) {
+		minitechMinimized = true;
+	}
 }
 
 bool minitech::livingLifePageMouseDown( float mX, float mY ) {

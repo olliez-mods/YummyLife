@@ -246,6 +246,9 @@ ScreenGL::ScreenGL( int inWide, int inHigh, char inFullScreen,
 
     mWantToMimimize = false;
     mMinimized = false;
+    
+    mLastMouseButtonRight = false;
+    mLastMouseButtonMiddle = false;
     mWasFullScreenBeforeMinimize = false;
     
     mCustomRecordedGameData = stringDuplicate( inCustomRecordedGameData );
@@ -2837,6 +2840,9 @@ void callbackMouse( int inButton, int inState, int inX, int inY ) {
     else {
         currentScreenGL->mLastMouseButtonRight = false;
         }
+    
+    currentScreenGL->mLastMouseButtonMiddle =
+        ( inButton == SDL_BUTTON_MIDDLE );
     
 
     if( currentScreenGL->mRecordingEvents &&

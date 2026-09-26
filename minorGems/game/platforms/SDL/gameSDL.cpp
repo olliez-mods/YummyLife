@@ -4358,6 +4358,11 @@ char isLastMouseButtonRight() {
     }
 
 
+char isLastMouseButtonMiddle() {
+    return screen->isLastMouseButtonMiddle();
+    }
+
+
 HetuwMouseActionBuffer* hetuwGetMouseActionBuffer() {
     return screen->hetuwGetMouseActionBuffer();
 }

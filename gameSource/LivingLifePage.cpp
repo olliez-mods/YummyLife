@@ -3375,6 +3375,7 @@ LivingLifePage::LivingLifePage()
     
 
     mForceGroundClick = false;
+    mMinitechAltClickDown = false;
     
     mYumSlipSprites[0] = loadSprite( "yumSlip1.tga", false );
     mYumSlipSprites[1] = loadSprite( "yumSlip2.tga", false );
@@ -25753,7 +25754,48 @@ static void freeSavedPath() {
 
 
 
+// YummyLife: middle click looks the hovered thing up in minitech, or minimizes it when clicking empty ground
+char LivingLifePage::hetuwMinitechLookupClick( float inX, float inY ) {
+    if( mForceGroundClick || isAutoClick || ! minitech::minitechEnabled ) return false;
+    
+    char middle = isLastMouseButtonMiddle();
+    char alt = ! middle && ! isLastMouseButtonRight() && isAltKeyDown();
+    
+    if( ! middle && ! alt ) return false;
+    
+    // middle click does nothing on the panels
+    if( minitech::isPosOverPanel( inX, inY ) || Phex::isPointOverPanel( inX, inY ) ) return middle;
+        
+    
+    LiveObject *ourLiveObject = getOurLiveObject();
+    
+    if( ourLiveObject == NULL ) return middle;
+    
+    // same thing the hover tooltip names: object, contained item, or our own clothing
+    int lookupID = mCurMouseOverID;
+    
+    if( lookupID < 0 ) {
+        // a person, look up what they're holding (never a baby)
+        LiveObject *person = NULL;
+        
+        if( lookupID == -99 ) person = ourLiveObject;
+        else person = getLiveObject( - lookupID );
+        
+        lookupID = -1;
+        
+        if( person != NULL && person->holdingID > 0 ) lookupID = person->holdingID;
+        }
+    
+    minitech::onLookupClick( lookupID );
+    
+    if( alt ) mMinitechAltClickDown = true;
+    return true;
+    }
+
+
 void LivingLifePage::pointerDown( float inX, float inY ) {
+    
+    if( hetuwMinitechLookupClick( inX, inY ) ) return;
 	
     if (!mForceGroundClick && 
         !isLastMouseButtonRight() &&
@@ -27457,6 +27499,15 @@ void LivingLifePage::pointerDrag( float inX, float inY ) {
 
 
 void LivingLifePage::pointerUp( float inX, float inY ) {
+    if( isLastMouseButtonMiddle() && ! mForceGroundClick && ! isAutoClick &&
+        minitech::minitechEnabled ) return;
+        
+    if( mMinitechAltClickDown && ! isLastMouseButtonRight() ) {
+        // release of an Option-click lookup, even if Option is already up
+        mMinitechAltClickDown = false;
+        return;
+        }
+    
 	if (Phex::onMouseUp(inX, inY)) return;
 	HetuwMod::onMouseEvent(inX, inY);
     lastMouseX = inX;

@@ -103,6 +103,8 @@ public:
 	static bool livingLifeKeyDown(unsigned char inASCII);
 	static void livingLifeDraw(float mouseX, float mouseY);
 	static bool livingLifePageMouseDown(float mouseX, float mouseY);
+	static bool isPosOverPanel(float mouseX, float mouseY);
+	static void onLookupClick(int objId);
 	
 	static std::vector<TransRecord*> currentHintTrans;
 	static int currentTwoTechPage;
@@ -114,6 +116,10 @@ public:
     static bool lastHintSearchNoResults;
 	static bool changeHintObjOnTouch;
 	static std::vector<mouseListener*> twotechMouseListeners;
+	// area covered by the panel last frame, relative to the screen center
+	static bool panelVisible;
+	static doublePair panelTL;
+	static doublePair panelBR;
 	static mouseListener* prevListener;
 	static mouseListener* nextListener;
 	static std::vector<TransRecord*> sortUsesTrans(std::vector<TransRecord*> unsortedTrans);

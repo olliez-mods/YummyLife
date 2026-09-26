@@ -383,7 +383,7 @@ bool HetuwMod::sendKeyEvents = false;
 bool HetuwMod::bDrawBiomeInfo = false;
 
 bool HetuwMod::minitechEnabled = true;
-bool HetuwMod::minitechStayMinimized = false;
+bool HetuwMod::minitechAutoOpen = false;
 bool HetuwMod::minitechTooltipsEnabled = true;
 
 enum {
@@ -1134,7 +1134,8 @@ void HetuwMod::initSettings() {
 	yumConfig::registerSetting("zoom_limit", zoomLimit, {preComment: "// Set max zoom out. This one goes to 11.\n"});
 
 	yumConfig::registerSetting("minitech_enabled", minitechEnabled, {preComment: "\n"});
-	yumConfig::registerSetting("minitech_stay_minimized", minitechStayMinimized);
+	// replaces the old minitech_stay_minimized, renamed so the new default reaches existing configs
+	yumConfig::registerSetting("minitech_auto_open", minitechAutoOpen, {postComment: " // open the crafting guide the first time you touch something"});
 	yumConfig::registerSetting("minitech_tooltips_enabled", minitechTooltipsEnabled);
 
 	yumConfig::registerSetting("auto_male_names", autoMaleNames, {preComment: "\n// names to automatically give when holding your bb; separate with commas\n// for example: auto_male_names = MATTHEW, MARK, LUKE, JOHN\n"});

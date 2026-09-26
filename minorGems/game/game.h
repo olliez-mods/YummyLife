@@ -169,6 +169,10 @@ void pointerUp( float inX, float inY );
 // for now, can only differentiate right clicks from other clicks
 char isLastMouseButtonRight();
 
+// YummyLife: true when the last press/release came from the middle button
+// (middle clicks are otherwise reported as ordinary left clicks)
+char isLastMouseButtonMiddle();
+
 // hetuw mod - inspired by https://github.com/Awbz/minorGems/commit/94911116df3ed21e525d9f4c67d4fffbee70f3ff
 HetuwMouseActionBuffer* hetuwGetMouseActionBuffer();
 

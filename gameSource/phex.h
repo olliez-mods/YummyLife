@@ -500,6 +500,7 @@ public:
 	static void onMouseEvent(float x, float y);
 	static bool onMouseDown(float x, float y);
 	static bool onMouseUp(float x, float y);
+	static bool isPointOverPanel(float x, float y);
 	static bool onScroll(int dir);
 	static void onKey(unsigned char inASCII);
 	static bool onKeyDown(unsigned char inASCII);

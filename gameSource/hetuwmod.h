@@ -722,7 +722,7 @@ public:
 	static void onLowPopChange(bool lowPop);
 
 	static bool minitechEnabled;
-	static bool minitechStayMinimized;
+	static bool minitechAutoOpen;
 	static bool minitechTooltipsEnabled;
 
 	static bool phexOnLeft();

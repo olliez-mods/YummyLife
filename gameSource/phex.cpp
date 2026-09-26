@@ -2290,6 +2290,14 @@ bool Phex::onMouseDown(float x, float y) {
 	} else return false;
 }
 
+// same test onMouseDown uses to swallow a click, without the focus change
+bool Phex::isPointOverPanel(float x, float y) {
+	if (!HetuwMod::phexIsEnabled) return false;
+	HetuwMod::pointFromMapToPercentCoords(x, y);
+	if (!HetuwMod::pointIsInsideRec(recBckgr, x, y)) return false;
+	return !butPhex.visible;
+}
+
 bool Phex::onMouseUp(float x, float y) {
 	if (!HetuwMod::phexIsEnabled) return false;
 	HetuwMod::pointFromMapToPercentCoords(x, y);
