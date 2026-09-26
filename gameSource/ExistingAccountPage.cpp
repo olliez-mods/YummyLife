@@ -43,6 +43,7 @@ extern char gamePlayingBack;
 extern char *userEmail;
 extern char *accountKey;
 extern char isAHAP;
+extern char tholCompat;
 
 
 extern SpriteHandle instructionsSprite;
@@ -178,6 +179,17 @@ ExistingAccountPage::ExistingAccountPage()
                             NULL,
                             NULL ),
 
+          mTholSpawnModeButton( mainFont, 185, -180, "RANDOM" ),
+          mTholFamilyField( mainFont, 400, -180, 7, true,
+                            NULL,
+                            // 2HOL family names are stored in caps
+                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ" ),
+          mTholSeedField( mainFont, 400, -180, 7, false,
+                          NULL,
+                          NULL,
+                          // spaces split and hash ends the LOGIN message
+                          " #" ),
+
           mYumRebirth( mainFont, -200, -100, -10.0, -50.0 ),
           mPageActiveStartTime( 0 ),
           mFramesCounted( 0 ),
@@ -233,7 +245,8 @@ ExistingAccountPage::ExistingAccountPage()
     setButtonStyle( &mAcntPasteButton );
     setButtonStyle( &mAccessTokenCopyButton );
     setButtonStyle( &mDeleteSharedAccountButton );
-    
+    setButtonStyle( &mTholSpawnModeButton );
+
     // draw attention to login button
     mLoginButton.setNoHoverColor( 1, 1, 0, 1 );
     mLoginButton.setHoverColor( 1, 1, 0, 1 );
@@ -294,6 +307,10 @@ ExistingAccountPage::ExistingAccountPage()
     addComponent( &mAccessTokenCopyButton );
     addComponent( &mDeleteSharedAccountButton );
 
+    addComponent( &mTholSpawnModeButton );
+    addComponent( &mTholFamilyField );
+    addComponent( &mTholSeedField );
+
     //addComponent( &mYumRebirth ); Yummylife: Disabled for now
     
     mLoginButton.addActionListener( this );
@@ -336,7 +353,22 @@ ExistingAccountPage::ExistingAccountPage()
     mAcntPasteButton.addActionListener( this );
     mAccessTokenCopyButton.addActionListener( this );
     mDeleteSharedAccountButton.addActionListener( this );
-    
+    mTholSpawnModeButton.addActionListener( this );
+
+    char *tholFamily =
+        SettingsManager::getStringSetting( "tholTargetFamily", "" );
+    mTholFamilyField.setText( tholFamily );
+    delete [] tholFamily;
+
+    char *tholSeed = SettingsManager::getStringSetting( "tholSpawnSeed", "" );
+    mTholSeedField.setText( tholSeed );
+    delete [] tholSeed;
+
+    mTholSpawnModeButton.setVisible( false );
+    mTholFamilyField.setVisible( false );
+    mTholSeedField.setVisible( false );
+    updateTholSpawnMode();
+
     // YummyLife: Setup the Gallery control buttons
     mNextImageButton.addActionListener( this );
     mPrevImageButton.addActionListener( this );
@@ -768,6 +800,22 @@ void ExistingAccountPage::step() {
                                   mEmailField.isFocused() );
     mAtSignButton.setVisible( mEmailField.isFocused() );
 
+    // YummyLife: 2HOL spawn target, shown once the login buttons are up
+    char showThol = tholCompat && mLoginButton.isVisible();
+    char showTholFamily = showThol && mTholSpawnMode == 1;
+    char showTholSeed = showThol && mTholSpawnMode == 2;
+    if( ! showTholFamily ) mTholFamilyField.unfocus();
+    if( ! showTholSeed ) mTholSeedField.unfocus();
+    mTholSpawnModeButton.setVisible( showThol );
+    mTholFamilyField.setVisible( showTholFamily );
+    mTholSeedField.setVisible( showTholSeed );
+
+    // YummyLife: leaderboard, LIFE DATA and FAMILY TREES are OHOL only
+    if( tholCompat ) {
+        mGenesButton.setVisible( false );
+        mFamilyTreesButton.setVisible( false );
+    }
+
     shouldAcntPasteButtonBeVisable = isClipboardSupported() && !inSaveAccountProcess && showEditAccountWindow && 
                                   (mAcntEmailField.isFocused() || mAcntKeyField.isFocused() || mAcntNotesField.isFocused());
     mAcntPasteButton.setVisible( shouldAcntPasteButtonBeVisable );
@@ -814,6 +862,14 @@ void ExistingAccountPage::actionPerformed( GUIComponent *inTarget ) {
     else if( inTarget == &mTutTwoButton ) {
         forceCompleteTutorial();
         processLogin( true, "tutorial2" );
+        }
+    else if( inTarget == &mTholSpawnModeButton ) {
+        int mode = ( mTholSpawnMode + 1 ) % 3;
+        SettingsManager::setSetting( "tholSpawnMode", mode );
+        updateTholSpawnMode();
+        
+        if( mode == 1 ) mTholFamilyField.focus();
+        else if( mode == 2 ) mTholSeedField.focus();
         }
     else if( inTarget == &mServicesButton ) {
         setSignal( "services" );
@@ -1232,6 +1288,70 @@ void ExistingAccountPage::actionPerformed( GUIComponent *inTarget ) {
     }
 }
 
+// YummyLife: 2HOL's server reads a spawn target from the end of the LOGIN
+// email: "email|SEED" hashes to a spawn spot, "email:FAMILY" only lets you be
+// born to a fertile of that family (rejected if there is none).  It strips
+// the suffix before checking the account.  Empty when not in 2HOL mode.
+std::string getTholSpawnSuffix() {
+    if( ! tholCompat ) return "";
+
+    int mode = SettingsManager::getIntSetting( "tholSpawnMode", 0 );
+
+    const char *settingName;
+    char delim;
+
+    if( mode == 1 ) {
+        settingName = "tholTargetFamily";
+        delim = ':';
+    } else if( mode == 2 ) {
+        settingName = "tholSpawnSeed";
+        delim = '|';
+    } else {
+        return "";
+    }
+
+    char *value = SettingsManager::getStringSetting( settingName, "" );
+    std::string suffix;
+    if( strlen( value ) > 0 ) {
+        suffix = delim;
+        suffix += value;
+    }
+    delete [] value;
+
+    return suffix;
+}
+
+// sets the mode button's label and tip for the saved mode
+void ExistingAccountPage::updateTholSpawnMode() {
+    int mode = SettingsManager::getIntSetting( "tholSpawnMode", 0 );
+
+    const char *label = "RANDOM";
+    const char *tip = "SPAWN ANYWHERE - CLICK TO TARGET A FAMILY OR SEED";
+    if( mode == 1 ) {
+        label = "FAMILY";
+        tip = "BE BORN INTO THIS FAMILY - FAILS IF IT HAS NO FERTILES";
+    }
+    else if( mode == 2 ) {
+        label = "SEED";
+        tip = "SPAWN CODE, CASE SENSITIVE - SAME CODE, SAME SPAWN SPOT";
+    }
+    mTholSpawnModeButton.setLabelText( label );
+    mTholSpawnModeButton.setMouseOverTip( tip );
+
+    mTholSpawnMode = mode;
+}
+
+void ExistingAccountPage::saveTholSpawnFields() {
+    char *family = mTholFamilyField.getText();
+    char *trimmedFamily = trimWhitespace( family );
+    SettingsManager::setSetting( "tholTargetFamily", trimmedFamily );
+    delete [] family;
+    delete [] trimmedFamily;
+
+    char *seed = mTholSeedField.getText();
+    SettingsManager::setSetting( "tholSpawnSeed", seed );
+    delete [] seed;
+}
 
 
 void ExistingAccountPage::switchFields() {
@@ -1255,7 +1375,9 @@ void ExistingAccountPage::keyDown( unsigned char inASCII ) {
     if( inASCII == 10 || inASCII == 13 ) {
         // enter key
         
-        if( mKeyField.isFocused() ) {
+        if( mKeyField.isFocused() ||
+            mTholFamilyField.isFocused() ||
+            mTholSeedField.isFocused() ) {
 
             processLogin( true, "done" );
             
@@ -1386,6 +1508,8 @@ void ExistingAccountPage::processLogin( char inStore, const char *inSignal ) {
         delete [] accountKey;
         }
     accountKey = mKeyField.getText();
+
+    saveTholSpawnFields();
 
     // Do not store in settings if logging in with a shared account, since those don't use email/key
     if( !gamePlayingBack && YummyLife::AccountManager::loginSharedAccountIndex == -1 ) {
@@ -1578,12 +1702,16 @@ void ExistingAccountPage::draw( doublePair inViewCenter,
         pos.x = 0;
         pos.y = 75;
 
-        YummyLife::drawLeaderboardName(pos);
+        // YummyLife: 2HOL has no leaderboard or fitness score
+        if( ! tholCompat ) {
+            YummyLife::drawLeaderboardName(pos);
+            }
 
         pos.x = 0;
         pos.y = 30;
         
-        if( YummyLife::AccountManager::loginSharedAccountIndex == -1) {
+        if( ! tholCompat &&
+            YummyLife::AccountManager::loginSharedAccountIndex == -1) {
             drawFitnessScore( pos );
 
             if( isFitnessScoreReady() ) {

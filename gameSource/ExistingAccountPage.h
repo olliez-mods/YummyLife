@@ -117,6 +117,12 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         TextButton mAccessTokenCopyButton;
         TextButton mDeleteSharedAccountButton;
 
+        // YummyLife: 2HOL spawn targeting, only shown in 2HOL compat mode.
+        TextButton mTholSpawnModeButton;
+        TextField mTholFamilyField;
+        TextField mTholSeedField;
+        int mTholSpawnMode = 0; // 0 random, 1 family, 2 seed
+
         yumRebirthComponent mYumRebirth;
         
 
@@ -154,7 +160,10 @@ class ExistingAccountPage : public GamePage, public ActionListener {
         void deleteOwnedSharedAccount();
 
         void switchFields();
-        
+
+        void updateTholSpawnMode();
+        void saveTholSpawnFields();
+
         void processLogin( char inStore, const char *inSignal );
 
     };

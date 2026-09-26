@@ -2587,6 +2587,24 @@ void drawFrame( char inUpdate ) {
 
                 currentGamePage->base_makeActive( true );
                 }
+            // YummyLife: 2HOL found no one in the target family to have us
+            else if( livingLifePage->checkSignal( "tholTargetFamilyFailed" ) ) {
+                lastScreenViewCenter.x = 0;
+                lastScreenViewCenter.y = 0;
+
+                setViewCenterPosition( lastScreenViewCenter.x,
+                                       lastScreenViewCenter.y );
+
+                currentGamePage = existingAccountPage;
+
+                existingAccountPage->setStatusDirect(
+                    translateWithDefault( "tholTargetFamilyFailed",
+                        "TARGET FAMILY NOT FOUND##OR HAS NO FERTILES" ),
+                    true );
+
+                existingAccountPage->setStatusPosition( true );
+                currentGamePage->base_makeActive( true );
+            }
             // YummyLife: Shared account login failure
             else if( livingLifePage->checkSignal( "sharedLoginFailed" ) ) {
                 lastScreenViewCenter.x = 0;

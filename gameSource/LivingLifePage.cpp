@@ -675,6 +675,9 @@ static char rocketAnimationStarted = false;
 // YummyLife:  true when this is a Two Hours One Life game folder, there's certain protocol changes
 extern char tholCompat;
 
+// YummyLife: from ExistingAccountPage.cpp, ":FAMILY" or "|SEED" or ""
+extern std::string getTholSpawnSuffix();
+
 
 typedef struct Homeland {
         int x, y;
@@ -14097,6 +14100,11 @@ void LivingLifePage::step() {
             if( userReconnect ) {
                 setSignal( "reconnectFailed" );
                 }
+            else if( waitForFrameMessages &&
+                     getTholSpawnSuffix()[0] == ':' ) {
+                // YummyLife:  2HOL accepts the login, then finds no one in the target family who can have us.
+                setSignal( "tholTargetFamilyFailed" );
+                }
             else {
                 setSignal( "loginFailed" );
                 }
@@ -15944,6 +15952,11 @@ void LivingLifePage::step() {
             
             if( userReconnect ) {
                 loginWord = "RLOGIN";
+                }
+            else if( tempEmail.find( '|' ) == std::string::npos &&
+                     tempEmail.find( ':' ) == std::string::npos ) {
+                // YummyLife:  2HOL spawn target rides on the end of the email
+                tempEmail += getTholSpawnSuffix();
                 }
 
             // YummyLife:  THOL's server rejects the LOGIN message if tag is included
