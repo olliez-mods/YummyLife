@@ -1991,6 +1991,13 @@ void drawFrame( char inUpdate ) {
                         loadingPhase ++;
                         break;
                     }
+                    // YummyLife: Phexessories use OHOL sprite IDs, and some of those don't
+                    // exist in 2HOL, which crashes anything that draws them (like the VOG picker)
+                    if(tholCompat) {
+                        printf( "Skipping loading Phexessories (not supported in 2HOL mode)\n");
+                        loadingPhase ++;
+                        break;
+                    }
                     printf( "Started loading Phexessories\n");
                     initYummyPhexessoriesObjects("YummyLiveResources/Phexessories");
                     initYummyPhexessoriesAnimations("YummyLiveResources/Phexessories", getYummyObjectsBeginID());

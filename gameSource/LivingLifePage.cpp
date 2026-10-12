@@ -5812,7 +5812,8 @@ ObjectAnimPack LivingLifePage::drawLiveObject(
 
     // If enabled and found, apply Phex profile overrides
     Phex::LifeProfile *profile = NULL;
-    if(HetuwMod::bAllowPhexAccessories) profile = Phex::getLifeProfile( inObj->id );
+    // YummyLife: Phexessories aren't loaded in 2HOL mode, see game.cpp loading phase 4
+    if(HetuwMod::bAllowPhexAccessories && !tholCompat) profile = Phex::getLifeProfile( inObj->id );
 
     ClothingSet clothingOrig = inObj->clothing;
     int holdingIDOrig = inObj->holdingID;
