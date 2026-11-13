@@ -1826,16 +1826,8 @@ static void findPostApocalypsePositions() {
     for( int i=0; i<players.size(); i++ ) {
         LiveObject *nextPlayer = players.getElement( i );
         
-        if( isPlayerCountable( nextPlayer ) ) {
-            
-            nextPlayer->postApocalypsePosSet = false;
-            playerCount++;
-            }
-        else {
-            // leave uncountable players positions set with no change
-            nextPlayer->postApocalypsePosSet = true;
-            uncountedPlayers++;
-            }
+        nextPlayer->postApocalypsePosSet = false;
+        playerCount++;
         }
 
 
@@ -1982,48 +1974,45 @@ static void backToBasics( LiveObject *inPlayer ) {
     p->numToolSlots = -1;
 
 
-    if( isPlayerCountable( p ) ) {    
-        // end any moves, and move everyon back around 0,0
         
-        // to their post-apocalypse positions, which we set up earlier
-
-        if( p->postApocalypsePosSet ) {
-            p->xs = p->postApocalypsePos.x;
-            p->ys = p->postApocalypsePos.y;
-            }
-        else {
-            p->xs = 0;
-            p->ys = 0;
-            }
-
-
-        if( p->pathToDest != NULL ) {
-            delete [] p->pathToDest;
-            p->pathToDest = NULL;
-            }
-
-        p->pathLength = 0;
-        p->pathTruncated = 0;
-        p->moveStartTime = Time::getCurrentTime();
-        p->moveTotalSeconds = 0;
-
-        p->xd = p->xs;
-        p->yd = p->ys;
+    // end any moves, and move everyon back around 0,0
         
-        
-        p->birthPos.x = p->xs;
-        p->birthPos.y = p->ys;
-        
-        p->originalBirthPos = p->birthPos;
-        
-        p->actionTarget = p->birthPos;
-        
-        p->actionAttempt = false;
+    // to their post-apocalypse positions, which we set up earlier
 
-        p->posForced = true;
+    if( p->postApocalypsePosSet ) {
+        p->xs = p->postApocalypsePos.x;
+        p->ys = p->postApocalypsePos.y;
         }
-    
+    else {
+        p->xs = 0;
+        p->ys = 0;
+        }
 
+
+    if( p->pathToDest != NULL ) {
+        delete [] p->pathToDest;
+        p->pathToDest = NULL;
+        }
+
+    p->pathLength = 0;
+    p->pathTruncated = 0;
+    p->moveStartTime = Time::getCurrentTime();
+    p->moveTotalSeconds = 0;
+
+    p->xd = p->xs;
+    p->yd = p->ys;
+        
+        
+    p->birthPos.x = p->xs;
+    p->birthPos.y = p->ys;
+        
+    p->originalBirthPos = p->birthPos;
+        
+    p->actionTarget = p->birthPos;
+        
+    p->actionAttempt = false;
+
+    p->posForced = true;
 
 
     setupToolSlots( p );
@@ -25265,6 +25254,19 @@ int main( int inNumArgs, const char **inArgs ) {
                                         
                                     sendGlobalMessage( message,
                                                        nextPlayer );
+
+                                    char *psMessage = 
+                                        autoSprintf( "PS\n"
+                                                     "%d/0 %s\n#",
+                                                     nextPlayer->id,
+                                                     message );
+                            
+                                    sendMessageToPlayer( nextPlayer, 
+                                                         psMessage, 
+                                                         strlen( psMessage ) );
+
+                                    delete [] psMessage;
+                                
                                     delete [] message;
                                     }
                                 else {
